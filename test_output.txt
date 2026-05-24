@@ -1,0 +1,1291 @@
+[tenant bootstrap] Migration failed: SQLSTATE[42S01]: Base table or view already exists: 1050 Table 'jobs' already exists (Connection: tenant, Host: 127.0.0.1, Port: 3306, Database: mfukopro_test, SQL: create table `jobs` (`id` bigint unsigned not null auto_increment primary key, `queue` varchar(255) not null, `payload` longtext not null, `attempts` tinyint unsigned not null, `reserved_at` int unsigned null, `available_at` int unsigned not null, `created_at` int unsigned not null) default character set utf8mb4 collate 'utf8mb4_unicode_ci')
+[tenant bootstrap] Resetting test database 'mfukopro_test' and retrying...
+[tenant bootstrap] Migration failed after 2 attempts: SQLSTATE[42S01]: Base table or view already exists: 1050 Table 'jobs' already exists (Connection: tenant, Host: 127.0.0.1, Port: 3306, Database: mfukopro_test, SQL: create table `jobs` (`id` bigint unsigned not null auto_increment primary key, `queue` varchar(255) not null, `payload` longtext not null, `attempts` tinyint unsigned not null, `reserved_at` int unsigned null, `available_at` int unsigned not null, `created_at` int unsigned not null) default character set utf8mb4 collate 'utf8mb4_unicode_ci')
+#0 /Users/asd/Mfuko_pro/mfuko-pro-backend-2026/vendor/laravel/framework/src/Illuminate/Database/Connection.php(794): Illuminate\Database\Connection->runQueryCallback('create table `j...', Array, Object(Closure))
+#1 /Users/asd/Mfuko_pro/mfuko-pro-backend-2026/vendor/laravel/framework/src/Illuminate/Database/Connection.php(573): Illuminate\Database\Connection->run('create table `j...', Array, Object(Closure))
+#2 /Users/asd/Mfuko_pro/mfuko-pro-backend-2026/vendor/laravel/framework/src/Illuminate/Database/Schema/Blueprint.php(121): Illuminate\Database\Connection->statement('create table `j...')
+#3 /Users/asd/Mfuko_pro/mfuko-pro-backend-2026/vendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php(686): Illuminate\Database\Schema\Blueprint->build()
+#4 /Users/asd/Mfuko_pro/mfuko-pro-backend-2026/vendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php(506): Illuminate\Database\Schema\Builder->build(Object(Illuminate\Database\Schema\Blueprint))
+#5 /Users/asd/Mfuko_pro/mfuko-pro-backend-2026/vendor/laravel/framework/src/Illuminate/Support/Facades/Facade.php(363): Illuminate\Database\Schema\Builder->create('jobs', Object(Closure))
+#6 /Users/asd/Mfuko_pro/mfuko-pro-backend-2026/database/migrations/landlord/2026_02_21_000006_create_jobs_table.php(14): Illuminate\Support\Facades\Facade::__callStatic('create', Array)
+#7 /Users/asd/Mfuko_pro/mfuko-pro-backend-2026/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php(517): Illuminate\Database\Migrations\Migration@anonymous->up()
+#8 /Users/asd/Mfuko_pro/mfuko-pro-backend-2026/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php(442): Illuminate\Database\Migrations\Migrator->runMethod(Object(Illuminate\Database\MySqlConnection), Object(Illuminate\Database\Migrations\Migration@anonymous), 'up')
+#9 /Users/asd/Mfuko_pro/mfuko-pro-backend-2026/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php(451): Illuminate\Database\Migrations\Migrator->{closure:Illuminate\Database\Migrations\Migrator::runMigration():438}()
+#10 /Users/asd/Mfuko_pro/mfuko-pro-backend-2026/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php(253): Illuminate\Database\Migrations\Migrator->runMigration(Object(Illuminate\Database\Migrations\Migration@anonymous), 'up')
+#11 /Users/asd/Mfuko_pro/mfuko-pro-backend-2026/vendor/laravel/framework/src/Illuminate/Console/View/Components/Task.php(41): Illuminate\Database\Migrations\Migrator->{closure:Illuminate\Database\Migrations\Migrator::runUp():253}()
+#12 /Users/asd/Mfuko_pro/mfuko-pro-backend-2026/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php(814): Illuminate\Console\View\Components\Task->render('2026_02_21_0000...', Object(Closure))
+#13 /Users/asd/Mfuko_pro/mfuko-pro-backend-2026/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php(253): Illuminate\Database\Migrations\Migrator->write('Illuminate\\Cons...', '2026_02_21_0000...', Object(Closure))
+#14 /Users/asd/Mfuko_pro/mfuko-pro-backend-2026/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php(211): Illuminate\Database\Migrations\Migrator->runUp('/Users/asd/Mfuk...', 2, false)
+#15 /Users/asd/Mfuko_pro/mfuko-pro-backend-2026/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php(138): Illuminate\Database\Migrations\Migrator->runPending(Array, Array)
+#16 /Users/asd/Mfuko_pro/mfuko-pro-backend-2026/vendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php(116): Illuminate\Database\Migrations\Migrator->run(Array, Array)
+#17 /Users/asd/Mfuko_pro/mfuko-pro-backend-2026/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php(671): Illuminate\Database\Console\Migrations\MigrateCommand->{closure:Illuminate\Database\Console\Migrations\MigrateCommand::runMigrations():109}()
+#18 /Users/asd/Mfuko_pro/mfuko-pro-backend-2026/vendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php(109): Illuminate\Database\Migrations\Migrator->usingConnection('tenant', Object(Closure))
+#19 /Users/asd/Mfuko_pro/mfuko-pro-backend-2026/vendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php(88): Illuminate\Database\Console\Migrations\MigrateCommand->runMigrations()
+#20 /Users/asd/Mfuko_pro/mfuko-pro-backend-2026/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php(36): Illuminate\Database\Console\Migrations\MigrateCommand->handle()
+#21 /Users/asd/Mfuko_pro/mfuko-pro-backend-2026/vendor/laravel/framework/src/Illuminate/Container/Util.php(43): Illuminate\Container\BoundMethod::{closure:Illuminate\Container\BoundMethod::call():35}()
+#22 /Users/asd/Mfuko_pro/mfuko-pro-backend-2026/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php(96): Illuminate\Container\Util::unwrapIfClosure(Object(Closure))
+#23 /Users/asd/Mfuko_pro/mfuko-pro-backend-2026/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php(35): Illuminate\Container\BoundMethod::callBoundMethod(Object(Illuminate\Foundation\Application), Array, Object(Closure))
+#24 /Users/asd/Mfuko_pro/mfuko-pro-backend-2026/vendor/laravel/framework/src/Illuminate/Container/Container.php(799): Illuminate\Container\BoundMethod::call(Object(Illuminate\Foundation\Application), Array, Array, NULL)
+#25 /Users/asd/Mfuko_pro/mfuko-pro-backend-2026/vendor/laravel/framework/src/Illuminate/Console/Command.php(211): Illuminate\Container\Container->call(Array)
+#26 /Users/asd/Mfuko_pro/mfuko-pro-backend-2026/vendor/symfony/console/Command/Command.php(341): Illuminate\Console\Command->execute(Object(Symfony\Component\Console\Input\ArrayInput), Object(Illuminate\Console\OutputStyle))
+#27 /Users/asd/Mfuko_pro/mfuko-pro-backend-2026/vendor/laravel/framework/src/Illuminate/Console/Command.php(180): Symfony\Component\Console\Command\Command->run(Object(Symfony\Component\Console\Input\ArrayInput), Object(Illuminate\Console\OutputStyle))
+#28 /Users/asd/Mfuko_pro/mfuko-pro-backend-2026/vendor/symfony/console/Application.php(1094): Illuminate\Console\Command->run(Object(Symfony\Component\Console\Input\ArrayInput), Object(Symfony\Component\Console\Output\BufferedOutput))
+#29 /Users/asd/Mfuko_pro/mfuko-pro-backend-2026/vendor/symfony/console/Application.php(356): Symfony\Component\Console\Application->doRunCommand(Object(Illuminate\Database\Console\Migrations\MigrateCommand), Object(Symfony\Component\Console\Input\ArrayInput), Object(Symfony\Component\Console\Output\BufferedOutput))
+#30 /Users/asd/Mfuko_pro/mfuko-pro-backend-2026/vendor/symfony/console/Application.php(195): Symfony\Component\Console\Application->doRun(Object(Symfony\Component\Console\Input\ArrayInput), Object(Symfony\Component\Console\Output\BufferedOutput))
+#31 /Users/asd/Mfuko_pro/mfuko-pro-backend-2026/vendor/laravel/framework/src/Illuminate/Console/Application.php(165): Symfony\Component\Console\Application->run(Object(Symfony\Component\Console\Input\ArrayInput), Object(Symfony\Component\Console\Output\BufferedOutput))
+#32 /Users/asd/Mfuko_pro/mfuko-pro-backend-2026/vendor/laravel/framework/src/Illuminate/Foundation/Console/Kernel.php(447): Illuminate\Console\Application->call('migrate', Array, NULL)
+#33 /Users/asd/Mfuko_pro/mfuko-pro-backend-2026/tests/bootstrap-tenant.php(97): Illuminate\Foundation\Console\Kernel->call('migrate', Array)
+#34 /Users/asd/Mfuko_pro/mfuko-pro-backend-2026/vendor/phpunit/phpunit/src/TextUI/Configuration/BootstrapLoader.php(61): include_once('/Users/asd/Mfuk...')
+#35 /Users/asd/Mfuko_pro/mfuko-pro-backend-2026/vendor/phpunit/phpunit/src/TextUI/Configuration/BootstrapLoader.php(36): PHPUnit\TextUI\Configuration\BootstrapLoader->load('/Users/asd/Mfuk...')
+#36 /Users/asd/Mfuko_pro/mfuko-pro-backend-2026/vendor/phpunit/phpunit/src/TextUI/Application.php(132): PHPUnit\TextUI\Configuration\BootstrapLoader->handle(Object(PHPUnit\TextUI\Configuration\Configuration))
+#37 /Users/asd/Mfuko_pro/mfuko-pro-backend-2026/vendor/pestphp/pest/src/Kernel.php(103): PHPUnit\TextUI\Application->run(Array)
+#38 /Users/asd/Mfuko_pro/mfuko-pro-backend-2026/vendor/pestphp/pest/bin/pest(195): Pest\Kernel->handle(Array, Array)
+#39 /Users/asd/Mfuko_pro/mfuko-pro-backend-2026/vendor/pestphp/pest/bin/pest(203): {closure:/Users/asd/Mfuko_pro/mfuko-pro-backend-2026/vendor/pestphp/pest/bin/pest:19}()
+#40 /Users/asd/Mfuko_pro/mfuko-pro-backend-2026/vendor/bin/pest(119): include('/Users/asd/Mfuk...')
+#41 {main}
+
+  [39;41;1m FAIL [39;49;22m[39m Tests\Tenant\BranchIsolationTest[39m
+  [31;1m⨯[39;22m[90m [39m[90mit branch staff cannot read members from another branch[39m
+  [33;1m![39;22m[90m [39m[90mit admin staff sees all members across branches[39m[90m [39m[33m→ Test code or tested code removed error handlers other than its own[39m [90m1.65s[39m  
+  [31;1m⨯[39;22m[90m [39m[90mit BranchReadScope does not filter when no authenticated user (command/seeder context)[39m
+  [31;1m⨯[39;22m[90m [39m[90mit staff with no branch assigned sees no members[39m
+  [31;1m⨯[39;22m[90m [39m[90mit creates a member stamped with the acting staff branch_id[39m
+  [31;1m⨯[39;22m[90m [39m[90mit does not overwrite an explicitly set branch_id on create[39m
+  [31;1m⨯[39;22m[90m [39m[90mit allowedBranchIds returns only the assigned branch for regular staff[39m
+  [31;1m⨯[39;22m[90m [39m[90mit allowedBranchIds returns empty array when staff has no branch[39m
+  [31;1m⨯[39;22m[90m [39m[90mit allowedBranchIds merges pivot branches for staff with extra access[39m
+  [31;1m⨯[39;22m[90m [39m[90mit BranchQuery::apply filters transactions to the acting staff branch[39m
+  [31;1m⨯[39;22m[90m [39m[90mit BranchQuery::apply does not filter for admin staff[39m
+  [31;1m⨯[39;22m[90m [39m[90mit BranchQuery::apply does not filter when no authenticated user[39m
+  [31;1m⨯[39;22m[90m [39m[90mit scopeFor returns SCOPE_ALL for tenant admin without DB query[39m
+  [31;1m⨯[39;22m[90m [39m[90mit scopeFor returns SCOPE_SELF as safe default when roles table has no matching role[39m
+  [31;1m⨯[39;22m[90m [39m[90mit scopeFor reads branch_scope from roles table when column exists[39m
+  [31;1m⨯[39;22m[90m [39m[90mit GET /members returns only the authenticated staff branch records[39m
+  [31;1m⨯[39;22m[90m [39m[90mit GET /members returns all records for admin staff[39m
+  [31;1m⨯[39;22m[90m [39m[90mit staffListCollection (legacy path) scopes to acting staff branch[39m
+  [31;1m⨯[39;22m[90m [39m[90mit staffListCollection returns all staff for admin[39m
+  [31;1m⨯[39;22m[90m [39m[90mit admin with X-Acting-Branch-Id reads only that branch and stamps writes to it[39m
+  [31;1m⨯[39;22m[90m [39m[90mit staff with role branch_scope=branch is restricted to their own branch[39m
+  [31;1m⨯[39;22m[90m [39m[90mit pivot-granted staff sees primary and extra branch but not a third[39m
+  [31;1m⨯[39;22m[90m [39m[90mit GET /staff returns only acting staff branch via Eloquent scope[39m
+  [31;1m⨯[39;22m[90m [39m[90mit GET /staff returns all branches for admin[39m
+  [31;1m⨯[39;22m[90m [39m[90mit reversal transaction is stamped with the acting staff branch_id[39m
+  [31m────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mTests\Tenant\BranchIsolationTest[22m [90m>[39m it branch staff cannot read members from another branch [41;1m QueryException [49;22m  
+[39;1m  SQLSTATE[40001]: Serialization failure: 1213 Deadlock found when trying to get lock; try restarting transaction (Connection: mysql, Host: 127.0.0.1, Port: 3306, Database: mfukopro_test, SQL: insert ignore into `branches` (`code`, `created_at`, `id`, `is_active`, `name`, `system_type`, `updated_at`) values (HQ, 2026-05-03 10:03:55, 1, 1, Head Office, system, 2026-05-03 10:03:55), (B2, 2026-05-03 10:03:55, 2, 1, Branch Two, user_created, 2026-05-03 10:03:55), (B3, 2026-05-03 10:03:55, 3, 1, Branch Three, user_created, 2026-05-03 10:03:55))[39;22m
+
+  at [32mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39m:[32m609[39m
+    605▕             $statement = $this->getPdo()->prepare($query);
+    606▕ 
+    607▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    608▕ 
+  ➜ 609▕             $statement->execute();
+    610▕ 
+    611▕             $this->recordsHaveBeenModified(
+    612▕                 ($count = $statement->rowCount()) > 0
+    613▕             );
+
+  [33m1   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m609[39;22m
+  [33m2   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m827[39;22m
+  [33m3   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m794[39;22m
+  [33m4   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m597[39;22m
+  [33m5   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Query/Builder.php[39;22m:[39;1m4150[39;22m
+  [33m6   [39m[39;1mtests/TenantTestCase.php[39;22m:[39;1m74[39;22m
+
+  [31m────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mTests\Tenant\BranchIsolationTest[22m [90m>[39m it BranchReadScope does not filter when no authenticated user (command/seeder context) [41;1m QueryException [49;22m  
+[39;1m  SQLSTATE[40001]: Serialization failure: 1213 Deadlock found when trying to get lock; try restarting transaction (Connection: mysql, Host: 127.0.0.1, Port: 3306, Database: mfukopro_test, SQL: insert ignore into `staff` (`branch_id`, `created_at`, `email`, `id`, `name`, `password`, `updated_at`) values (1, 2026-05-03 10:03:58, system@test.local, 1, System, x, 2026-05-03 10:03:58))[39;22m
+
+  at [32mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39m:[32m605[39m
+    601▕ 
+    602▕             // For update or delete statements, we want to get the number of rows affected
+    603▕             // by the statement and return that back to the developer. We'll first need
+    604▕             // to execute the statement and then we'll use PDO to fetch the affected.
+  ➜ 605▕             $statement = $this->getPdo()->prepare($query);
+    606▕ 
+    607▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    608▕ 
+    609▕             $statement->execute();
+
+  [33m1   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m605[39;22m
+  [33m2   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m827[39;22m
+  [33m3   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m794[39;22m
+  [33m4   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m597[39;22m
+  [33m5   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Query/Builder.php[39;22m:[39;1m4150[39;22m
+  [33m6   [39m[39;1mtests/TenantTestCase.php[39;22m:[39;1m81[39;22m
+
+  [31m────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mTests\Tenant\BranchIsolationTest[22m [90m>[39m it staff with no branch assigned sees no members [41;1m QueryException [49;22m  
+[39;1m  SQLSTATE[HY000] [1049] Unknown database 'mfukopro_test' (Connection: tenant, Host: 127.0.0.1, Port: 3306, Database: mfukopro_test, SQL: select exists (select 1 from information_schema.tables where table_schema = schema() and table_name = 'staff' and table_type in ('BASE TABLE', 'SYSTEM VERSIONED')) as `exists`)[39;22m
+
+  at [32mvendor/laravel/framework/src/Illuminate/Database/Connectors/Connector.php[39m:[32m67[39m
+     63▕     protected function createPdoConnection($dsn, $username, #[\SensitiveParameter] $password, $options)
+     64▕     {
+     65▕         return version_compare(PHP_VERSION, '8.4.0', '<')
+     66▕             ? new PDO($dsn, $username, $password, $options)
+  ➜  67▕             : PDO::connect($dsn, $username, $password, $options); /** @phpstan-ignore staticMethod.notFound (PHP 8.4) */
+     68▕     }
+     69▕ 
+     70▕     /**
+     71▕      * Handle an exception that occurred during connect execution.
+
+  [33m1   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connectors/Connector.php[39;22m:[39;1m67[39;22m
+  [33m2   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connectors/Connector.php[39;22m:[39;1m44[39;22m
+  [33m3   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connectors/MySqlConnector.php[39;22m:[39;1m24[39;22m
+  [33m4   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connectors/ConnectionFactory.php[39;22m:[39;1m186[39;22m
+  [33m5   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m1257[39;22m
+  [33m6   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m1295[39;22m
+  [33m7   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m525[39;22m
+  [33m8   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m420[39;22m
+  [33m9   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m827[39;22m
+  [33m10  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m794[39;22m
+  [33m11  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m411[39;22m
+  [33m12  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m357[39;22m
+  [33m13  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m374[39;22m
+  [33m14  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php[39;22m:[39;1m176[39;22m
+  [33m15  [39m[39;1mtests/TenantTestCase.php[39;22m:[39;1m134[39;22m
+  [33m16  [39m[39;1mtests/TenantTestCase.php[39;22m:[39;1m27[39;22m
+
+  [31m────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mTests\Tenant\BranchIsolationTest[22m [90m>[39m it creates a member stamped with the acting staff branch_id [41;1m QueryException [49;22m  
+[39;1m  SQLSTATE[42000]: Syntax error or access violation: 1049 Unknown database 'mfukopro_test' (Connection: tenant, Host: 127.0.0.1, Port: 3306, Database: mfukopro_test, SQL: alter table `staff` add index `staff_remember_token_index`(`remember_token`))[39;22m
+
+  at [32mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39m:[32m584[39m
+    580▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    581▕ 
+    582▕             $this->recordsHaveBeenModified();
+    583▕ 
+  ➜ 584▕             return $statement->execute();
+    585▕         });
+    586▕     }
+    587▕ 
+    588▕     /**
+
+  [33m1   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m584[39;22m
+  [33m2   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m827[39;22m
+  [33m3   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m794[39;22m
+  [33m4   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m573[39;22m
+  [33m5   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Blueprint.php[39;22m:[39;1m121[39;22m
+  [33m6   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php[39;22m:[39;1m686[39;22m
+  [33m7   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php[39;22m:[39;1m506[39;22m
+  [33m8   [39m[39;1mvendor/laravel/framework/src/Illuminate/Support/Facades/Facade.php[39;22m:[39;1m363[39;22m
+  [33m9   [39m[39;1mdatabase/migrations/tenant/2026_02_19_140100_create_staff_table.php[39;22m:[39;1m18[39;22m
+  [33m10  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m517[39;22m
+  [33m11  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m442[39;22m
+  [33m12  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m451[39;22m
+  [33m13  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m253[39;22m
+  [33m14  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/View/Components/Task.php[39;22m:[39;1m41[39;22m
+  [33m15  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m814[39;22m
+  [33m16  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m253[39;22m
+  [33m17  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m211[39;22m
+  [33m18  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m138[39;22m
+  [33m19  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m116[39;22m
+  [33m20  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m671[39;22m
+  [33m21  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m109[39;22m
+  [33m22  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m88[39;22m
+  [33m23  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m36[39;22m
+  [33m24  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Util.php[39;22m:[39;1m43[39;22m
+  [33m25  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m96[39;22m
+  [33m26  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m35[39;22m
+  [33m27  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Container.php[39;22m:[39;1m799[39;22m
+  [33m28  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m211[39;22m
+  [33m29  [39m[39;1mvendor/symfony/console/Command/Command.php[39;22m:[39;1m341[39;22m
+  [33m30  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m180[39;22m
+  [33m31  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m1094[39;22m
+  [33m32  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m356[39;22m
+  [33m33  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m195[39;22m
+  [33m34  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Application.php[39;22m:[39;1m165[39;22m
+  [33m35  [39m[39;1mvendor/laravel/framework/src/Illuminate/Foundation/Console/Kernel.php[39;22m:[39;1m447[39;22m
+  [33m36  [39m[39;1mvendor/laravel/framework/src/Illuminate/Testing/PendingCommand.php[39;22m:[39;1m451[39;22m
+  [33m37  [39m[39;1mvendor/laravel/framework/src/Illuminate/Testing/PendingCommand.php[39;22m:[39;1m675[39;22m
+  [33m38  [39m[39;1mvendor/laravel/framework/src/Illuminate/Foundation/Testing/Concerns/InteractsWithConsole.php[39;22m:[39;1m87[39;22m
+  [33m39  [39m[39;1mtests/TenantTestCase.php[39;22m:[39;1m39[39;22m
+
+  [31m────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mTests\Tenant\BranchIsolationTest[22m [90m>[39m it does not overwrite an explicitly set branch_id on create [41;1m QueryException [49;22m  
+[39;1m  SQLSTATE[42S01]: Base table or view already exists: 1050 Table 'migrations' already exists (Connection: tenant, Host: 127.0.0.1, Port: 3306, Database: mfukopro_test, SQL: create table `migrations` (`id` int unsigned not null auto_increment primary key, `migration` varchar(255) not null, `batch` int not null) default character set utf8mb4 collate 'utf8mb4_unicode_ci')[39;22m
+
+  at [32mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39m:[32m584[39m
+    580▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    581▕ 
+    582▕             $this->recordsHaveBeenModified();
+    583▕ 
+  ➜ 584▕             return $statement->execute();
+    585▕         });
+    586▕     }
+    587▕ 
+    588▕     /**
+
+  [33m1   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m584[39;22m
+  [33m2   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m827[39;22m
+  [33m3   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m794[39;22m
+  [33m4   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m573[39;22m
+  [33m5   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Blueprint.php[39;22m:[39;1m121[39;22m
+  [33m6   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php[39;22m:[39;1m686[39;22m
+  [33m7   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php[39;22m:[39;1m506[39;22m
+  [33m8   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/DatabaseMigrationRepository.php[39;22m:[39;1m166[39;22m
+  [33m9   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/InstallCommand.php[39;22m:[39;1m56[39;22m
+  [33m10  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m36[39;22m
+  [33m11  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Util.php[39;22m:[39;1m43[39;22m
+  [33m12  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m96[39;22m
+  [33m13  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m35[39;22m
+  [33m14  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Container.php[39;22m:[39;1m799[39;22m
+  [33m15  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m211[39;22m
+  [33m16  [39m[39;1mvendor/symfony/console/Command/Command.php[39;22m:[39;1m341[39;22m
+  [33m17  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m180[39;22m
+  [33m18  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Concerns/CallsCommands.php[39;22m:[39;1m68[39;22m
+  [33m19  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Concerns/CallsCommands.php[39;22m:[39;1m41[39;22m
+  [33m20  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m144[39;22m
+  [33m21  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/View/Components/Task.php[39;22m:[39;1m41[39;22m
+  [33m22  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/View/Components/Factory.php[39;22m:[39;1m59[39;22m
+  [33m23  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m143[39;22m
+  [33m24  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m110[39;22m
+  [33m25  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m671[39;22m
+  [33m26  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m109[39;22m
+  [33m27  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m88[39;22m
+  [33m28  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m36[39;22m
+  [33m29  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Util.php[39;22m:[39;1m43[39;22m
+  [33m30  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m96[39;22m
+  [33m31  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m35[39;22m
+  [33m32  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Container.php[39;22m:[39;1m799[39;22m
+  [33m33  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m211[39;22m
+  [33m34  [39m[39;1mvendor/symfony/console/Command/Command.php[39;22m:[39;1m341[39;22m
+  [33m35  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m180[39;22m
+  [33m36  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m1094[39;22m
+  [33m37  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m356[39;22m
+  [33m38  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m195[39;22m
+  [33m39  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Application.php[39;22m:[39;1m165[39;22m
+  [33m40  [39m[39;1mvendor/laravel/framework/src/Illuminate/Foundation/Console/Kernel.php[39;22m:[39;1m447[39;22m
+  [33m41  [39m[39;1mvendor/laravel/framework/src/Illuminate/Testing/PendingCommand.php[39;22m:[39;1m451[39;22m
+  [33m42  [39m[39;1mvendor/laravel/framework/src/Illuminate/Testing/PendingCommand.php[39;22m:[39;1m675[39;22m
+  [33m43  [39m[39;1mvendor/laravel/framework/src/Illuminate/Foundation/Testing/Concerns/InteractsWithConsole.php[39;22m:[39;1m87[39;22m
+  [33m44  [39m[39;1mtests/TenantTestCase.php[39;22m:[39;1m39[39;22m
+
+  [31m────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mTests\Tenant\BranchIsolationTest[22m [90m>[39m it allowedBranchIds returns only the assigned branch for regular staff [41;1m QueryException [49;22m  
+[39;1m  SQLSTATE[42S02]: Base table or view not found: 1146 Table 'mfukopro_test.migrations' doesn't exist (Connection: tenant, Host: 127.0.0.1, Port: 3306, Database: mfukopro_test, SQL: select `migration` from `migrations` order by `batch` asc, `migration` asc)[39;22m
+
+  at [32mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39m:[32m420[39m
+    416▕             // For select statements, we'll simply execute the query and return an array
+    417▕             // of the database result set. Each element in the array will be a single
+    418▕             // row from the database table, and will either be an array or objects.
+    419▕             $statement = $this->prepared(
+  ➜ 420▕                 $this->getPdoForSelect($useReadPdo)->prepare($query)
+    421▕             );
+    422▕ 
+    423▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    424▕
+
+  [33m1   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m420[39;22m
+  [33m2   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m827[39;22m
+  [33m3   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m794[39;22m
+  [33m4   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m411[39;22m
+  [33m5   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Query/Builder.php[39;22m:[39;1m3505[39;22m
+  [33m6   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Query/Builder.php[39;22m:[39;1m3763[39;22m
+  [33m7   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Query/Builder.php[39;22m:[39;1m4080[39;22m
+  [33m8   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Query/Builder.php[39;22m:[39;1m3759[39;22m
+  [33m9   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/DatabaseMigrationRepository.php[39;22m:[39;1m52[39;22m
+  [33m10  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m768[39;22m
+  [33m11  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m152[39;22m
+  [33m12  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m110[39;22m
+  [33m13  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m671[39;22m
+  [33m14  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m109[39;22m
+  [33m15  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m88[39;22m
+  [33m16  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m36[39;22m
+  [33m17  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Util.php[39;22m:[39;1m43[39;22m
+  [33m18  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m96[39;22m
+  [33m19  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m35[39;22m
+  [33m20  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Container.php[39;22m:[39;1m799[39;22m
+  [33m21  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m211[39;22m
+  [33m22  [39m[39;1mvendor/symfony/console/Command/Command.php[39;22m:[39;1m341[39;22m
+  [33m23  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m180[39;22m
+  [33m24  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m1094[39;22m
+  [33m25  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m356[39;22m
+  [33m26  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m195[39;22m
+  [33m27  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Application.php[39;22m:[39;1m165[39;22m
+  [33m28  [39m[39;1mvendor/laravel/framework/src/Illuminate/Foundation/Console/Kernel.php[39;22m:[39;1m447[39;22m
+  [33m29  [39m[39;1mvendor/laravel/framework/src/Illuminate/Testing/PendingCommand.php[39;22m:[39;1m451[39;22m
+  [33m30  [39m[39;1mvendor/laravel/framework/src/Illuminate/Testing/PendingCommand.php[39;22m:[39;1m675[39;22m
+  [33m31  [39m[39;1mvendor/laravel/framework/src/Illuminate/Foundation/Testing/Concerns/InteractsWithConsole.php[39;22m:[39;1m87[39;22m
+  [33m32  [39m[39;1mtests/TenantTestCase.php[39;22m:[39;1m39[39;22m
+
+  [31m────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mTests\Tenant\BranchIsolationTest[22m [90m>[39m it allowedBranchIds returns empty array when staff has no branch [41;1m QueryException [49;22m  
+[39;1m  SQLSTATE[42000]: Syntax error or access violation: 1049 Unknown database 'mfukopro_test' (Connection: tenant, Host: 127.0.0.1, Port: 3306, Database: mfukopro_test, SQL: alter table `members` add `profile_path` text null after `national_id_number`)[39;22m
+
+  at [32mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39m:[32m584[39m
+    580▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    581▕ 
+    582▕             $this->recordsHaveBeenModified();
+    583▕ 
+  ➜ 584▕             return $statement->execute();
+    585▕         });
+    586▕     }
+    587▕ 
+    588▕     /**
+
+  [33m1   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m584[39;22m
+  [33m2   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m827[39;22m
+  [33m3   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m794[39;22m
+  [33m4   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m573[39;22m
+  [33m5   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Blueprint.php[39;22m:[39;1m121[39;22m
+  [33m6   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php[39;22m:[39;1m686[39;22m
+  [33m7   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php[39;22m:[39;1m494[39;22m
+  [33m8   [39m[39;1mvendor/laravel/framework/src/Illuminate/Support/Facades/Facade.php[39;22m:[39;1m363[39;22m
+  [33m9   [39m[39;1mdatabase/migrations/tenant/2026_02_22_000002_enhance_members_table.php[39;22m:[39;1m11[39;22m
+  [33m10  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m517[39;22m
+  [33m11  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m442[39;22m
+  [33m12  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m451[39;22m
+  [33m13  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m253[39;22m
+  [33m14  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/View/Components/Task.php[39;22m:[39;1m41[39;22m
+  [33m15  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m814[39;22m
+  [33m16  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m253[39;22m
+  [33m17  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m211[39;22m
+  [33m18  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m138[39;22m
+  [33m19  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m116[39;22m
+  [33m20  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m671[39;22m
+  [33m21  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m109[39;22m
+  [33m22  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m88[39;22m
+  [33m23  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m36[39;22m
+  [33m24  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Util.php[39;22m:[39;1m43[39;22m
+  [33m25  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m96[39;22m
+  [33m26  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m35[39;22m
+  [33m27  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Container.php[39;22m:[39;1m799[39;22m
+  [33m28  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m211[39;22m
+  [33m29  [39m[39;1mvendor/symfony/console/Command/Command.php[39;22m:[39;1m341[39;22m
+  [33m30  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m180[39;22m
+  [33m31  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m1094[39;22m
+  [33m32  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m356[39;22m
+  [33m33  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m195[39;22m
+  [33m34  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Application.php[39;22m:[39;1m165[39;22m
+  [33m35  [39m[39;1mvendor/laravel/framework/src/Illuminate/Foundation/Console/Kernel.php[39;22m:[39;1m447[39;22m
+  [33m36  [39m[39;1mvendor/laravel/framework/src/Illuminate/Testing/PendingCommand.php[39;22m:[39;1m451[39;22m
+  [33m37  [39m[39;1mvendor/laravel/framework/src/Illuminate/Testing/PendingCommand.php[39;22m:[39;1m675[39;22m
+  [33m38  [39m[39;1mvendor/laravel/framework/src/Illuminate/Foundation/Testing/Concerns/InteractsWithConsole.php[39;22m:[39;1m87[39;22m
+  [33m39  [39m[39;1mtests/TenantTestCase.php[39;22m:[39;1m39[39;22m
+
+  [31m────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mTests\Tenant\BranchIsolationTest[22m [90m>[39m it allowedBranchIds merges pivot branches for staff with extra access [41;1m QueryException [49;22m  
+[39;1m  SQLSTATE[42S01]: Base table or view already exists: 1050 Table 'migrations' already exists (Connection: tenant, Host: 127.0.0.1, Port: 3306, Database: mfukopro_test, SQL: create table `migrations` (`id` int unsigned not null auto_increment primary key, `migration` varchar(255) not null, `batch` int not null) default character set utf8mb4 collate 'utf8mb4_unicode_ci')[39;22m
+
+  at [32mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39m:[32m584[39m
+    580▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    581▕ 
+    582▕             $this->recordsHaveBeenModified();
+    583▕ 
+  ➜ 584▕             return $statement->execute();
+    585▕         });
+    586▕     }
+    587▕ 
+    588▕     /**
+
+  [33m1   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m584[39;22m
+  [33m2   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m827[39;22m
+  [33m3   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m794[39;22m
+  [33m4   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m573[39;22m
+  [33m5   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Blueprint.php[39;22m:[39;1m121[39;22m
+  [33m6   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php[39;22m:[39;1m686[39;22m
+  [33m7   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php[39;22m:[39;1m506[39;22m
+  [33m8   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/DatabaseMigrationRepository.php[39;22m:[39;1m166[39;22m
+  [33m9   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/InstallCommand.php[39;22m:[39;1m56[39;22m
+  [33m10  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m36[39;22m
+  [33m11  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Util.php[39;22m:[39;1m43[39;22m
+  [33m12  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m96[39;22m
+  [33m13  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m35[39;22m
+  [33m14  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Container.php[39;22m:[39;1m799[39;22m
+  [33m15  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m211[39;22m
+  [33m16  [39m[39;1mvendor/symfony/console/Command/Command.php[39;22m:[39;1m341[39;22m
+  [33m17  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m180[39;22m
+  [33m18  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Concerns/CallsCommands.php[39;22m:[39;1m68[39;22m
+  [33m19  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Concerns/CallsCommands.php[39;22m:[39;1m41[39;22m
+  [33m20  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m144[39;22m
+  [33m21  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/View/Components/Task.php[39;22m:[39;1m41[39;22m
+  [33m22  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/View/Components/Factory.php[39;22m:[39;1m59[39;22m
+  [33m23  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m143[39;22m
+  [33m24  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m110[39;22m
+  [33m25  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m671[39;22m
+  [33m26  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m109[39;22m
+  [33m27  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m88[39;22m
+  [33m28  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m36[39;22m
+  [33m29  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Util.php[39;22m:[39;1m43[39;22m
+  [33m30  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m96[39;22m
+  [33m31  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m35[39;22m
+  [33m32  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Container.php[39;22m:[39;1m799[39;22m
+  [33m33  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m211[39;22m
+  [33m34  [39m[39;1mvendor/symfony/console/Command/Command.php[39;22m:[39;1m341[39;22m
+  [33m35  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m180[39;22m
+  [33m36  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m1094[39;22m
+  [33m37  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m356[39;22m
+  [33m38  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m195[39;22m
+  [33m39  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Application.php[39;22m:[39;1m165[39;22m
+  [33m40  [39m[39;1mvendor/laravel/framework/src/Illuminate/Foundation/Console/Kernel.php[39;22m:[39;1m447[39;22m
+  [33m41  [39m[39;1mvendor/laravel/framework/src/Illuminate/Testing/PendingCommand.php[39;22m:[39;1m451[39;22m
+  [33m42  [39m[39;1mvendor/laravel/framework/src/Illuminate/Testing/PendingCommand.php[39;22m:[39;1m675[39;22m
+  [33m43  [39m[39;1mvendor/laravel/framework/src/Illuminate/Foundation/Testing/Concerns/InteractsWithConsole.php[39;22m:[39;1m87[39;22m
+  [33m44  [39m[39;1mtests/TenantTestCase.php[39;22m:[39;1m39[39;22m
+
+  [31m────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mTests\Tenant\BranchIsolationTest[22m [90m>[39m it BranchQuery::apply filters transactions to the acting staff branch [41;1m QueryException [49;22m  
+[39;1m  SQLSTATE[42000]: Syntax error or access violation: 1049 Unknown database 'mfukopro_test' (Connection: tenant, Host: 127.0.0.1, Port: 3306, Database: mfukopro_test, SQL: alter table `staff` add index `staff_remember_token_index`(`remember_token`))[39;22m
+
+  at [32mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39m:[32m584[39m
+    580▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    581▕ 
+    582▕             $this->recordsHaveBeenModified();
+    583▕ 
+  ➜ 584▕             return $statement->execute();
+    585▕         });
+    586▕     }
+    587▕ 
+    588▕     /**
+
+  [33m1   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m584[39;22m
+  [33m2   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m827[39;22m
+  [33m3   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m794[39;22m
+  [33m4   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m573[39;22m
+  [33m5   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Blueprint.php[39;22m:[39;1m121[39;22m
+  [33m6   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php[39;22m:[39;1m686[39;22m
+  [33m7   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php[39;22m:[39;1m506[39;22m
+  [33m8   [39m[39;1mvendor/laravel/framework/src/Illuminate/Support/Facades/Facade.php[39;22m:[39;1m363[39;22m
+  [33m9   [39m[39;1mdatabase/migrations/tenant/2026_02_19_140100_create_staff_table.php[39;22m:[39;1m18[39;22m
+  [33m10  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m517[39;22m
+  [33m11  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m442[39;22m
+  [33m12  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m451[39;22m
+  [33m13  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m253[39;22m
+  [33m14  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/View/Components/Task.php[39;22m:[39;1m41[39;22m
+  [33m15  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m814[39;22m
+  [33m16  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m253[39;22m
+  [33m17  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m211[39;22m
+  [33m18  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m138[39;22m
+  [33m19  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m116[39;22m
+  [33m20  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m671[39;22m
+  [33m21  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m109[39;22m
+  [33m22  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m88[39;22m
+  [33m23  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m36[39;22m
+  [33m24  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Util.php[39;22m:[39;1m43[39;22m
+  [33m25  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m96[39;22m
+  [33m26  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m35[39;22m
+  [33m27  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Container.php[39;22m:[39;1m799[39;22m
+  [33m28  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m211[39;22m
+  [33m29  [39m[39;1mvendor/symfony/console/Command/Command.php[39;22m:[39;1m341[39;22m
+  [33m30  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m180[39;22m
+  [33m31  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m1094[39;22m
+  [33m32  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m356[39;22m
+  [33m33  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m195[39;22m
+  [33m34  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Application.php[39;22m:[39;1m165[39;22m
+  [33m35  [39m[39;1mvendor/laravel/framework/src/Illuminate/Foundation/Console/Kernel.php[39;22m:[39;1m447[39;22m
+  [33m36  [39m[39;1mvendor/laravel/framework/src/Illuminate/Testing/PendingCommand.php[39;22m:[39;1m451[39;22m
+  [33m37  [39m[39;1mvendor/laravel/framework/src/Illuminate/Testing/PendingCommand.php[39;22m:[39;1m675[39;22m
+  [33m38  [39m[39;1mvendor/laravel/framework/src/Illuminate/Foundation/Testing/Concerns/InteractsWithConsole.php[39;22m:[39;1m87[39;22m
+  [33m39  [39m[39;1mtests/TenantTestCase.php[39;22m:[39;1m39[39;22m
+
+  [31m────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mTests\Tenant\BranchIsolationTest[22m [90m>[39m it BranchQuery::apply does not filter for admin staff [41;1m QueryException [49;22m  
+[39;1m  SQLSTATE[42S01]: Base table or view already exists: 1050 Table 'migrations' already exists (Connection: tenant, Host: 127.0.0.1, Port: 3306, Database: mfukopro_test, SQL: create table `migrations` (`id` int unsigned not null auto_increment primary key, `migration` varchar(255) not null, `batch` int not null) default character set utf8mb4 collate 'utf8mb4_unicode_ci')[39;22m
+
+  at [32mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39m:[32m584[39m
+    580▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    581▕ 
+    582▕             $this->recordsHaveBeenModified();
+    583▕ 
+  ➜ 584▕             return $statement->execute();
+    585▕         });
+    586▕     }
+    587▕ 
+    588▕     /**
+
+  [33m1   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m584[39;22m
+  [33m2   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m827[39;22m
+  [33m3   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m794[39;22m
+  [33m4   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m573[39;22m
+  [33m5   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Blueprint.php[39;22m:[39;1m121[39;22m
+  [33m6   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php[39;22m:[39;1m686[39;22m
+  [33m7   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php[39;22m:[39;1m506[39;22m
+  [33m8   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/DatabaseMigrationRepository.php[39;22m:[39;1m166[39;22m
+  [33m9   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/InstallCommand.php[39;22m:[39;1m56[39;22m
+  [33m10  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m36[39;22m
+  [33m11  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Util.php[39;22m:[39;1m43[39;22m
+  [33m12  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m96[39;22m
+  [33m13  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m35[39;22m
+  [33m14  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Container.php[39;22m:[39;1m799[39;22m
+  [33m15  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m211[39;22m
+  [33m16  [39m[39;1mvendor/symfony/console/Command/Command.php[39;22m:[39;1m341[39;22m
+  [33m17  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m180[39;22m
+  [33m18  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Concerns/CallsCommands.php[39;22m:[39;1m68[39;22m
+  [33m19  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Concerns/CallsCommands.php[39;22m:[39;1m41[39;22m
+  [33m20  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m144[39;22m
+  [33m21  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/View/Components/Task.php[39;22m:[39;1m41[39;22m
+  [33m22  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/View/Components/Factory.php[39;22m:[39;1m59[39;22m
+  [33m23  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m143[39;22m
+  [33m24  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m110[39;22m
+  [33m25  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m671[39;22m
+  [33m26  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m109[39;22m
+  [33m27  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m88[39;22m
+  [33m28  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m36[39;22m
+  [33m29  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Util.php[39;22m:[39;1m43[39;22m
+  [33m30  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m96[39;22m
+  [33m31  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m35[39;22m
+  [33m32  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Container.php[39;22m:[39;1m799[39;22m
+  [33m33  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m211[39;22m
+  [33m34  [39m[39;1mvendor/symfony/console/Command/Command.php[39;22m:[39;1m341[39;22m
+  [33m35  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m180[39;22m
+  [33m36  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m1094[39;22m
+  [33m37  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m356[39;22m
+  [33m38  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m195[39;22m
+  [33m39  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Application.php[39;22m:[39;1m165[39;22m
+  [33m40  [39m[39;1mvendor/laravel/framework/src/Illuminate/Foundation/Console/Kernel.php[39;22m:[39;1m447[39;22m
+  [33m41  [39m[39;1mvendor/laravel/framework/src/Illuminate/Testing/PendingCommand.php[39;22m:[39;1m451[39;22m
+  [33m42  [39m[39;1mvendor/laravel/framework/src/Illuminate/Testing/PendingCommand.php[39;22m:[39;1m675[39;22m
+  [33m43  [39m[39;1mvendor/laravel/framework/src/Illuminate/Foundation/Testing/Concerns/InteractsWithConsole.php[39;22m:[39;1m87[39;22m
+  [33m44  [39m[39;1mtests/TenantTestCase.php[39;22m:[39;1m39[39;22m
+
+  [31m────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mTests\Tenant\BranchIsolationTest[22m [90m>[39m it BranchQuery::apply does not filter when no authenticated user [41;1m QueryException [49;22m  
+[39;1m  SQLSTATE[42000]: Syntax error or access violation: 1049 Unknown database 'mfukopro_test' (Connection: tenant, Host: 127.0.0.1, Port: 3306, Database: mfukopro_test, SQL: alter table `system_settings` add index `system_settings_created_by_index`(`created_by`))[39;22m
+
+  at [32mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39m:[32m584[39m
+    580▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    581▕ 
+    582▕             $this->recordsHaveBeenModified();
+    583▕ 
+  ➜ 584▕             return $statement->execute();
+    585▕         });
+    586▕     }
+    587▕ 
+    588▕     /**
+
+  [33m1   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m584[39;22m
+  [33m2   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m827[39;22m
+  [33m3   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m794[39;22m
+  [33m4   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m573[39;22m
+  [33m5   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Blueprint.php[39;22m:[39;1m121[39;22m
+  [33m6   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php[39;22m:[39;1m686[39;22m
+  [33m7   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php[39;22m:[39;1m506[39;22m
+  [33m8   [39m[39;1mdatabase/migrations/tenant/2026_02_19_140200_create_setting_v2_table.php[39;22m:[39;1m17[39;22m
+  [33m9   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m517[39;22m
+  [33m10  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m442[39;22m
+  [33m11  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m451[39;22m
+  [33m12  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m253[39;22m
+  [33m13  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/View/Components/Task.php[39;22m:[39;1m41[39;22m
+  [33m14  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m814[39;22m
+  [33m15  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m253[39;22m
+  [33m16  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m211[39;22m
+  [33m17  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m138[39;22m
+  [33m18  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m116[39;22m
+  [33m19  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m671[39;22m
+  [33m20  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m109[39;22m
+  [33m21  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m88[39;22m
+  [33m22  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m36[39;22m
+  [33m23  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Util.php[39;22m:[39;1m43[39;22m
+  [33m24  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m96[39;22m
+  [33m25  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m35[39;22m
+  [33m26  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Container.php[39;22m:[39;1m799[39;22m
+  [33m27  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m211[39;22m
+  [33m28  [39m[39;1mvendor/symfony/console/Command/Command.php[39;22m:[39;1m341[39;22m
+  [33m29  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m180[39;22m
+  [33m30  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m1094[39;22m
+  [33m31  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m356[39;22m
+  [33m32  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m195[39;22m
+  [33m33  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Application.php[39;22m:[39;1m165[39;22m
+  [33m34  [39m[39;1mvendor/laravel/framework/src/Illuminate/Foundation/Console/Kernel.php[39;22m:[39;1m447[39;22m
+  [33m35  [39m[39;1mvendor/laravel/framework/src/Illuminate/Testing/PendingCommand.php[39;22m:[39;1m451[39;22m
+  [33m36  [39m[39;1mvendor/laravel/framework/src/Illuminate/Testing/PendingCommand.php[39;22m:[39;1m675[39;22m
+  [33m37  [39m[39;1mvendor/laravel/framework/src/Illuminate/Foundation/Testing/Concerns/InteractsWithConsole.php[39;22m:[39;1m87[39;22m
+  [33m38  [39m[39;1mtests/TenantTestCase.php[39;22m:[39;1m39[39;22m
+
+  [31m────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mTests\Tenant\BranchIsolationTest[22m [90m>[39m it scopeFor returns SCOPE_ALL for tenant admin without DB query [41;1m QueryException [49;22m  
+[39;1m  SQLSTATE[42000]: Syntax error or access violation: 1049 Unknown database 'mfukopro_test' (Connection: tenant, Host: 127.0.0.1, Port: 3306, Database: mfukopro_test, SQL: alter table `staff` add `two_factor_recovery_codes` text null after `two_factor_secret`)[39;22m
+
+  at [32mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39m:[32m584[39m
+    580▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    581▕ 
+    582▕             $this->recordsHaveBeenModified();
+    583▕ 
+  ➜ 584▕             return $statement->execute();
+    585▕         });
+    586▕     }
+    587▕ 
+    588▕     /**
+
+  [33m1   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m584[39;22m
+  [33m2   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m827[39;22m
+  [33m3   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m794[39;22m
+  [33m4   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m573[39;22m
+  [33m5   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Blueprint.php[39;22m:[39;1m121[39;22m
+  [33m6   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php[39;22m:[39;1m686[39;22m
+  [33m7   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php[39;22m:[39;1m494[39;22m
+  [33m8   [39m[39;1mvendor/laravel/framework/src/Illuminate/Support/Facades/Facade.php[39;22m:[39;1m363[39;22m
+  [33m9   [39m[39;1mdatabase/migrations/tenant/2026_02_22_000001_enhance_staff_table.php[39;22m:[39;1m11[39;22m
+  [33m10  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m517[39;22m
+  [33m11  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m442[39;22m
+  [33m12  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m451[39;22m
+  [33m13  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m253[39;22m
+  [33m14  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/View/Components/Task.php[39;22m:[39;1m41[39;22m
+  [33m15  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m814[39;22m
+  [33m16  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m253[39;22m
+  [33m17  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m211[39;22m
+  [33m18  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m138[39;22m
+  [33m19  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m116[39;22m
+  [33m20  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m671[39;22m
+  [33m21  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m109[39;22m
+  [33m22  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m88[39;22m
+  [33m23  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m36[39;22m
+  [33m24  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Util.php[39;22m:[39;1m43[39;22m
+  [33m25  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m96[39;22m
+  [33m26  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m35[39;22m
+  [33m27  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Container.php[39;22m:[39;1m799[39;22m
+  [33m28  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m211[39;22m
+  [33m29  [39m[39;1mvendor/symfony/console/Command/Command.php[39;22m:[39;1m341[39;22m
+  [33m30  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m180[39;22m
+  [33m31  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m1094[39;22m
+  [33m32  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m356[39;22m
+  [33m33  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m195[39;22m
+  [33m34  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Application.php[39;22m:[39;1m165[39;22m
+  [33m35  [39m[39;1mvendor/laravel/framework/src/Illuminate/Foundation/Console/Kernel.php[39;22m:[39;1m447[39;22m
+  [33m36  [39m[39;1mvendor/laravel/framework/src/Illuminate/Testing/PendingCommand.php[39;22m:[39;1m451[39;22m
+  [33m37  [39m[39;1mvendor/laravel/framework/src/Illuminate/Testing/PendingCommand.php[39;22m:[39;1m675[39;22m
+  [33m38  [39m[39;1mvendor/laravel/framework/src/Illuminate/Foundation/Testing/Concerns/InteractsWithConsole.php[39;22m:[39;1m87[39;22m
+  [33m39  [39m[39;1mtests/TenantTestCase.php[39;22m:[39;1m39[39;22m
+
+  [31m────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mTests\Tenant\BranchIsolationTest[22m [90m>[39m it scopeFor returns SCOPE_SELF as safe default when roles table has no matching role [41;1m QueryException [49;22m  
+[39;1m  SQLSTATE[HY000] [1049] Unknown database 'mfukopro_test' (Connection: tenant, Host: 127.0.0.1, Port: 3306, Database: mfukopro_test, SQL: select exists (select 1 from information_schema.tables where table_schema = schema() and table_name = 'staff' and table_type in ('BASE TABLE', 'SYSTEM VERSIONED')) as `exists`)[39;22m
+
+  at [32mvendor/laravel/framework/src/Illuminate/Database/Connectors/Connector.php[39m:[32m67[39m
+     63▕     protected function createPdoConnection($dsn, $username, #[\SensitiveParameter] $password, $options)
+     64▕     {
+     65▕         return version_compare(PHP_VERSION, '8.4.0', '<')
+     66▕             ? new PDO($dsn, $username, $password, $options)
+  ➜  67▕             : PDO::connect($dsn, $username, $password, $options); /** @phpstan-ignore staticMethod.notFound (PHP 8.4) */
+     68▕     }
+     69▕ 
+     70▕     /**
+     71▕      * Handle an exception that occurred during connect execution.
+
+  [33m1   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connectors/Connector.php[39;22m:[39;1m67[39;22m
+  [33m2   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connectors/Connector.php[39;22m:[39;1m44[39;22m
+  [33m3   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connectors/MySqlConnector.php[39;22m:[39;1m24[39;22m
+  [33m4   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connectors/ConnectionFactory.php[39;22m:[39;1m186[39;22m
+  [33m5   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m1257[39;22m
+  [33m6   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m1295[39;22m
+  [33m7   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m525[39;22m
+  [33m8   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m420[39;22m
+  [33m9   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m827[39;22m
+  [33m10  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m794[39;22m
+  [33m11  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m411[39;22m
+  [33m12  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m357[39;22m
+  [33m13  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m374[39;22m
+  [33m14  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php[39;22m:[39;1m176[39;22m
+  [33m15  [39m[39;1mtests/TenantTestCase.php[39;22m:[39;1m134[39;22m
+  [33m16  [39m[39;1mtests/TenantTestCase.php[39;22m:[39;1m38[39;22m
+
+  [31m────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mTests\Tenant\BranchIsolationTest[22m [90m>[39m it scopeFor reads branch_scope from roles table when column exists [41;1m QueryException [49;22m  
+[39;1m  SQLSTATE[42000]: Syntax error or access violation: 1049 Unknown database 'mfukopro_test' (Connection: tenant, Host: 127.0.0.1, Port: 3306, Database: mfukopro_test, SQL: alter table `system_settings` add index `system_settings_settings_title_index`(`settings_title`))[39;22m
+
+  at [32mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39m:[32m584[39m
+    580▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    581▕ 
+    582▕             $this->recordsHaveBeenModified();
+    583▕ 
+  ➜ 584▕             return $statement->execute();
+    585▕         });
+    586▕     }
+    587▕ 
+    588▕     /**
+
+  [33m1   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m584[39;22m
+  [33m2   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m827[39;22m
+  [33m3   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m794[39;22m
+  [33m4   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m573[39;22m
+  [33m5   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Blueprint.php[39;22m:[39;1m121[39;22m
+  [33m6   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php[39;22m:[39;1m686[39;22m
+  [33m7   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php[39;22m:[39;1m506[39;22m
+  [33m8   [39m[39;1mdatabase/migrations/tenant/2026_02_19_140200_create_setting_v2_table.php[39;22m:[39;1m17[39;22m
+  [33m9   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m517[39;22m
+  [33m10  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m442[39;22m
+  [33m11  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m451[39;22m
+  [33m12  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m253[39;22m
+  [33m13  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/View/Components/Task.php[39;22m:[39;1m41[39;22m
+  [33m14  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m814[39;22m
+  [33m15  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m253[39;22m
+  [33m16  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m211[39;22m
+  [33m17  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m138[39;22m
+  [33m18  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m116[39;22m
+  [33m19  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m671[39;22m
+  [33m20  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m109[39;22m
+  [33m21  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m88[39;22m
+  [33m22  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m36[39;22m
+  [33m23  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Util.php[39;22m:[39;1m43[39;22m
+  [33m24  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m96[39;22m
+  [33m25  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m35[39;22m
+  [33m26  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Container.php[39;22m:[39;1m799[39;22m
+  [33m27  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m211[39;22m
+  [33m28  [39m[39;1mvendor/symfony/console/Command/Command.php[39;22m:[39;1m341[39;22m
+  [33m29  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m180[39;22m
+  [33m30  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m1094[39;22m
+  [33m31  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m356[39;22m
+  [33m32  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m195[39;22m
+  [33m33  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Application.php[39;22m:[39;1m165[39;22m
+  [33m34  [39m[39;1mvendor/laravel/framework/src/Illuminate/Foundation/Console/Kernel.php[39;22m:[39;1m447[39;22m
+  [33m35  [39m[39;1mvendor/laravel/framework/src/Illuminate/Testing/PendingCommand.php[39;22m:[39;1m451[39;22m
+  [33m36  [39m[39;1mvendor/laravel/framework/src/Illuminate/Testing/PendingCommand.php[39;22m:[39;1m675[39;22m
+  [33m37  [39m[39;1mvendor/laravel/framework/src/Illuminate/Foundation/Testing/Concerns/InteractsWithConsole.php[39;22m:[39;1m87[39;22m
+  [33m38  [39m[39;1mtests/TenantTestCase.php[39;22m:[39;1m39[39;22m
+
+  [31m────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mTests\Tenant\BranchIsolationTest[22m [90m>[39m it GET /members returns only the authenticated staff branch records [41;1m QueryException [49;22m  
+[39;1m  SQLSTATE[42000]: Syntax error or access violation: 1049 Unknown database 'mfukopro_test' (Connection: tenant, Host: 127.0.0.1, Port: 3306, Database: mfukopro_test, SQL: alter table `members` add index `members_name_index`(`name`))[39;22m
+
+  at [32mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39m:[32m584[39m
+    580▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    581▕ 
+    582▕             $this->recordsHaveBeenModified();
+    583▕ 
+  ➜ 584▕             return $statement->execute();
+    585▕         });
+    586▕     }
+    587▕ 
+    588▕     /**
+
+  [33m1   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m584[39;22m
+  [33m2   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m827[39;22m
+  [33m3   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m794[39;22m
+  [33m4   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m573[39;22m
+  [33m5   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Blueprint.php[39;22m:[39;1m121[39;22m
+  [33m6   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php[39;22m:[39;1m686[39;22m
+  [33m7   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php[39;22m:[39;1m506[39;22m
+  [33m8   [39m[39;1mvendor/laravel/framework/src/Illuminate/Support/Facades/Facade.php[39;22m:[39;1m363[39;22m
+  [33m9   [39m[39;1mdatabase/migrations/tenant/2026_02_19_140200_create_members_table.php[39;22m:[39;1m18[39;22m
+  [33m10  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m517[39;22m
+  [33m11  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m442[39;22m
+  [33m12  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m451[39;22m
+  [33m13  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m253[39;22m
+  [33m14  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/View/Components/Task.php[39;22m:[39;1m41[39;22m
+  [33m15  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m814[39;22m
+  [33m16  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m253[39;22m
+  [33m17  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m211[39;22m
+  [33m18  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m138[39;22m
+  [33m19  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m116[39;22m
+  [33m20  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m671[39;22m
+  [33m21  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m109[39;22m
+  [33m22  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m88[39;22m
+  [33m23  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m36[39;22m
+  [33m24  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Util.php[39;22m:[39;1m43[39;22m
+  [33m25  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m96[39;22m
+  [33m26  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m35[39;22m
+  [33m27  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Container.php[39;22m:[39;1m799[39;22m
+  [33m28  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m211[39;22m
+  [33m29  [39m[39;1mvendor/symfony/console/Command/Command.php[39;22m:[39;1m341[39;22m
+  [33m30  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m180[39;22m
+  [33m31  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m1094[39;22m
+  [33m32  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m356[39;22m
+  [33m33  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m195[39;22m
+  [33m34  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Application.php[39;22m:[39;1m165[39;22m
+  [33m35  [39m[39;1mvendor/laravel/framework/src/Illuminate/Foundation/Console/Kernel.php[39;22m:[39;1m447[39;22m
+  [33m36  [39m[39;1mvendor/laravel/framework/src/Illuminate/Testing/PendingCommand.php[39;22m:[39;1m451[39;22m
+  [33m37  [39m[39;1mvendor/laravel/framework/src/Illuminate/Testing/PendingCommand.php[39;22m:[39;1m675[39;22m
+  [33m38  [39m[39;1mvendor/laravel/framework/src/Illuminate/Foundation/Testing/Concerns/InteractsWithConsole.php[39;22m:[39;1m87[39;22m
+  [33m39  [39m[39;1mtests/TenantTestCase.php[39;22m:[39;1m39[39;22m
+
+  [31m────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mTests\Tenant\BranchIsolationTest[22m [90m>[39m it GET /members returns all records for admin staff [41;1m QueryException [49;22m  
+[39;1m  SQLSTATE[42S01]: Base table or view already exists: 1050 Table 'migrations' already exists (Connection: tenant, Host: 127.0.0.1, Port: 3306, Database: mfukopro_test, SQL: create table `migrations` (`id` int unsigned not null auto_increment primary key, `migration` varchar(255) not null, `batch` int not null) default character set utf8mb4 collate 'utf8mb4_unicode_ci')[39;22m
+
+  at [32mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39m:[32m584[39m
+    580▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    581▕ 
+    582▕             $this->recordsHaveBeenModified();
+    583▕ 
+  ➜ 584▕             return $statement->execute();
+    585▕         });
+    586▕     }
+    587▕ 
+    588▕     /**
+
+  [33m1   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m584[39;22m
+  [33m2   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m827[39;22m
+  [33m3   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m794[39;22m
+  [33m4   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m573[39;22m
+  [33m5   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Blueprint.php[39;22m:[39;1m121[39;22m
+  [33m6   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php[39;22m:[39;1m686[39;22m
+  [33m7   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php[39;22m:[39;1m506[39;22m
+  [33m8   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/DatabaseMigrationRepository.php[39;22m:[39;1m166[39;22m
+  [33m9   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/InstallCommand.php[39;22m:[39;1m56[39;22m
+  [33m10  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m36[39;22m
+  [33m11  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Util.php[39;22m:[39;1m43[39;22m
+  [33m12  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m96[39;22m
+  [33m13  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m35[39;22m
+  [33m14  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Container.php[39;22m:[39;1m799[39;22m
+  [33m15  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m211[39;22m
+  [33m16  [39m[39;1mvendor/symfony/console/Command/Command.php[39;22m:[39;1m341[39;22m
+  [33m17  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m180[39;22m
+  [33m18  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Concerns/CallsCommands.php[39;22m:[39;1m68[39;22m
+  [33m19  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Concerns/CallsCommands.php[39;22m:[39;1m41[39;22m
+  [33m20  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m144[39;22m
+  [33m21  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/View/Components/Task.php[39;22m:[39;1m41[39;22m
+  [33m22  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/View/Components/Factory.php[39;22m:[39;1m59[39;22m
+  [33m23  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m143[39;22m
+  [33m24  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m110[39;22m
+  [33m25  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m671[39;22m
+  [33m26  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m109[39;22m
+  [33m27  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m88[39;22m
+  [33m28  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m36[39;22m
+  [33m29  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Util.php[39;22m:[39;1m43[39;22m
+  [33m30  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m96[39;22m
+  [33m31  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m35[39;22m
+  [33m32  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Container.php[39;22m:[39;1m799[39;22m
+  [33m33  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m211[39;22m
+  [33m34  [39m[39;1mvendor/symfony/console/Command/Command.php[39;22m:[39;1m341[39;22m
+  [33m35  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m180[39;22m
+  [33m36  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m1094[39;22m
+  [33m37  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m356[39;22m
+  [33m38  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m195[39;22m
+  [33m39  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Application.php[39;22m:[39;1m165[39;22m
+  [33m40  [39m[39;1mvendor/laravel/framework/src/Illuminate/Foundation/Console/Kernel.php[39;22m:[39;1m447[39;22m
+  [33m41  [39m[39;1mvendor/laravel/framework/src/Illuminate/Testing/PendingCommand.php[39;22m:[39;1m451[39;22m
+  [33m42  [39m[39;1mvendor/laravel/framework/src/Illuminate/Testing/PendingCommand.php[39;22m:[39;1m675[39;22m
+  [33m43  [39m[39;1mvendor/laravel/framework/src/Illuminate/Foundation/Testing/Concerns/InteractsWithConsole.php[39;22m:[39;1m87[39;22m
+  [33m44  [39m[39;1mtests/TenantTestCase.php[39;22m:[39;1m39[39;22m
+
+  [31m────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mTests\Tenant\BranchIsolationTest[22m [90m>[39m it staffListCollection (legacy path) scopes to acting staff branch [41;1m QueryException [49;22m  
+[39;1m  SQLSTATE[42000]: Syntax error or access violation: 1049 Unknown database 'mfukopro_test' (Connection: tenant, Host: 127.0.0.1, Port: 3306, Database: mfukopro_test, SQL: alter table `system_settings` add index `system_settings_settings_title_index`(`settings_title`))[39;22m
+
+  at [32mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39m:[32m584[39m
+    580▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    581▕ 
+    582▕             $this->recordsHaveBeenModified();
+    583▕ 
+  ➜ 584▕             return $statement->execute();
+    585▕         });
+    586▕     }
+    587▕ 
+    588▕     /**
+
+  [33m1   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m584[39;22m
+  [33m2   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m827[39;22m
+  [33m3   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m794[39;22m
+  [33m4   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m573[39;22m
+  [33m5   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Blueprint.php[39;22m:[39;1m121[39;22m
+  [33m6   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php[39;22m:[39;1m686[39;22m
+  [33m7   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php[39;22m:[39;1m506[39;22m
+  [33m8   [39m[39;1mdatabase/migrations/tenant/2026_02_19_140200_create_setting_v2_table.php[39;22m:[39;1m17[39;22m
+  [33m9   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m517[39;22m
+  [33m10  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m442[39;22m
+  [33m11  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m451[39;22m
+  [33m12  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m253[39;22m
+  [33m13  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/View/Components/Task.php[39;22m:[39;1m41[39;22m
+  [33m14  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m814[39;22m
+  [33m15  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m253[39;22m
+  [33m16  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m211[39;22m
+  [33m17  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m138[39;22m
+  [33m18  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m116[39;22m
+  [33m19  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m671[39;22m
+  [33m20  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m109[39;22m
+  [33m21  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m88[39;22m
+  [33m22  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m36[39;22m
+  [33m23  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Util.php[39;22m:[39;1m43[39;22m
+  [33m24  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m96[39;22m
+  [33m25  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m35[39;22m
+  [33m26  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Container.php[39;22m:[39;1m799[39;22m
+  [33m27  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m211[39;22m
+  [33m28  [39m[39;1mvendor/symfony/console/Command/Command.php[39;22m:[39;1m341[39;22m
+  [33m29  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m180[39;22m
+  [33m30  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m1094[39;22m
+  [33m31  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m356[39;22m
+  [33m32  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m195[39;22m
+  [33m33  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Application.php[39;22m:[39;1m165[39;22m
+  [33m34  [39m[39;1mvendor/laravel/framework/src/Illuminate/Foundation/Console/Kernel.php[39;22m:[39;1m447[39;22m
+  [33m35  [39m[39;1mvendor/laravel/framework/src/Illuminate/Testing/PendingCommand.php[39;22m:[39;1m451[39;22m
+  [33m36  [39m[39;1mvendor/laravel/framework/src/Illuminate/Testing/PendingCommand.php[39;22m:[39;1m675[39;22m
+  [33m37  [39m[39;1mvendor/laravel/framework/src/Illuminate/Foundation/Testing/Concerns/InteractsWithConsole.php[39;22m:[39;1m87[39;22m
+  [33m38  [39m[39;1mtests/TenantTestCase.php[39;22m:[39;1m39[39;22m
+
+  [31m────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mTests\Tenant\BranchIsolationTest[22m [90m>[39m it staffListCollection returns all staff for admin [41;1m QueryException [49;22m  
+[39;1m  SQLSTATE[42000]: Syntax error or access violation: 1049 Unknown database 'mfukopro_test' (Connection: tenant, Host: 127.0.0.1, Port: 3306, Database: mfukopro_test, SQL: alter table `members` add `id_number` varchar(50) null after `name`)[39;22m
+
+  at [32mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39m:[32m584[39m
+    580▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    581▕ 
+    582▕             $this->recordsHaveBeenModified();
+    583▕ 
+  ➜ 584▕             return $statement->execute();
+    585▕         });
+    586▕     }
+    587▕ 
+    588▕     /**
+
+  [33m1   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m584[39;22m
+  [33m2   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m827[39;22m
+  [33m3   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m794[39;22m
+  [33m4   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m573[39;22m
+  [33m5   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Blueprint.php[39;22m:[39;1m121[39;22m
+  [33m6   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php[39;22m:[39;1m686[39;22m
+  [33m7   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php[39;22m:[39;1m494[39;22m
+  [33m8   [39m[39;1mvendor/laravel/framework/src/Illuminate/Support/Facades/Facade.php[39;22m:[39;1m363[39;22m
+  [33m9   [39m[39;1mdatabase/migrations/tenant/2026_02_22_000002_enhance_members_table.php[39;22m:[39;1m11[39;22m
+  [33m10  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m517[39;22m
+  [33m11  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m442[39;22m
+  [33m12  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m451[39;22m
+  [33m13  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m253[39;22m
+  [33m14  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/View/Components/Task.php[39;22m:[39;1m41[39;22m
+  [33m15  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m814[39;22m
+  [33m16  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m253[39;22m
+  [33m17  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m211[39;22m
+  [33m18  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m138[39;22m
+  [33m19  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m116[39;22m
+  [33m20  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m671[39;22m
+  [33m21  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m109[39;22m
+  [33m22  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m88[39;22m
+  [33m23  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m36[39;22m
+  [33m24  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Util.php[39;22m:[39;1m43[39;22m
+  [33m25  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m96[39;22m
+  [33m26  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m35[39;22m
+  [33m27  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Container.php[39;22m:[39;1m799[39;22m
+  [33m28  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m211[39;22m
+  [33m29  [39m[39;1mvendor/symfony/console/Command/Command.php[39;22m:[39;1m341[39;22m
+  [33m30  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m180[39;22m
+  [33m31  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m1094[39;22m
+  [33m32  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m356[39;22m
+  [33m33  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m195[39;22m
+  [33m34  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Application.php[39;22m:[39;1m165[39;22m
+  [33m35  [39m[39;1mvendor/laravel/framework/src/Illuminate/Foundation/Console/Kernel.php[39;22m:[39;1m447[39;22m
+  [33m36  [39m[39;1mvendor/laravel/framework/src/Illuminate/Testing/PendingCommand.php[39;22m:[39;1m451[39;22m
+  [33m37  [39m[39;1mvendor/laravel/framework/src/Illuminate/Testing/PendingCommand.php[39;22m:[39;1m675[39;22m
+  [33m38  [39m[39;1mvendor/laravel/framework/src/Illuminate/Foundation/Testing/Concerns/InteractsWithConsole.php[39;22m:[39;1m87[39;22m
+  [33m39  [39m[39;1mtests/TenantTestCase.php[39;22m:[39;1m39[39;22m
+
+  [31m────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mTests\Tenant\BranchIsolationTest[22m [90m>[39m it admin with X-Acting-Branch-Id reads only that branch and stamps writes to it [41;1m QueryException [49;22m  
+[39;1m  SQLSTATE[HY000] [1049] Unknown database 'mfukopro_test' (Connection: tenant, Host: 127.0.0.1, Port: 3306, Database: mfukopro_test, SQL: select exists (select 1 from information_schema.tables where table_schema = schema() and table_name = 'staff' and table_type in ('BASE TABLE', 'SYSTEM VERSIONED')) as `exists`)[39;22m
+
+  at [32mvendor/laravel/framework/src/Illuminate/Database/Connectors/Connector.php[39m:[32m67[39m
+     63▕     protected function createPdoConnection($dsn, $username, #[\SensitiveParameter] $password, $options)
+     64▕     {
+     65▕         return version_compare(PHP_VERSION, '8.4.0', '<')
+     66▕             ? new PDO($dsn, $username, $password, $options)
+  ➜  67▕             : PDO::connect($dsn, $username, $password, $options); /** @phpstan-ignore staticMethod.notFound (PHP 8.4) */
+     68▕     }
+     69▕ 
+     70▕     /**
+     71▕      * Handle an exception that occurred during connect execution.
+
+  [33m1   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connectors/Connector.php[39;22m:[39;1m67[39;22m
+  [33m2   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connectors/Connector.php[39;22m:[39;1m44[39;22m
+  [33m3   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connectors/MySqlConnector.php[39;22m:[39;1m24[39;22m
+  [33m4   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connectors/ConnectionFactory.php[39;22m:[39;1m186[39;22m
+  [33m5   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m1257[39;22m
+  [33m6   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m1295[39;22m
+  [33m7   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m525[39;22m
+  [33m8   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m420[39;22m
+  [33m9   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m827[39;22m
+  [33m10  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m794[39;22m
+  [33m11  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m411[39;22m
+  [33m12  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m357[39;22m
+  [33m13  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m374[39;22m
+  [33m14  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php[39;22m:[39;1m176[39;22m
+  [33m15  [39m[39;1mtests/TenantTestCase.php[39;22m:[39;1m134[39;22m
+  [33m16  [39m[39;1mtests/TenantTestCase.php[39;22m:[39;1m27[39;22m
+
+  [31m────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mTests\Tenant\BranchIsolationTest[22m [90m>[39m it staff with role branch_scope=branch is restricted to their own branch [41;1m QueryException [49;22m  
+[39;1m  SQLSTATE[42S01]: Base table or view already exists: 1050 Table 'migrations' already exists (Connection: tenant, Host: 127.0.0.1, Port: 3306, Database: mfukopro_test, SQL: create table `migrations` (`id` int unsigned not null auto_increment primary key, `migration` varchar(255) not null, `batch` int not null) default character set utf8mb4 collate 'utf8mb4_unicode_ci')[39;22m
+
+  at [32mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39m:[32m584[39m
+    580▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    581▕ 
+    582▕             $this->recordsHaveBeenModified();
+    583▕ 
+  ➜ 584▕             return $statement->execute();
+    585▕         });
+    586▕     }
+    587▕ 
+    588▕     /**
+
+  [33m1   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m584[39;22m
+  [33m2   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m827[39;22m
+  [33m3   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m794[39;22m
+  [33m4   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m573[39;22m
+  [33m5   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Blueprint.php[39;22m:[39;1m121[39;22m
+  [33m6   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php[39;22m:[39;1m686[39;22m
+  [33m7   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php[39;22m:[39;1m506[39;22m
+  [33m8   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/DatabaseMigrationRepository.php[39;22m:[39;1m166[39;22m
+  [33m9   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/InstallCommand.php[39;22m:[39;1m56[39;22m
+  [33m10  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m36[39;22m
+  [33m11  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Util.php[39;22m:[39;1m43[39;22m
+  [33m12  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m96[39;22m
+  [33m13  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m35[39;22m
+  [33m14  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Container.php[39;22m:[39;1m799[39;22m
+  [33m15  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m211[39;22m
+  [33m16  [39m[39;1mvendor/symfony/console/Command/Command.php[39;22m:[39;1m341[39;22m
+  [33m17  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m180[39;22m
+  [33m18  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Concerns/CallsCommands.php[39;22m:[39;1m68[39;22m
+  [33m19  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Concerns/CallsCommands.php[39;22m:[39;1m41[39;22m
+  [33m20  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m144[39;22m
+  [33m21  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/View/Components/Task.php[39;22m:[39;1m41[39;22m
+  [33m22  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/View/Components/Factory.php[39;22m:[39;1m59[39;22m
+  [33m23  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m143[39;22m
+  [33m24  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m110[39;22m
+  [33m25  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m671[39;22m
+  [33m26  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m109[39;22m
+  [33m27  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m88[39;22m
+  [33m28  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m36[39;22m
+  [33m29  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Util.php[39;22m:[39;1m43[39;22m
+  [33m30  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m96[39;22m
+  [33m31  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m35[39;22m
+  [33m32  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Container.php[39;22m:[39;1m799[39;22m
+  [33m33  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m211[39;22m
+  [33m34  [39m[39;1mvendor/symfony/console/Command/Command.php[39;22m:[39;1m341[39;22m
+  [33m35  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m180[39;22m
+  [33m36  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m1094[39;22m
+  [33m37  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m356[39;22m
+  [33m38  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m195[39;22m
+  [33m39  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Application.php[39;22m:[39;1m165[39;22m
+  [33m40  [39m[39;1mvendor/laravel/framework/src/Illuminate/Foundation/Console/Kernel.php[39;22m:[39;1m447[39;22m
+  [33m41  [39m[39;1mvendor/laravel/framework/src/Illuminate/Testing/PendingCommand.php[39;22m:[39;1m451[39;22m
+  [33m42  [39m[39;1mvendor/laravel/framework/src/Illuminate/Testing/PendingCommand.php[39;22m:[39;1m675[39;22m
+  [33m43  [39m[39;1mvendor/laravel/framework/src/Illuminate/Foundation/Testing/Concerns/InteractsWithConsole.php[39;22m:[39;1m87[39;22m
+  [33m44  [39m[39;1mtests/TenantTestCase.php[39;22m:[39;1m39[39;22m
+
+  [31m────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mTests\Tenant\BranchIsolationTest[22m [90m>[39m it pivot-granted staff sees primary and extra branch but not a third [41;1m QueryException [49;22m  
+[39;1m  SQLSTATE[42S01]: Base table or view already exists: 1050 Table 'migrations' already exists (Connection: tenant, Host: 127.0.0.1, Port: 3306, Database: mfukopro_test, SQL: create table `migrations` (`id` int unsigned not null auto_increment primary key, `migration` varchar(255) not null, `batch` int not null) default character set utf8mb4 collate 'utf8mb4_unicode_ci')[39;22m
+
+  at [32mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39m:[32m584[39m
+    580▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    581▕ 
+    582▕             $this->recordsHaveBeenModified();
+    583▕ 
+  ➜ 584▕             return $statement->execute();
+    585▕         });
+    586▕     }
+    587▕ 
+    588▕     /**
+
+  [33m1   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m584[39;22m
+  [33m2   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m827[39;22m
+  [33m3   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m794[39;22m
+  [33m4   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m573[39;22m
+  [33m5   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Blueprint.php[39;22m:[39;1m121[39;22m
+  [33m6   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php[39;22m:[39;1m686[39;22m
+  [33m7   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php[39;22m:[39;1m506[39;22m
+  [33m8   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/DatabaseMigrationRepository.php[39;22m:[39;1m166[39;22m
+  [33m9   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/InstallCommand.php[39;22m:[39;1m56[39;22m
+  [33m10  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m36[39;22m
+  [33m11  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Util.php[39;22m:[39;1m43[39;22m
+  [33m12  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m96[39;22m
+  [33m13  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m35[39;22m
+  [33m14  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Container.php[39;22m:[39;1m799[39;22m
+  [33m15  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m211[39;22m
+  [33m16  [39m[39;1mvendor/symfony/console/Command/Command.php[39;22m:[39;1m341[39;22m
+  [33m17  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m180[39;22m
+  [33m18  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Concerns/CallsCommands.php[39;22m:[39;1m68[39;22m
+  [33m19  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Concerns/CallsCommands.php[39;22m:[39;1m41[39;22m
+  [33m20  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m144[39;22m
+  [33m21  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/View/Components/Task.php[39;22m:[39;1m41[39;22m
+  [33m22  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/View/Components/Factory.php[39;22m:[39;1m59[39;22m
+  [33m23  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m143[39;22m
+  [33m24  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m110[39;22m
+  [33m25  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m671[39;22m
+  [33m26  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m109[39;22m
+  [33m27  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m88[39;22m
+  [33m28  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m36[39;22m
+  [33m29  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Util.php[39;22m:[39;1m43[39;22m
+  [33m30  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m96[39;22m
+  [33m31  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m35[39;22m
+  [33m32  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Container.php[39;22m:[39;1m799[39;22m
+  [33m33  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m211[39;22m
+  [33m34  [39m[39;1mvendor/symfony/console/Command/Command.php[39;22m:[39;1m341[39;22m
+  [33m35  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m180[39;22m
+  [33m36  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m1094[39;22m
+  [33m37  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m356[39;22m
+  [33m38  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m195[39;22m
+  [33m39  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Application.php[39;22m:[39;1m165[39;22m
+  [33m40  [39m[39;1mvendor/laravel/framework/src/Illuminate/Foundation/Console/Kernel.php[39;22m:[39;1m447[39;22m
+  [33m41  [39m[39;1mvendor/laravel/framework/src/Illuminate/Testing/PendingCommand.php[39;22m:[39;1m451[39;22m
+  [33m42  [39m[39;1mvendor/laravel/framework/src/Illuminate/Testing/PendingCommand.php[39;22m:[39;1m675[39;22m
+  [33m43  [39m[39;1mvendor/laravel/framework/src/Illuminate/Foundation/Testing/Concerns/InteractsWithConsole.php[39;22m:[39;1m87[39;22m
+  [33m44  [39m[39;1mtests/TenantTestCase.php[39;22m:[39;1m39[39;22m
+
+  [31m────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mTests\Tenant\BranchIsolationTest[22m [90m>[39m it GET /staff returns only acting staff branch via Eloquent scope [41;1m QueryException [49;22m  
+[39;1m  SQLSTATE[42000]: Syntax error or access violation: 1049 Unknown database 'mfukopro_test' (Connection: tenant, Host: 127.0.0.1, Port: 3306, Database: mfukopro_test, SQL: alter table `staff` add index `staff_is_tenant_admin_index`(`is_tenant_admin`))[39;22m
+
+  at [32mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39m:[32m584[39m
+    580▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    581▕ 
+    582▕             $this->recordsHaveBeenModified();
+    583▕ 
+  ➜ 584▕             return $statement->execute();
+    585▕         });
+    586▕     }
+    587▕ 
+    588▕     /**
+
+  [33m1   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m584[39;22m
+  [33m2   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m827[39;22m
+  [33m3   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m794[39;22m
+  [33m4   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m573[39;22m
+  [33m5   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Blueprint.php[39;22m:[39;1m121[39;22m
+  [33m6   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php[39;22m:[39;1m686[39;22m
+  [33m7   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php[39;22m:[39;1m494[39;22m
+  [33m8   [39m[39;1mvendor/laravel/framework/src/Illuminate/Support/Facades/Facade.php[39;22m:[39;1m363[39;22m
+  [33m9   [39m[39;1mdatabase/migrations/tenant/2026_02_22_000001_enhance_staff_table.php[39;22m:[39;1m11[39;22m
+  [33m10  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m517[39;22m
+  [33m11  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m442[39;22m
+  [33m12  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m451[39;22m
+  [33m13  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m253[39;22m
+  [33m14  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/View/Components/Task.php[39;22m:[39;1m41[39;22m
+  [33m15  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m814[39;22m
+  [33m16  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m253[39;22m
+  [33m17  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m211[39;22m
+  [33m18  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m138[39;22m
+  [33m19  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m116[39;22m
+  [33m20  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m671[39;22m
+  [33m21  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m109[39;22m
+  [33m22  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m88[39;22m
+  [33m23  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m36[39;22m
+  [33m24  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Util.php[39;22m:[39;1m43[39;22m
+  [33m25  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m96[39;22m
+  [33m26  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m35[39;22m
+  [33m27  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Container.php[39;22m:[39;1m799[39;22m
+  [33m28  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m211[39;22m
+  [33m29  [39m[39;1mvendor/symfony/console/Command/Command.php[39;22m:[39;1m341[39;22m
+  [33m30  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m180[39;22m
+  [33m31  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m1094[39;22m
+  [33m32  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m356[39;22m
+  [33m33  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m195[39;22m
+  [33m34  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Application.php[39;22m:[39;1m165[39;22m
+  [33m35  [39m[39;1mvendor/laravel/framework/src/Illuminate/Foundation/Console/Kernel.php[39;22m:[39;1m447[39;22m
+  [33m36  [39m[39;1mvendor/laravel/framework/src/Illuminate/Testing/PendingCommand.php[39;22m:[39;1m451[39;22m
+  [33m37  [39m[39;1mvendor/laravel/framework/src/Illuminate/Testing/PendingCommand.php[39;22m:[39;1m675[39;22m
+  [33m38  [39m[39;1mvendor/laravel/framework/src/Illuminate/Foundation/Testing/Concerns/InteractsWithConsole.php[39;22m:[39;1m87[39;22m
+  [33m39  [39m[39;1mtests/TenantTestCase.php[39;22m:[39;1m39[39;22m
+
+  [31m────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mTests\Tenant\BranchIsolationTest[22m [90m>[39m it GET /staff returns all branches for admin [41;1m QueryException [49;22m  
+[39;1m  SQLSTATE[42S01]: Base table or view already exists: 1050 Table 'migrations' already exists (Connection: tenant, Host: 127.0.0.1, Port: 3306, Database: mfukopro_test, SQL: create table `migrations` (`id` int unsigned not null auto_increment primary key, `migration` varchar(255) not null, `batch` int not null) default character set utf8mb4 collate 'utf8mb4_unicode_ci')[39;22m
+
+  at [32mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39m:[32m584[39m
+    580▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    581▕ 
+    582▕             $this->recordsHaveBeenModified();
+    583▕ 
+  ➜ 584▕             return $statement->execute();
+    585▕         });
+    586▕     }
+    587▕ 
+    588▕     /**
+
+  [33m1   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m584[39;22m
+  [33m2   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m827[39;22m
+  [33m3   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m794[39;22m
+  [33m4   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m573[39;22m
+  [33m5   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Blueprint.php[39;22m:[39;1m121[39;22m
+  [33m6   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php[39;22m:[39;1m686[39;22m
+  [33m7   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php[39;22m:[39;1m506[39;22m
+  [33m8   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/DatabaseMigrationRepository.php[39;22m:[39;1m166[39;22m
+  [33m9   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/InstallCommand.php[39;22m:[39;1m56[39;22m
+  [33m10  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m36[39;22m
+  [33m11  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Util.php[39;22m:[39;1m43[39;22m
+  [33m12  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m96[39;22m
+  [33m13  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m35[39;22m
+  [33m14  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Container.php[39;22m:[39;1m799[39;22m
+  [33m15  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m211[39;22m
+  [33m16  [39m[39;1mvendor/symfony/console/Command/Command.php[39;22m:[39;1m341[39;22m
+  [33m17  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m180[39;22m
+  [33m18  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Concerns/CallsCommands.php[39;22m:[39;1m68[39;22m
+  [33m19  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Concerns/CallsCommands.php[39;22m:[39;1m41[39;22m
+  [33m20  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m144[39;22m
+  [33m21  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/View/Components/Task.php[39;22m:[39;1m41[39;22m
+  [33m22  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/View/Components/Factory.php[39;22m:[39;1m59[39;22m
+  [33m23  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m143[39;22m
+  [33m24  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m110[39;22m
+  [33m25  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m671[39;22m
+  [33m26  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m109[39;22m
+  [33m27  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m88[39;22m
+  [33m28  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m36[39;22m
+  [33m29  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Util.php[39;22m:[39;1m43[39;22m
+  [33m30  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m96[39;22m
+  [33m31  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m35[39;22m
+  [33m32  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Container.php[39;22m:[39;1m799[39;22m
+  [33m33  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m211[39;22m
+  [33m34  [39m[39;1mvendor/symfony/console/Command/Command.php[39;22m:[39;1m341[39;22m
+  [33m35  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m180[39;22m
+  [33m36  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m1094[39;22m
+  [33m37  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m356[39;22m
+  [33m38  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m195[39;22m
+  [33m39  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Application.php[39;22m:[39;1m165[39;22m
+  [33m40  [39m[39;1mvendor/laravel/framework/src/Illuminate/Foundation/Console/Kernel.php[39;22m:[39;1m447[39;22m
+  [33m41  [39m[39;1mvendor/laravel/framework/src/Illuminate/Testing/PendingCommand.php[39;22m:[39;1m451[39;22m
+  [33m42  [39m[39;1mvendor/laravel/framework/src/Illuminate/Testing/PendingCommand.php[39;22m:[39;1m675[39;22m
+  [33m43  [39m[39;1mvendor/laravel/framework/src/Illuminate/Foundation/Testing/Concerns/InteractsWithConsole.php[39;22m:[39;1m87[39;22m
+  [33m44  [39m[39;1mtests/TenantTestCase.php[39;22m:[39;1m39[39;22m
+
+  [31m────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mTests\Tenant\BranchIsolationTest[22m [90m>[39m it reversal transaction is stamped with the acting staff branch_id [41;1m QueryException [49;22m  
+[39;1m  SQLSTATE[42S01]: Base table or view already exists: 1050 Table 'migrations' already exists (Connection: tenant, Host: 127.0.0.1, Port: 3306, Database: mfukopro_test, SQL: create table `migrations` (`id` int unsigned not null auto_increment primary key, `migration` varchar(255) not null, `batch` int not null) default character set utf8mb4 collate 'utf8mb4_unicode_ci')[39;22m
+
+  at [32mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39m:[32m584[39m
+    580▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    581▕ 
+    582▕             $this->recordsHaveBeenModified();
+    583▕ 
+  ➜ 584▕             return $statement->execute();
+    585▕         });
+    586▕     }
+    587▕ 
+    588▕     /**
+
+  [33m1   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m584[39;22m
+  [33m2   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m827[39;22m
+  [33m3   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m794[39;22m
+  [33m4   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Connection.php[39;22m:[39;1m573[39;22m
+  [33m5   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Blueprint.php[39;22m:[39;1m121[39;22m
+  [33m6   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php[39;22m:[39;1m686[39;22m
+  [33m7   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php[39;22m:[39;1m506[39;22m
+  [33m8   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/DatabaseMigrationRepository.php[39;22m:[39;1m166[39;22m
+  [33m9   [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/InstallCommand.php[39;22m:[39;1m56[39;22m
+  [33m10  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m36[39;22m
+  [33m11  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Util.php[39;22m:[39;1m43[39;22m
+  [33m12  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m96[39;22m
+  [33m13  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m35[39;22m
+  [33m14  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Container.php[39;22m:[39;1m799[39;22m
+  [33m15  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m211[39;22m
+  [33m16  [39m[39;1mvendor/symfony/console/Command/Command.php[39;22m:[39;1m341[39;22m
+  [33m17  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m180[39;22m
+  [33m18  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Concerns/CallsCommands.php[39;22m:[39;1m68[39;22m
+  [33m19  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Concerns/CallsCommands.php[39;22m:[39;1m41[39;22m
+  [33m20  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m144[39;22m
+  [33m21  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/View/Components/Task.php[39;22m:[39;1m41[39;22m
+  [33m22  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/View/Components/Factory.php[39;22m:[39;1m59[39;22m
+  [33m23  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m143[39;22m
+  [33m24  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m110[39;22m
+  [33m25  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php[39;22m:[39;1m671[39;22m
+  [33m26  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m109[39;22m
+  [33m27  [39m[39;1mvendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php[39;22m:[39;1m88[39;22m
+  [33m28  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m36[39;22m
+  [33m29  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Util.php[39;22m:[39;1m43[39;22m
+  [33m30  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m96[39;22m
+  [33m31  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/BoundMethod.php[39;22m:[39;1m35[39;22m
+  [33m32  [39m[39;1mvendor/laravel/framework/src/Illuminate/Container/Container.php[39;22m:[39;1m799[39;22m
+  [33m33  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m211[39;22m
+  [33m34  [39m[39;1mvendor/symfony/console/Command/Command.php[39;22m:[39;1m341[39;22m
+  [33m35  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Command.php[39;22m:[39;1m180[39;22m
+  [33m36  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m1094[39;22m
+  [33m37  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m356[39;22m
+  [33m38  [39m[39;1mvendor/symfony/console/Application.php[39;22m:[39;1m195[39;22m
+  [33m39  [39m[39;1mvendor/laravel/framework/src/Illuminate/Console/Application.php[39;22m:[39;1m165[39;22m
+  [33m40  [39m[39;1mvendor/laravel/framework/src/Illuminate/Foundation/Console/Kernel.php[39;22m:[39;1m447[39;22m
+  [33m41  [39m[39;1mvendor/laravel/framework/src/Illuminate/Testing/PendingCommand.php[39;22m:[39;1m451[39;22m
+  [33m42  [39m[39;1mvendor/laravel/framework/src/Illuminate/Testing/PendingCommand.php[39;22m:[39;1m675[39;22m
+  [33m43  [39m[39;1mvendor/laravel/framework/src/Illuminate/Foundation/Testing/Concerns/InteractsWithConsole.php[39;22m:[39;1m87[39;22m
+  [33m44  [39m[39;1mtests/TenantTestCase.php[39;22m:[39;1m39[39;22m
+
+
+  [90mTests:[39m    [31;1m24 failed[39;22m[90m,[39m[39m [39m[33;1m1 risky[39;22m[90m (1 assertions)[39m
+  [90mDuration:[39m [39m231.63s[39m
+
