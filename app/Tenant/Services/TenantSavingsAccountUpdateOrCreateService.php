@@ -480,10 +480,15 @@ class TenantSavingsAccountUpdateOrCreateService extends CrudHelders
             $transactionDate = $req['transact_date'] ?? Carbon::now()->toDateTimeString();
             $codeSequence = new CodeSequence;
 
-            $code = $codeSequence->codeSequence($req['transaction_reference'] ?? null);
+            $code = $codeSequence->codeSequence(null, type: 'transactions', moduleTarget: 'transactions', tableTaget: 'transactions');
 
             foreach ($trasactionList as $key => $value) {
-                $codeUnique = $codeSequence->codeSequence($req['transaction_reference'] ?? null);
+                $codeUnique = $codeSequence->codeSequence(
+                    $key === 'withdrawal' ? ($req['transaction_reference'] ?? null) : null,
+                    type: 'transactions',
+                    moduleTarget: 'transactions',
+                    tableTaget: 'transactions'
+                );
                 $TransactionData = $this->transactionUorCFields([
                     'reference' => $codeUnique,
                     'code' => $codeUnique,

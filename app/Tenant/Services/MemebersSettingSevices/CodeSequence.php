@@ -5,6 +5,7 @@ namespace App\Tenant\Services\MemebersSettingSevices;
 use App\Http\Globals\GlobalHelpers;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 use function Illuminate\Log\log;
 
@@ -137,7 +138,7 @@ class CodeSequence extends GlobalHelpers
     public function saccoMemberCodeAutoGenerate($code)
     {
         $autoGen = $this->getCodeSettingAction('sacco-' . $this->type . '-code-auto-generate');
-        if ($autoGen && strlen($code) == 0) {
+        if ($autoGen && strlen((string) $code) == 0) {
             $rand = range(0, 100); // let generate a random number to
             shuffle($rand);
 
@@ -157,7 +158,7 @@ class CodeSequence extends GlobalHelpers
         $autoGen = $this->saccoMemberCodeAutoGenerate($code);
         if ((int) $autoGen) {
             // / continue  with code
-        } elseif (strlen($code) == 0) {
+        } elseif (strlen((string) $code) == 0) {
             $rand = range(0, 100); // let generate a random number to
             shuffle($rand);
             //  in loop data some time it the same  let lie out the
@@ -176,7 +177,7 @@ class CodeSequence extends GlobalHelpers
         $getSystemUserCodeset = $this->getCodeSettingAction('sacco-' . $this->type . '-code-prefix');
         $getSysteDefaultCode = $this->getCodeSettingAction('system-default-code');
 
-        return strlen($getSystemUserCodeset) > 0 ? $getSystemUserCodeset : $getSysteDefaultCode;
+        return strlen((string) $getSystemUserCodeset) > 0 ? $getSystemUserCodeset : $getSysteDefaultCode;
     }
 
     public function saccoMemberCodeSegmentLength($code)
@@ -215,9 +216,9 @@ class CodeSequence extends GlobalHelpers
 
         $key = 'sacco-' . $this->type . '-code-custom-generator';
         $check = $this->getCodeSettingAction($key);
-        if ($check && strlen($code) == 0) {
+        if ($check && strlen((string) $code) == 0) {
 
-            return $this->saccoCustomCodePattern($key);
+            return $this->ensureUnique($this->saccoCustomCodePattern($key));
         }
 
         $code = $this->saccoMemberFreeInputCode($code);
@@ -228,9 +229,45 @@ class CodeSequence extends GlobalHelpers
         $code = $this->saccoMemberForceToGenerateOne($code);
         $code = $this->saccoMemberCodeStrPad($code);
         $code = $this->saccoMemberCodeSegmentLength($code);
-        $code = $this->saccoMemberCodePrefix() . $code;
+        $code = $this->applyCodePrefix($this->saccoMemberCodePrefix(), $code);
 
-        return $code;
+        return $this->ensureUnique($code);
+    }
+
+    private function applyCodePrefix(?string $prefix, string $code): string
+    {
+        $prefix = (string) $prefix;
+
+        if (str_contains($prefix, '%s')) {
+            return sprintf($prefix, $code);
+        }
+
+        return $prefix . $code;
+    }
+
+    private function ensureUnique(string $code): string
+    {
+        if (! $this->tableTaget || ! Schema::hasTable($this->tableTaget)) {
+            return $code;
+        }
+
+        $column = $this->tableTaget === 'transactions' ? 'reference' : 'code';
+        if (! Schema::hasColumn($this->tableTaget, $column)) {
+            return $code;
+        }
+
+        $candidate = $code;
+        $attempt = 0;
+        while (DB::table($this->tableTaget)->where($column, $candidate)->exists()) {
+            $attempt++;
+            $candidate = $code . '-' . now()->format('Hisv') . '-' . random_int(1000, 9999);
+
+            if ($attempt >= 10) {
+                break;
+            }
+        }
+
+        return $candidate;
     }
 
     /*
