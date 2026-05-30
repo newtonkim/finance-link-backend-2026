@@ -15,7 +15,7 @@ class SaccoBrandingController extends Controller
         $branding = SaccoBranding::current();
 
         if ($branding->logo_path) {
-            $branding->logo_url = Storage::disk('public')->url($branding->logo_path);
+            $branding->logo_url = '/storage/'.$branding->logo_path;
         } else {
             $branding->logo_url = null;
         }
@@ -50,7 +50,7 @@ class SaccoBrandingController extends Controller
         $branding->save();
 
         $branding->logo_url = $branding->logo_path
-            ? Storage::disk('public')->url($branding->logo_path)
+            ? '/storage/'.$branding->logo_path
             : null;
 
         return response()->json([
