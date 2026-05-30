@@ -50,6 +50,13 @@ class MemberService extends MemberUpdateOrCreateService
                 ->select([
                     DB::raw("CONCAT(IFNULL(salutation,'-'), ':', name) As salutation_name"),
                     'mbs.dormant_date As dormant_date',
+                    DB::raw("CASE
+                        WHEN mbs.profile_picture IS NOT NULL AND mbs.profile_picture != '' THEN CONCAT('/storage/', mbs.profile_picture)
+                        WHEN mbs.profile_path IS NOT NULL AND mbs.profile_path != '' AND mbs.profile_path LIKE '/storage/%' THEN mbs.profile_path
+                        WHEN mbs.profile_path IS NOT NULL AND mbs.profile_path != '' AND mbs.profile_path LIKE 'storage/%' THEN CONCAT('/', mbs.profile_path)
+                        WHEN mbs.profile_path IS NOT NULL AND mbs.profile_path != '' THEN CONCAT('/storage/', mbs.profile_path)
+                        ELSE NULL
+                    END AS profile"),
                     ...$this->memebrDbFields
                 ]);
             if ($req->has('search_keyword')) {
