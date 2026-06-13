@@ -28,6 +28,26 @@ class LicenseController extends ServicesLicenseService
         return $this->Response(['data' => $this->licensesListCollection()]);
     }
 
+    public function get_license_stats()
+    {
+        return $this->Response(['data' => $this->licenseStats()]);
+    }
+
+    public function renewal_preview()
+    {
+        return $this->Response(['data' => $this->licenseRenewalPreview()]);
+    }
+
+    public function renew_license()
+    {
+        return $this->Response(['data' => $this->licenseRenew()]);
+    }
+
+    public function invoices()
+    {
+        return $this->Response(['data' => $this->licenseInvoices()]);
+    }
+
     public function edit_licenses_details()
     {
         return $this->Response(['data' => $this->licensesEditDetails()]);

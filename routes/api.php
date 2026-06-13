@@ -63,10 +63,14 @@ Route::group(['prefix' => 'v1/central/',  'middleware' => []], function () {
 
     Route::group(['prefix' => 'licenses/', 'controller' => LicenseController::class, 'middleware' => []], function () {
         Route::post('list', 'get_licenses_list');
+        Route::post('stats', 'get_license_stats');
         Route::post('create', 'create_licenses_list');
         Route::post('delete', 'delete_licenses');
         Route::post('details', 'licenses_details');
         Route::post('edit-details', 'edit_licenses_details');
+        Route::post('renewal-preview', 'renewal_preview');
+        Route::post('renew', 'renew_license');
+        Route::post('invoices', 'invoices');
         Route::post('licenses-drop-down', 'get_licenses_drop_down');
     });
 

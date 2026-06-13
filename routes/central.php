@@ -17,6 +17,10 @@ Route::middleware(['api', 'central.domain'])
         Route::get('/plans', [TenantController::class, 'plans']);
         Route::apiResource('/licenses', LicenseController::class);
         Route::post('/licenses/list', [LicenseController::class, 'get_licenses_list']);
+        Route::post('/licenses/stats', [LicenseController::class, 'get_license_stats']);
+        Route::post('/licenses/renewal-preview', [LicenseController::class, 'renewal_preview']);
+        Route::post('/licenses/renew', [LicenseController::class, 'renew_license']);
+        Route::post('/licenses/invoices', [LicenseController::class, 'invoices']);
 
         // Branding
         Route::get('/settings/branding', [SettingsController::class, 'get_branding']);
