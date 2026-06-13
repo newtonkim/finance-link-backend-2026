@@ -10,6 +10,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use InvalidArgumentException;
 use stdClass;
 
 class LicenseService extends LicenseUpdateOrCreateService
@@ -138,7 +139,15 @@ class LicenseService extends LicenseUpdateOrCreateService
     {
         $data = request()->validate([
             'tenant_id' => 'required|string|exists:master.tenants,id',
-            'plan' => 'required|string',
+            'plan' => [
+                'required',
+                'string',
+                function (string $attribute, string $value, callable $fail): void {
+                    if (! $this->planExists($value)) {
+                        $fail('The selected license plan is invalid.');
+                    }
+                },
+            ],
             'date' => 'required|array|min:2',
             'date.0' => 'required|date',
             'date.1' => 'required|date|after_or_equal:date.0',
@@ -175,16 +184,10 @@ class LicenseService extends LicenseUpdateOrCreateService
 
     public function assignLicense(Tenant $tenant, string $planIdentifier, int $durationDays = 365): License
     {
-        $startsAt = now();
+        $this->assertPositiveDuration($durationDays);
 
-        return DB::connection('master')->transaction(function () use ($tenant, $planIdentifier, $durationDays, $startsAt): License {
-            return License::create([
-                'tenant_id' => $tenant->id,
-                'plan' => $this->resolvePlanId($planIdentifier),
-                'starts_at' => $startsAt->toDateString(),
-                'expires_at' => $startsAt->copy()->addDays($durationDays)->toDateString(),
-                'status' => 'active',
-            ]);
+        return DB::connection('master')->transaction(function () use ($tenant, $planIdentifier, $durationDays): License {
+            return $this->createActiveLicense($tenant, $planIdentifier, $durationDays);
         });
     }
 
@@ -203,12 +206,14 @@ class LicenseService extends LicenseUpdateOrCreateService
      */
     public function renew(Tenant $tenant, string $planIdentifier, int $days): void
     {
+        $this->assertPositiveDuration($days);
+
         DB::connection('master')->transaction(function () use ($tenant, $planIdentifier, $days): void {
             License::where('tenant_id', $tenant->id)
                 ->whereIn('status', ['active', 'trial', 'grace', 'suspended'])
                 ->update(['status' => 'expired']);
 
-            $this->assignLicense($tenant, $planIdentifier, $days);
+            $this->createActiveLicense($tenant, $planIdentifier, $days);
         });
     }
 
@@ -217,6 +222,8 @@ class LicenseService extends LicenseUpdateOrCreateService
      */
     public function extendGrace(Tenant $tenant, int $days): void
     {
+        $this->assertPositiveDuration($days);
+
         $license = License::where('tenant_id', $tenant->id)
             ->whereIn('status', ['active', 'grace'])
             ->latest('expires_at')
@@ -294,11 +301,44 @@ class LicenseService extends LicenseUpdateOrCreateService
 
     private function resolvePlanId(string $planIdentifier): string
     {
+        $planId = Plan::query()
+            ->where('id', $planIdentifier)
+            ->orWhere('slug', $planIdentifier)
+            ->value('id');
+
+        if (! $planId) {
+            throw new InvalidArgumentException("Unknown license plan [{$planIdentifier}].");
+        }
+
+        return (string) $planId;
+    }
+
+    private function planExists(string $planIdentifier): bool
+    {
         return Plan::query()
             ->where('id', $planIdentifier)
             ->orWhere('slug', $planIdentifier)
-            ->value('id')
-            ?? $planIdentifier;
+            ->exists();
+    }
+
+    private function createActiveLicense(Tenant $tenant, string $planIdentifier, int $durationDays): License
+    {
+        $startsAt = now();
+
+        return License::create([
+            'tenant_id' => $tenant->id,
+            'plan' => $this->resolvePlanId($planIdentifier),
+            'starts_at' => $startsAt->toDateString(),
+            'expires_at' => $startsAt->copy()->addDays($durationDays)->toDateString(),
+            'status' => 'active',
+        ]);
+    }
+
+    private function assertPositiveDuration(int $days): void
+    {
+        if ($days < 1) {
+            throw new InvalidArgumentException('License duration must be at least one day.');
+        }
     }
 
     private function decodeFeatures(mixed $features): array
