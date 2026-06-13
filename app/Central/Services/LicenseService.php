@@ -7,6 +7,7 @@ use App\Central\Models\Plan;
 use App\Domain\Tenancy\Entities\Tenant;
 use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Contracts\Database\Query\Expression;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -24,7 +25,6 @@ class LicenseService extends LicenseUpdateOrCreateService
         'ls.starts_at AS starts',
         'ls.expires_at AS expires',
         'ls.grace_ends_at AS grace_ends',
-        'ls.status AS status',
         'ls.created_at AS created_at',
     ];
 
@@ -37,6 +37,11 @@ class LicenseService extends LicenseUpdateOrCreateService
             $query = $this->licenseListQuery()
                 ->select([
                     ...$this->licenseDbFields,
+                    $this->derivedStatusSelect(),
+                    $this->licenseStateSelect(),
+                    $this->statusLabelSelect(),
+                    $this->daysLeftSelect(),
+                    $this->daysLeftTextSelect(),
                     DB::raw('IFNULL(pl.name, ls.plan) AS plan'),
                     'pl.slug AS plan_slug',
                 ]);
@@ -46,7 +51,7 @@ class LicenseService extends LicenseUpdateOrCreateService
             }
 
             return $query
-                ->whereIn('ls.status', $statuses)
+                ->where(fn (Builder $query) => $this->applyDerivedStatusFilter($query, $statuses))
                 ->orderByDesc('ls.created_at')
                 ->paginate($this->perpage());
         });
@@ -54,29 +59,40 @@ class LicenseService extends LicenseUpdateOrCreateService
 
     public function licenseStats(): array
     {
-        $now = now();
+        $today = now()->toDateString();
 
-        $counts = $this->masterTable('licenses')
-            ->select('status', DB::raw('count(*) as count'))
-            ->groupBy('status')
-            ->get()
-            ->keyBy('status');
+        $active = (int) $this->masterTable('licenses')
+            ->where('status', 'active')
+            ->whereDate('expires_at', '>=', $today)
+            ->count();
 
-        $active = (int) ($counts->get('active')?->count ?? 0);
-        $expired = (int) ($counts->get('expired')?->count ?? 0);
-        $trial = (int) ($counts->get('trial')?->count ?? 0);
-        $suspended = (int) ($counts->get('suspended')?->count ?? 0);
-        $grace = (int) ($counts->get('grace')?->count ?? 0);
-        $total = (int) $counts->sum('count');
+        $expired = (int) $this->masterTable('licenses')
+            ->where(function (Builder $query) use ($today): void {
+                $query->where('status', 'expired')
+                    ->orWhere(function (Builder $query) use ($today): void {
+                        $query->whereIn('status', ['active', 'trial'])
+                            ->whereDate('expires_at', '<', $today);
+                    });
+            })
+            ->count();
+
+        $trial = (int) $this->masterTable('licenses')
+            ->where('status', 'trial')
+            ->whereDate('expires_at', '>=', $today)
+            ->count();
+
+        $suspended = (int) $this->masterTable('licenses')->where('status', 'suspended')->count();
+        $grace = (int) $this->masterTable('licenses')->where('status', 'grace')->count();
+        $total = (int) $this->masterTable('licenses')->count();
 
         $expiringSoon = (int) $this->masterTable('licenses')
-            ->where('status', 'active')
-            ->whereBetween('expires_at', [$now->copy(), $now->copy()->addDays(30)])
+            ->whereIn('status', ['active', 'trial'])
+            ->whereBetween('expires_at', [$today, now()->addDays(30)->toDateString()])
             ->count();
 
         $issuedThisMonth = (int) $this->masterTable('licenses')
-            ->whereMonth('created_at', $now->month)
-            ->whereYear('created_at', $now->year)
+            ->whereMonth('created_at', now()->month)
+            ->whereYear('created_at', now()->year)
             ->count();
 
         return [
@@ -286,6 +302,109 @@ class LicenseService extends LicenseUpdateOrCreateService
     private function masterTable(string $table): Builder
     {
         return DB::connection('master')->table($table);
+    }
+
+    private function derivedStatusSelect(): Expression
+    {
+        return DB::raw("
+            CASE
+                WHEN ls.status IN ('active', 'trial') AND DATE(ls.expires_at) < CURDATE() THEN 'expired'
+                ELSE ls.status
+            END AS status
+        ");
+    }
+
+    private function licenseStateSelect(): Expression
+    {
+        return DB::raw("
+            CASE
+                WHEN ls.status = 'expired'
+                    OR (ls.status IN ('active', 'trial') AND DATE(ls.expires_at) < CURDATE())
+                    THEN 'expired'
+                WHEN ls.status IN ('active', 'trial')
+                    AND DATE(ls.expires_at) BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 30 DAY)
+                    THEN 'expiring_soon'
+                ELSE ls.status
+            END AS status_state
+        ");
+    }
+
+    private function statusLabelSelect(): Expression
+    {
+        return DB::raw("
+            CASE
+                WHEN ls.status = 'expired'
+                    OR (ls.status IN ('active', 'trial') AND DATE(ls.expires_at) < CURDATE())
+                    THEN 'Expired'
+                WHEN ls.status IN ('active', 'trial')
+                    AND DATE(ls.expires_at) BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 30 DAY)
+                    THEN 'Expiring soon'
+                WHEN ls.status = 'active' THEN 'Active'
+                WHEN ls.status = 'trial' THEN 'Trial'
+                WHEN ls.status = 'suspended' THEN 'Suspended'
+                WHEN ls.status = 'grace' THEN 'In grace'
+                ELSE ls.status
+            END AS status_label
+        ");
+    }
+
+    private function daysLeftSelect(): Expression
+    {
+        return DB::raw('DATEDIFF(DATE(ls.expires_at), CURDATE()) AS days_left');
+    }
+
+    private function daysLeftTextSelect(): Expression
+    {
+        return DB::raw("
+            CASE
+                WHEN ls.expires_at IS NULL THEN '—'
+                WHEN DATEDIFF(DATE(ls.expires_at), CURDATE()) < 0
+                    THEN CONCAT(
+                        'Expired ',
+                        ABS(DATEDIFF(DATE(ls.expires_at), CURDATE())),
+                        ' ',
+                        IF(ABS(DATEDIFF(DATE(ls.expires_at), CURDATE())) = 1, 'day', 'days'),
+                        ' ago'
+                    )
+                WHEN DATEDIFF(DATE(ls.expires_at), CURDATE()) = 0 THEN 'Expires today'
+                ELSE CONCAT(
+                    DATEDIFF(DATE(ls.expires_at), CURDATE()),
+                    ' ',
+                    IF(DATEDIFF(DATE(ls.expires_at), CURDATE()) = 1, 'day', 'days'),
+                    ' left'
+                )
+            END AS days_left_text
+        ");
+    }
+
+    private function applyDerivedStatusFilter(Builder $query, array $statuses): void
+    {
+        $includeExpired = in_array('expired', $statuses, true);
+        $storedStatuses = array_values(array_diff($statuses, ['expired']));
+
+        $query->where(function (Builder $query) use ($storedStatuses, $includeExpired): void {
+            if ($storedStatuses !== []) {
+                $query->where(function (Builder $query) use ($storedStatuses): void {
+                    $query->whereIn('ls.status', $storedStatuses)
+                        ->where(function (Builder $query) use ($storedStatuses): void {
+                            $query->whereNotIn('ls.status', ['active', 'trial'])
+                                ->orWhereDate('ls.expires_at', '>=', now()->toDateString());
+                        });
+                });
+            }
+
+            if ($includeExpired) {
+                $method = $storedStatuses === [] ? 'where' : 'orWhere';
+
+                $query->{$method}(function (Builder $query): void {
+                    $query->where('ls.status', 'expired')
+                        ->orWhere(function (Builder $query): void {
+                            $query->whereIn('ls.status', ['active', 'trial'])
+                                ->whereDate('ls.expires_at', '<', now()->toDateString());
+                        });
+                });
+            }
+        });
     }
 
     private function requestedStatuses(?string $status): array
