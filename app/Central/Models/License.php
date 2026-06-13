@@ -19,12 +19,20 @@ class License extends Model
         'plan',
         'starts_at',
         'expires_at',
+        'grace_ends_at',
+        'max_members',
+        'max_users',
+        'features',
         'status',
     ];
 
     protected $casts = [
         'starts_at' => 'datetime',
         'expires_at' => 'datetime',
+        'grace_ends_at' => 'datetime',
+        'features' => 'array',
+        'max_members' => 'integer',
+        'max_users' => 'integer',
     ];
 
     public function tenant(): BelongsTo
