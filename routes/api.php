@@ -63,6 +63,7 @@ Route::group(['prefix' => 'v1/central/',  'middleware' => []], function () {
 
     Route::group(['prefix' => 'licenses/', 'controller' => LicenseController::class, 'middleware' => []], function () {
         Route::post('list', 'get_licenses_list');
+        Route::post('stats', 'get_license_stats');
         Route::post('create', 'create_licenses_list');
         Route::post('delete', 'delete_licenses');
         Route::post('details', 'licenses_details');

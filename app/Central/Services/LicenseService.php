@@ -6,79 +6,113 @@ use App\Central\Models\License;
 use App\Central\Models\Plan;
 use App\Domain\Tenancy\Entities\Tenant;
 use Carbon\Carbon;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Query\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use stdClass;
 
 class LicenseService extends LicenseUpdateOrCreateService
 {
-    protected array $LicenseDbFields = [
-        'ls.id AS id',
+    private const DEFAULT_STATUSES = ['active', 'suspended', 'expired', 'trial', 'grace'];
 
+    protected array $licenseDbFields = [
+        'ls.id AS id',
         'ts.name AS tenant_name',
+        'ts.subdomain AS tenant_code',
         'ls.starts_at AS starts',
         'ls.expires_at AS expires',
         'ls.grace_ends_at AS grace_ends',
-        // "ls.max_members AS members",
-        // "ls.max_users AS users",
         'ls.status AS status',
         'ls.created_at AS created_at',
     ];
 
-    public function licensesListCollection()
+    public function licensesListCollection(): mixed
     {
-        $req = request();
+        return $this->TryCatch(function (): LengthAwarePaginator {
+            $request = request();
+            $statuses = $this->requestedStatuses($request->input('status', 'all'));
 
-        return $this->TryCatch(function () use ($req) {
-            $staus = $req['status'] != 'all' ? [$req['status']] : ['active', 'suspended', 'expired', 'trial'];
-            $query = DB::table('licenses as ls')
-                ->Join('tenants as ts', 'ls.tenant_id', '=', 'ts.id')
-                ->leftJoin('plans as pl', 'pl.id', '=', 'ls.plan')
-                ->select([...$this->LicenseDbFields, DB::raw('IFNULL(pl.name, ls.plan) AS plan')]);
-            if ($req->has('search_keyword')) {
-                $query = $this->dynamic_search_db_query($query, $req['search_keyword'], $this->LicenseDbFields);
+            $query = $this->licenseListQuery()
+                ->select([
+                    ...$this->licenseDbFields,
+                    DB::raw('IFNULL(pl.name, ls.plan) AS plan'),
+                    'pl.slug AS plan_slug',
+                ]);
+
+            if ($request->filled('search_keyword')) {
+                $query = $this->dynamic_search_db_query($query, $request->input('search_keyword'), $this->licenseDbFields);
             }
 
             return $query
-                // ->whereNull("deleted_at")
-                ->whereIn('ls.status', $staus)
-                ->orderBy('ls.created_at', 'DESC')->paginate($this->perpage());
+                ->whereIn('ls.status', $statuses)
+                ->orderByDesc('ls.created_at')
+                ->paginate($this->perpage());
         });
     }
 
-    public function licensesEditDetails()
+    public function licenseStats(): array
     {
-        $req = request();
+        $now = now();
 
-        return $this->TryCatch(function () use ($req) {
-            $query = DB::table('licenses as ls')
-                ->Join('tenants as ts', 'ls.tenant_id', '=', 'ts.id')
-                ->leftJoin('plans as pl', 'pl.id', '=', 'ls.plan')
+        $counts = $this->masterTable('licenses')
+            ->select('status', DB::raw('count(*) as count'))
+            ->groupBy('status')
+            ->get()
+            ->keyBy('status');
+
+        $active = (int) ($counts->get('active')?->count ?? 0);
+        $expired = (int) ($counts->get('expired')?->count ?? 0);
+        $trial = (int) ($counts->get('trial')?->count ?? 0);
+        $suspended = (int) ($counts->get('suspended')?->count ?? 0);
+        $grace = (int) ($counts->get('grace')?->count ?? 0);
+        $total = (int) $counts->sum('count');
+
+        $expiringSoon = (int) $this->masterTable('licenses')
+            ->where('status', 'active')
+            ->whereBetween('expires_at', [$now->copy(), $now->copy()->addDays(30)])
+            ->count();
+
+        $issuedThisMonth = (int) $this->masterTable('licenses')
+            ->whereMonth('created_at', $now->month)
+            ->whereYear('created_at', $now->year)
+            ->count();
+
+        return [
+            'total' => $total,
+            'active' => $active,
+            'expired' => $expired,
+            'trial' => $trial,
+            'suspended' => $suspended,
+            'grace' => $grace,
+            'expiring_soon' => $expiringSoon,
+            'issued_this_month' => $issuedThisMonth,
+        ];
+    }
+
+    public function licensesEditDetails(): mixed
+    {
+        return $this->TryCatch(function (): ?stdClass {
+            return $this->licenseListQuery()
                 ->select([
-                    // ...$this->LicenseDbFields,
                     'ls.id as id',
                     'ts.id as tenant_id',
                     'pl.id as plan_id',
                     'ls.starts_at AS starts',
                     'ls.expires_at AS expires',
                     'ls.status AS status',
-                ]);
-
-            $data = $query->whereRaw('ls.id=?', [$req->id])
+                ])
+                ->where('ls.id', request()->input('id'))
                 ->first();
-
-            return $data;
         });
     }
 
-    public function licensesDetailsCollection()
+    public function licensesDetailsCollection(): mixed
     {
-        $req = request();
-
-        return $this->TryCatch(function () use ($req) {
-            $query = DB::table('licenses as ls')
-                ->Join('tenants as ts', 'ls.tenant_id', '=', 'ts.id')
-                ->leftJoin('plans as pl', 'pl.id', '=', 'ls.plan')
+        return $this->TryCatch(function (): ?stdClass {
+            $license = $this->licenseListQuery()
                 ->select([
-                    ...$this->LicenseDbFields,
+                    ...$this->licenseDbFields,
                     'pl.max_users As mxusrs',
                     'pl.max_members as mx_mbrs',
                     'pl.billing_cycle as billing_type',
@@ -86,25 +120,72 @@ class LicenseService extends LicenseUpdateOrCreateService
                     'pl.slug as plan_slug',
                     'pl.price as cost',
                     DB::raw('IFNULL(pl.name, ls.plan) AS plan_name'),
-                ]);
-
-            $data = $query->whereRaw('ls.id=?', [$req->id])
+                ])
+                ->where('ls.id', request()->input('id'))
                 ->first();
-            $data->features = $this->isJSONToArray(json_decode($data->features, true)); // i have done that i expect un perfect data  some data
 
-            return $data;
+            if (! $license) {
+                return null;
+            }
+
+            $license->features = $this->decodeFeatures($license->features);
+
+            return $license;
         });
     }
 
-    public function assignLicense(Tenant $tenant, string $planSlug, int $durationMonthsMonth = 12): License
+    public function createLicense(): mixed
     {
-        return License::create([
-            'tenant_id' => $tenant->id,
-            'plan' => $planSlug,
-            'starts_at' => Carbon::now(),
-            'expires_at' => Carbon::now()->addDays($durationMonthsMonth),
-            'status' => 'active',
+        $data = request()->validate([
+            'tenant_id' => 'required|string|exists:master.tenants,id',
+            'plan' => 'required|string',
+            'date' => 'required|array|min:2',
+            'date.0' => 'required|date',
+            'date.1' => 'required|date|after_or_equal:date.0',
+            'status' => 'required|string|in:active,inactive,suspended,trial,expired,grace',
         ]);
+
+        return $this->TryCatch(function () use ($data): mixed {
+            DB::connection('master')->transaction(function () use ($data): void {
+                License::create([
+                    'tenant_id' => $data['tenant_id'],
+                    'plan' => $this->resolvePlanId($data['plan']),
+                    'starts_at' => Carbon::parse($data['date'][0])->toDateString(),
+                    'expires_at' => Carbon::parse($data['date'][1])->toDateString(),
+                    'status' => $data['status'],
+                ]);
+            });
+
+            return $this->licensesListCollection();
+        });
+    }
+
+    public function licensesDelete(): mixed
+    {
+        $data = request()->validate([
+            'id' => 'required|string|exists:master.licenses,id',
+        ]);
+
+        return $this->TryCatch(function () use ($data): mixed {
+            License::query()->whereKey($data['id'])->delete();
+
+            return $this->licensesListCollection();
+        });
+    }
+
+    public function assignLicense(Tenant $tenant, string $planIdentifier, int $durationDays = 365): License
+    {
+        $startsAt = now();
+
+        return DB::connection('master')->transaction(function () use ($tenant, $planIdentifier, $durationDays, $startsAt): License {
+            return License::create([
+                'tenant_id' => $tenant->id,
+                'plan' => $this->resolvePlanId($planIdentifier),
+                'starts_at' => $startsAt->toDateString(),
+                'expires_at' => $startsAt->copy()->addDays($durationDays)->toDateString(),
+                'status' => 'active',
+            ]);
+        });
     }
 
     /**
@@ -113,37 +194,41 @@ class LicenseService extends LicenseUpdateOrCreateService
     public function suspend(Tenant $tenant): void
     {
         License::where('tenant_id', $tenant->id)
-            ->where('status', 'active')
+            ->whereIn('status', ['active', 'trial', 'grace'])
             ->update(['status' => 'suspended']);
     }
 
     /**
      * Renew/Activate the tenant's license with a new plan and duration.
      */
-    public function renew(Tenant $tenant, string $planSlug, int $days): void
+    public function renew(Tenant $tenant, string $planIdentifier, int $days): void
     {
-        License::where('tenant_id', $tenant->id)->update(['status' => 'expired']); // Deactivate current
+        DB::connection('master')->transaction(function () use ($tenant, $planIdentifier, $days): void {
+            License::where('tenant_id', $tenant->id)
+                ->whereIn('status', ['active', 'trial', 'grace', 'suspended'])
+                ->update(['status' => 'expired']);
 
-        License::create([
-            'tenant_id' => $tenant->id,
-            'plan' => $planSlug,
-            'starts_at' => Carbon::now(),
-            'expires_at' => Carbon::now()->addDays($days),
-            'status' => 'active',
-        ]);
+            $this->assignLicense($tenant, $planIdentifier, $days);
+        });
     }
 
     /**
-     * Extend the grace period by pushing the expiry date.
+     * Extend the grace period without changing the contractual expiry date.
      */
     public function extendGrace(Tenant $tenant, int $days): void
     {
         $license = License::where('tenant_id', $tenant->id)
-            ->where('status', 'active')
+            ->whereIn('status', ['active', 'grace'])
+            ->latest('expires_at')
             ->firstOrFail();
 
+        $graceStartsAt = $license->grace_ends_at && $license->grace_ends_at->isFuture()
+            ? $license->grace_ends_at
+            : $license->expires_at;
+
         $license->update([
-            'expires_at' => $license->expires_at->addDays($days),
+            'grace_ends_at' => $graceStartsAt->copy()->addDays($days)->toDateString(),
+            'status' => $license->expires_at->isPast() ? 'grace' : $license->status,
         ]);
     }
 
@@ -152,11 +237,17 @@ class LicenseService extends LicenseUpdateOrCreateService
      */
     public function getRevenueMetrics(): array
     {
-        $mrr = DB::connection('master')
+        $activeLicenses = DB::connection('master')
             ->table('licenses')
-            ->join('plans', 'licenses.plan', '=', 'plans.slug')
+            ->join('plans', function ($join): void {
+                $join->on('plans.id', '=', 'licenses.plan')
+                    ->orOn('plans.slug', '=', 'licenses.plan');
+            })
             ->where('licenses.status', 'active')
-            ->sum('plans.price');
+            ->whereDate('licenses.expires_at', '>=', now()->toDateString())
+            ->get(['plans.price', 'plans.billing_cycle']);
+
+        $mrr = $activeLicenses->sum(fn (stdClass $license): float => $this->monthlyPlanValue($license));
 
         return [
             'monthly_recurring_revenue' => (float) $mrr,
@@ -170,7 +261,73 @@ class LicenseService extends LicenseUpdateOrCreateService
     public function getExpiringSoonCount(int $days = 3): int
     {
         return License::where('status', 'active')
-            ->whereBetween('expires_at', [Carbon::now(), Carbon::now()->addDays($days)])
+            ->whereBetween('expires_at', [now(), now()->addDays($days)])
             ->count();
+    }
+
+    private function licenseListQuery(): Builder
+    {
+        return DB::connection('master')
+            ->table('licenses as ls')
+            ->join('tenants as ts', 'ls.tenant_id', '=', 'ts.id')
+            ->leftJoin('plans as pl', function ($join): void {
+                $join->on('pl.id', '=', 'ls.plan')
+                    ->orOn('pl.slug', '=', 'ls.plan');
+            });
+    }
+
+    private function masterTable(string $table): Builder
+    {
+        return DB::connection('master')->table($table);
+    }
+
+    private function requestedStatuses(?string $status): array
+    {
+        if (! $status || $status === 'all') {
+            return self::DEFAULT_STATUSES;
+        }
+
+        return in_array($status, self::DEFAULT_STATUSES, true)
+            ? [$status]
+            : self::DEFAULT_STATUSES;
+    }
+
+    private function resolvePlanId(string $planIdentifier): string
+    {
+        return Plan::query()
+            ->where('id', $planIdentifier)
+            ->orWhere('slug', $planIdentifier)
+            ->value('id')
+            ?? $planIdentifier;
+    }
+
+    private function decodeFeatures(mixed $features): array
+    {
+        if ($features instanceof Collection) {
+            return $features->toArray();
+        }
+
+        if (is_array($features)) {
+            return $features;
+        }
+
+        if (! is_string($features) || trim($features) === '') {
+            return [];
+        }
+
+        $decoded = json_decode($features, true);
+
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    private function monthlyPlanValue(stdClass $license): float
+    {
+        $price = (float) $license->price;
+        $billingCycle = strtolower((string) $license->billing_cycle);
+
+        return match ($billingCycle) {
+            'yearly', 'annual', 'annually' => $price / 12,
+            default => $price,
+        };
     }
 }
