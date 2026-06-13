@@ -117,7 +117,7 @@ class Member extends Authenticatable
     public function getAvatarUrlAttribute(): ?string
     {
         return $this->profile_picture
-            ? asset('storage/'.$this->profile_picture)
+            ? '/storage/'.$this->profile_picture
             : null;
     }
 

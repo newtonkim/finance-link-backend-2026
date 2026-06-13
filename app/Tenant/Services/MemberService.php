@@ -103,7 +103,7 @@ class MemberService extends MemberUpdateOrCreateService
                 ->select([
                     // DB::raw("CONCAT(IFNULL(salutation,''), ':', mbs.name) As salutation_name"),
                     ...$this->memebrDbFields,
-                    DB::raw("IF(mbs.profile_picture IS NOT NULL AND mbs.profile_picture != '', CONCAT('" . htmlspecialchars(config('app.url')) . "', '/storage/', mbs.profile_picture), NULL) AS profile"),
+                    DB::raw("IF(mbs.profile_picture IS NOT NULL AND mbs.profile_picture != '', CONCAT('/storage/', mbs.profile_picture), NULL) AS profile"),
 
 
                     'mbs.initial_deposit AS initial_deposit',
@@ -158,7 +158,7 @@ class MemberService extends MemberUpdateOrCreateService
                 DB::raw("CONCAT(IFNULL(salutation,''), ':', name) As salutation_name"),
                 ...$this->memebrDbFields,
                 'initial_deposit AS initial_deposit',
-                DB::raw("CONCAT('" . htmlspecialchars(config('app.url')) . "','/', mbs.profile_path) AS profile"),
+                DB::raw("IF(mbs.profile_picture IS NOT NULL AND mbs.profile_picture != '', CONCAT('/storage/', mbs.profile_picture), IF(mbs.profile_path IS NOT NULL AND mbs.profile_path != '', CONCAT('/storage/', mbs.profile_path), NULL)) AS profile"),
                 'created_at AS created_at',
                 'updated_at AS updated_at',
                 'salutation As salutation',
