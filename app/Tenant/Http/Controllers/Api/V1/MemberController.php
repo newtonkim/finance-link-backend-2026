@@ -577,9 +577,21 @@ class MemberController extends MemberService
             'approved_at' => now(),
         ]);
 
+        $member->refresh();
+        $memberData = (new MemberResource($member))->resolve();
+
         return response()->json([
+            'success' => 200,
             'message' => 'Member approved successfully.',
-            'data' => new MemberResource($member),
+            'data' => [
+                ...$memberData,
+                'member' => $memberData,
+                'member_details' => [
+                    ...$memberData,
+                    'full_name' => $memberData['name'] ?? null,
+                    'memeber_code' => $memberData['member_number'] ?? null,
+                ],
+            ],
         ]);
     }
 
