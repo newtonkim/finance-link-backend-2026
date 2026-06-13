@@ -43,6 +43,11 @@ class LicenseController extends ServicesLicenseService
         return $this->Response(['data' => $this->licensesDelete()]);
     }
 
+    public function get_license_stats()
+    {
+        return $this->Response(['data' => $this->licenseStats()]);
+    }
+
     public function get_licenses_drop_down()
     {
         $licenseService = app(ServicesTenantsService::class);
