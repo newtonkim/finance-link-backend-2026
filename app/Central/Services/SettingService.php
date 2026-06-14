@@ -239,6 +239,29 @@ class SettingService extends SettingUpdateOrCreateService
         });
     }
 
+    public function currencySettings()
+    {
+        return $this->TryCatch(function () {
+            $settings = DB::connection('master')->table('central_currency_settings')->first();
+
+            if (! $settings) {
+                return [
+                    'default_currency' => 'UGX',
+                    'enabled_currencies' => ['UGX'],
+                ];
+            }
+
+            $enabled = is_string($settings->enabled_currencies)
+                ? json_decode($settings->enabled_currencies, true)
+                : $settings->enabled_currencies;
+
+            return [
+                'default_currency' => $settings->default_currency ?: 'UGX',
+                'enabled_currencies' => is_array($enabled) && count($enabled) ? array_values($enabled) : [$settings->default_currency ?: 'UGX'],
+            ];
+        });
+    }
+
     public function permissionListHolders()
     {
         $req = request()->all();

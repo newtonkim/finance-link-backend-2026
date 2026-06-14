@@ -5,6 +5,7 @@ namespace App\Central\Services;
 use App\Http\Globals\GlobalHelpers;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 class SettingUpdateOrCreateService extends GlobalHelpers
 {
@@ -35,6 +36,42 @@ class SettingUpdateOrCreateService extends GlobalHelpers
             $service = app(SettingService::class);
 
             return $service->brandingDetails();
+        });
+    }
+
+    public function currencySettingsUpdate()
+    {
+        return $this->TryCatch(function () {
+            $allowedCodes = [
+                'USD', 'EUR', 'GBP', 'JPY', 'CHF', 'CAD', 'AUD', 'CNY', 'HKD', 'SGD', 'INR', 'MXN',
+                'KES', 'UGX', 'TZS', 'RWF', 'ZAR', 'NGN', 'GHS', 'AED', 'SAR',
+            ];
+
+            $validated = request()->validate([
+                'default_currency' => ['required', 'string', Rule::in($allowedCodes)],
+                'enabled_currencies' => ['nullable', 'array'],
+                'enabled_currencies.*' => ['string', Rule::in($allowedCodes)],
+            ]);
+
+            $enabled = collect($validated['enabled_currencies'] ?? [])
+                ->push($validated['default_currency'])
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+
+            DB::connection('master')->table('central_currency_settings')
+                ->updateOrInsert(
+                    ['id' => 1],
+                    [
+                        'default_currency' => $validated['default_currency'],
+                        'enabled_currencies' => json_encode($enabled),
+                        'updated_at' => now(),
+                        'created_at' => now(),
+                    ]
+                );
+
+            return app(SettingService::class)->currencySettings();
         });
     }
 
@@ -98,6 +135,84 @@ class SettingUpdateOrCreateService extends GlobalHelpers
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
+
+            return app(SettingService::class)->featuresList();
+        });
+    }
+
+    public function featuresUpdate()
+    {
+        return $this->TryCatch(function () {
+            request()->validate([
+                'id'   => 'required|integer|exists:master.plan_features,id',
+                'name' => 'required|string|max:100',
+                'key'  => 'required|string|max:60',
+            ]);
+
+            $id = (int) request('id');
+            $key = \Illuminate\Support\Str::snake(strtolower(trim(request('key'))));
+            $name = trim(request('name'));
+
+            $exists = DB::connection('master')
+                ->table('plan_features')
+                ->where('key', $key)
+                ->where('id', '!=', $id)
+                ->whereNull('deleted_at')
+                ->exists();
+
+            if ($exists) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'key' => ['A feature with this key already exists.'],
+                ]);
+            }
+
+            DB::connection('master')->transaction(function () use ($id, $name, $key): void {
+                $feature = DB::connection('master')
+                    ->table('plan_features')
+                    ->where('id', $id)
+                    ->whereNull('deleted_at')
+                    ->lockForUpdate()
+                    ->first();
+
+                abort_if(! $feature, 404, 'Feature not found.');
+
+                DB::connection('master')->table('plan_features')
+                    ->where('id', $id)
+                    ->update([
+                        'name' => $name,
+                        'key' => $key,
+                        'updated_at' => now(),
+                    ]);
+
+                if ($feature->key !== $key) {
+                    DB::connection('master')
+                        ->table('plans')
+                        ->whereNotNull('features')
+                        ->orderBy('id')
+                        ->chunkById(100, function ($plans) use ($feature, $key): void {
+                            foreach ($plans as $plan) {
+                                $features = is_string($plan->features)
+                                    ? json_decode($plan->features, true)
+                                    : $plan->features;
+
+                                if (! is_array($features) || ! array_key_exists($feature->key, $features)) {
+                                    continue;
+                                }
+
+                                $features[$key] = $features[$feature->key];
+                                unset($features[$feature->key]);
+
+                                DB::connection('master')
+                                    ->table('plans')
+                                    ->where('id', $plan->id)
+                                    ->update([
+                                        'features' => json_encode($features),
+                                        'updated_at' => now(),
+                                    ]);
+                            }
+                        });
+                }
+            });
 
             return app(SettingService::class)->featuresList();
         });

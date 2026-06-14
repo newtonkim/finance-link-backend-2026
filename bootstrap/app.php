@@ -1,6 +1,7 @@
 <?php
 
 use App\Central\Http\Middleware\EnsureCentralDomain;
+use App\Central\Http\Middleware\EnsureCentralUser;
 use App\Domain\Licensing\Entities\License;
 use App\Http\Middleware\EnforceLicense;
 use App\Http\Middleware\HandleAppearance;
@@ -8,6 +9,7 @@ use App\Http\Middleware\IdentifyTenant;
 use App\Http\Middleware\PermissionMiddleware;
 use App\Http\Middleware\SetTenantDatabase;
 use App\Tenant\Http\Middleware\EnsureLicenseActive;
+use App\Tenant\Http\Middleware\EnsurePlanFeatureEnabled;
 use App\Tenant\Http\Middleware\EnsureTenantDomain;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Console\Scheduling\Schedule;
@@ -16,7 +18,9 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
+use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -62,7 +66,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'tenant.init' => EnsureTenantDomain::class,
             'license.active' => EnsureLicenseActive::class,
+            'central.auth' => EnsureCentralUser::class,
             'central.domain' => EnsureCentralDomain::class,
+            'feature' => EnsurePlanFeatureEnabled::class,
             'tenant.api' => EnsureTenantDomain::class,
             // 'role'        => \Spatie\Permission\Middlewares\RoleMiddleware::class,
             // 'permission'  => \Spatie\Permission\Middlewares\PermissionMiddleware::class,
@@ -104,5 +110,27 @@ return Application::configure(basePath: dirname(__DIR__))
                     'message' => $e->getMessage() ?: 'The requested resource was not found.',
                 ], 404);
             }
+        });
+
+        $exceptions->render(function (Throwable $e, $request) {
+            if (! $request->is('api/*')) {
+                return null;
+            }
+
+            if (
+                $e instanceof AuthenticationException
+                || $e instanceof ValidationException
+                || $e instanceof HttpExceptionInterface
+            ) {
+                return null;
+            }
+
+            report($e);
+
+            return response()->json([
+                'message' => app()->hasDebugModeEnabled()
+                    ? $e->getMessage()
+                    : 'Server error.',
+            ], 500);
         });
     })->create();

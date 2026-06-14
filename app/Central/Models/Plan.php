@@ -31,6 +31,6 @@ class Plan extends Model
 
     public function licenses(): HasMany
     {
-        return $this->hasMany(License::class);
+        return $this->hasMany(License::class, 'plan_id');
     }
 }

@@ -82,39 +82,41 @@ Route::patch('branches/{id}/toggle-active', [BranchController::class, 'toggleAct
 
 // Dashboard metrics
 Route::get('dashboard', [DashboardController::class, 'index']);
-Route::get('reports', [ReportsController::class, 'index']);
-Route::get('reports/filter-options', [ReportsController::class, 'filterOptions']);
-Route::get('reports/member-statement/{member_id}', [MemberStatementController::class, 'show']);
-Route::get('reports/savings-account-statement/{savingsAccountId}', [SavingsAccountStatementController::class, 'show'])
-    ->whereNumber('savingsAccountId');
-Route::get('reports/savings-shares-balances', [SavingsSharesBalancesController::class, 'index']);
-Route::get('reports/loan-aging', [ReportsController::class, 'loanAging']);
-Route::get('reports/loan-aging/portfolio-summary', [ReportsController::class, 'loanAgingPortfolioSummary']);
-Route::get('reports/loan-balances', [ReportsController::class, 'loanBalances']);
-Route::get('reports/loan-balances/export', [ReportsController::class, 'loanBalancesExport']);
+Route::middleware('feature:reports')->group(function () {
+    Route::get('reports', [ReportsController::class, 'index']);
+    Route::get('reports/filter-options', [ReportsController::class, 'filterOptions']);
+    Route::get('reports/member-statement/{member_id}', [MemberStatementController::class, 'show']);
+    Route::get('reports/savings-account-statement/{savingsAccountId}', [SavingsAccountStatementController::class, 'show'])
+        ->whereNumber('savingsAccountId');
+    Route::get('reports/savings-shares-balances', [SavingsSharesBalancesController::class, 'index']);
+    Route::get('reports/loan-aging', [ReportsController::class, 'loanAging']);
+    Route::get('reports/loan-aging/portfolio-summary', [ReportsController::class, 'loanAgingPortfolioSummary']);
+    Route::get('reports/loan-balances', [ReportsController::class, 'loanBalances']);
+    Route::get('reports/loan-balances/export', [ReportsController::class, 'loanBalancesExport']);
 
-// ── Loan Collections Report ────────────────────────────────────────────────
-Route::get('reports/collections/summary', [ReportsController::class, 'collectionsSummary']);
-Route::get('reports/collections/loans', [ReportsController::class, 'collectionsLoans']);
-Route::get('reports/collections/export', [ReportsController::class, 'collectionsExport']);
-Route::get('reports/collections/loans/{loan}/transactions', [ReportsController::class, 'collectionsLoanTransactions']);
+    // ── Loan Collections Report ────────────────────────────────────────────────
+    Route::get('reports/collections/summary', [ReportsController::class, 'collectionsSummary']);
+    Route::get('reports/collections/loans', [ReportsController::class, 'collectionsLoans']);
+    Route::get('reports/collections/export', [ReportsController::class, 'collectionsExport']);
+    Route::get('reports/collections/loans/{loan}/transactions', [ReportsController::class, 'collectionsLoanTransactions']);
 
-// ── Loan Disbursement Report ───────────────────────────────────────────────
-Route::get('reports/disbursements/summary', [ReportsController::class, 'disbursementSummary']);
-Route::get('reports/disbursements/loans', [ReportsController::class, 'disbursementLoans']);
-Route::get('reports/disbursements/trend', [ReportsController::class, 'disbursementTrend']);
-Route::get('reports/disbursements/export', [ReportsController::class, 'disbursementExport']);
+    // ── Loan Disbursement Report ───────────────────────────────────────────────
+    Route::get('reports/disbursements/summary', [ReportsController::class, 'disbursementSummary']);
+    Route::get('reports/disbursements/loans', [ReportsController::class, 'disbursementLoans']);
+    Route::get('reports/disbursements/trend', [ReportsController::class, 'disbursementTrend']);
+    Route::get('reports/disbursements/export', [ReportsController::class, 'disbursementExport']);
 
-// ── Loan Arrears Report ─────────────────────────────────────────────────────
-Route::get('reports/loan-arrears', [ReportsController::class, 'loanArrears']);
-Route::get('reports/loan-arrears/comparison', [ReportsController::class, 'loanArrearsComparison']);
-Route::get('reports/loan-arrears/trend', [ReportsController::class, 'loanArrearsTrend']);
-Route::get('reports/loan-arrears/export', [ReportsController::class, 'loanArrearsExport']);
-Route::get('reports/loan-arrears/{loan}/installments', [ReportsController::class, 'loanArrearsInstallments']);
+    // ── Loan Arrears Report ─────────────────────────────────────────────────────
+    Route::get('reports/loan-arrears', [ReportsController::class, 'loanArrears']);
+    Route::get('reports/loan-arrears/comparison', [ReportsController::class, 'loanArrearsComparison']);
+    Route::get('reports/loan-arrears/trend', [ReportsController::class, 'loanArrearsTrend']);
+    Route::get('reports/loan-arrears/export', [ReportsController::class, 'loanArrearsExport']);
+    Route::get('reports/loan-arrears/{loan}/installments', [ReportsController::class, 'loanArrearsInstallments']);
 
-// ── Trial Balance Report ────────────────────────────────────────────────────
-Route::get('reports/trial-balance', [TrialBalanceController::class, 'index']);
-Route::get('reports/trial-balance/ledger', [TrialBalanceController::class, 'ledger']);
+    // ── Trial Balance Report ────────────────────────────────────────────────────
+    Route::get('reports/trial-balance', [TrialBalanceController::class, 'index']);
+    Route::get('reports/trial-balance/ledger', [TrialBalanceController::class, 'ledger']);
+});
 
 // Members
 Route::get('members/template', [MemberController::class, 'downloadTemplate']);
@@ -134,11 +136,13 @@ Route::get('members/{member}/charges', [MemberChargeController::class, 'index'])
 Route::post('members/{member}/charges/{memberCharge}/collect', [MemberChargeController::class, 'collect']);
 Route::post('members/{member}/charges/{memberCharge}/waive', [MemberChargeController::class, 'waive']);
 
-// Member Savings Accounts
-Route::resource('savings-accounts', SavingsAccountController::class);
-Route::post('savings-accounts/{savingsAccount}/deposit', [SavingsAccountController::class, 'deposit']);
-Route::post('savings-accounts/{savingsAccount}/withdraw', [SavingsAccountController::class, 'withdraw']);
-Route::post('savings-accounts/{savingsAccount}/charge', [SavingsAccountController::class, 'charge']);
+Route::middleware('feature:savings')->group(function () {
+    // Member Savings Accounts
+    Route::resource('savings-accounts', SavingsAccountController::class);
+    Route::post('savings-accounts/{savingsAccount}/deposit', [SavingsAccountController::class, 'deposit']);
+    Route::post('savings-accounts/{savingsAccount}/withdraw', [SavingsAccountController::class, 'withdraw']);
+    Route::post('savings-accounts/{savingsAccount}/charge', [SavingsAccountController::class, 'charge']);
+});
 
 // General charges (settings)
 Route::get('general-charges', [GeneralChargeController::class, 'index']);
@@ -147,91 +151,97 @@ Route::put('general-charges/{generalCharge}', [GeneralChargeController::class, '
 Route::patch('general-charges/{generalCharge}/toggle', [GeneralChargeController::class, 'toggle']);
 Route::patch('general-charges/{generalCharge}/toggle-reversible', [GeneralChargeController::class, 'toggleReversible']);
 Route::delete('general-charges/{generalCharge}', [GeneralChargeController::class, 'destroy']);
-Route::put('savings-accounts/{savingsAccount}/custom-fees', [SavingsAccountController::class, 'updateCustomFees']);
+Route::middleware('feature:savings')->group(function () {
+    Route::put('savings-accounts/{savingsAccount}/custom-fees', [SavingsAccountController::class, 'updateCustomFees']);
 
-// Savings Products
-Route::apiResource('savings-products', SavingsProductController::class);
+    // Savings Products
+    Route::apiResource('savings-products', SavingsProductController::class);
 
-// Fixed Deposits
-Route::get('savings/fixed-deposits', [FixedDepositController::class, 'index']);
-Route::post('savings/fixed-deposits/post-interest', [FixedDepositController::class, 'postInterest']);
-Route::post('savings/regular-interest/post-interest', [RegularSavingsInterestController::class, 'postInterest']);
-Route::post('savings-accounts/{id}/maturity/process', [FixedDepositController::class, 'processMaturity']);
-Route::get('savings-accounts/{id}/interest-postings', [FixedDepositController::class, 'interestPostings']);
+    // Fixed Deposits
+    Route::get('savings/fixed-deposits', [FixedDepositController::class, 'index']);
+    Route::post('savings/fixed-deposits/post-interest', [FixedDepositController::class, 'postInterest']);
+    Route::post('savings/regular-interest/post-interest', [RegularSavingsInterestController::class, 'postInterest']);
+    Route::post('savings-accounts/{id}/maturity/process', [FixedDepositController::class, 'processMaturity']);
+    Route::get('savings-accounts/{id}/interest-postings', [FixedDepositController::class, 'interestPostings']);
+});
 
-// Loan Products
-Route::get('document-types', [DocumentTypeController::class, 'index']);
-Route::post('loan-products/preview', [LoanProductController::class, 'preview']);
-Route::apiResource('loan-products', LoanProductController::class);
-Route::apiResource('loan-charges', LoanChargeController::class);
-Route::patch('loan-charges/{loanCharge}/toggle', [LoanChargeController::class, 'toggle']);
+Route::middleware('feature:loans')->group(function () {
+    // Loan Products
+    Route::get('document-types', [DocumentTypeController::class, 'index']);
+    Route::post('loan-products/preview', [LoanProductController::class, 'preview']);
+    Route::apiResource('loan-products', LoanProductController::class);
+    Route::apiResource('loan-charges', LoanChargeController::class);
+    Route::patch('loan-charges/{loanCharge}/toggle', [LoanChargeController::class, 'toggle']);
 
-// Loan Applications
-Route::get('loan-applications/summary', [LoanApplicationController::class, 'summary']);
-Route::get('loan-applications/member-search', [LoanApplicationController::class, 'memberSearch']);
-Route::post('loan-applications/eligibility-check', [LoanApplicationController::class, 'eligibilityCheck']);
-Route::post('loan-applications/{loanApplication}/submit', [LoanApplicationController::class, 'submit']);
-Route::post('loan-applications/{loanApplication}/cancel', [LoanApplicationController::class, 'cancel']);
-Route::post('loan-applications/{loanApplication}/reopen', [LoanApplicationController::class, 'reopen']);
-Route::get('loan-disbursements/pending', [LoanDisbursementController::class, 'pending']);
-Route::post('loan-applications/{loanApplication}/disburse', [LoanDisbursementController::class, 'disburse']);
+    // Loan Applications
+    Route::get('loan-applications/summary', [LoanApplicationController::class, 'summary']);
+    Route::get('loan-applications/member-search', [LoanApplicationController::class, 'memberSearch']);
+    Route::post('loan-applications/eligibility-check', [LoanApplicationController::class, 'eligibilityCheck']);
+    Route::post('loan-applications/{loanApplication}/submit', [LoanApplicationController::class, 'submit']);
+    Route::post('loan-applications/{loanApplication}/cancel', [LoanApplicationController::class, 'cancel']);
+    Route::post('loan-applications/{loanApplication}/reopen', [LoanApplicationController::class, 'reopen']);
+    Route::get('loan-disbursements/pending', [LoanDisbursementController::class, 'pending']);
+    Route::post('loan-applications/{loanApplication}/disburse', [LoanDisbursementController::class, 'disburse']);
 
-// ─── Active Loans & Repayments ────────────────────────────────────────────────
-Route::get('loans/summary', [LoanController::class, 'summary']);
-Route::get('loans/export', [LoanController::class, 'export']);
-Route::get('loans', [LoanController::class, 'index']);
-Route::get('loans/{id}', [LoanController::class, 'show']);
-Route::get('loans/{id}/schedule', [LoanController::class, 'schedule']);
-Route::get('loans/{id}/repayments', [LoanController::class, 'repayments']);
-Route::get('loans/{id}/ledger', [LoanController::class, 'ledger']);
-Route::get('loans/{id}/activities', [LoanController::class, 'activities']);
-Route::post('loans/{id}/repayments/preview', [LoanRepaymentController::class, 'preview']);
-Route::post('loans/{id}/repayments', [LoanRepaymentController::class, 'store']);
-Route::post('loans/{id}/repayments/{transaction}/reverse', [LoanRepaymentController::class, 'reverse']);
-Route::post('loans/{id}/reschedule/preview', [LoanController::class, 'reschedulePreview']);
-Route::post('loans/{id}/reschedule', [LoanController::class, 'reschedule']);
-Route::get('loans/{id}/reschedules', [LoanController::class, 'reschedules']);
-Route::post('loans/{loan}/repay-from-savings', [LoanRepaymentController::class, 'repayFromSavings']);
-Route::patch('loans/{loan}/update-dates', [LoanController::class, 'updateDates']);
+    // ─── Active Loans & Repayments ────────────────────────────────────────────────
+    Route::get('loans/summary', [LoanController::class, 'summary']);
+    Route::get('loans/export', [LoanController::class, 'export']);
+    Route::get('loans', [LoanController::class, 'index']);
+    Route::get('loans/{id}', [LoanController::class, 'show']);
+    Route::get('loans/{id}/schedule', [LoanController::class, 'schedule']);
+    Route::get('loans/{id}/repayments', [LoanController::class, 'repayments']);
+    Route::get('loans/{id}/ledger', [LoanController::class, 'ledger']);
+    Route::get('loans/{id}/activities', [LoanController::class, 'activities']);
+    Route::post('loans/{id}/repayments/preview', [LoanRepaymentController::class, 'preview']);
+    Route::post('loans/{id}/repayments', [LoanRepaymentController::class, 'store']);
+    Route::post('loans/{id}/repayments/{transaction}/reverse', [LoanRepaymentController::class, 'reverse']);
+    Route::post('loans/{id}/reschedule/preview', [LoanController::class, 'reschedulePreview']);
+    Route::post('loans/{id}/reschedule', [LoanController::class, 'reschedule']);
+    Route::get('loans/{id}/reschedules', [LoanController::class, 'reschedules']);
+    Route::post('loans/{loan}/repay-from-savings', [LoanRepaymentController::class, 'repayFromSavings']);
+    Route::patch('loans/{loan}/update-dates', [LoanController::class, 'updateDates']);
 
-// ── Loan Top-Up ────────────────────────────────────────────────────────────────
-Route::post('loans/{loan}/topup/eligibility', [LoanTopupController::class, 'eligibility']);
-Route::post('loans/{loan}/topup/execute', [LoanTopupController::class, 'execute']);
-Route::post('loans/{loan}/write-off', [LoanController::class, 'writeOff']);
+    // ── Loan Top-Up ────────────────────────────────────────────────────────────────
+    Route::post('loans/{loan}/topup/eligibility', [LoanTopupController::class, 'eligibility']);
+    Route::post('loans/{loan}/topup/execute', [LoanTopupController::class, 'execute']);
+    Route::post('loans/{loan}/write-off', [LoanController::class, 'writeOff']);
 
-// Appraisal actions
-Route::post('loan-applications/{loanApplication}/take-for-review', [LoanAppraisalController::class, 'takeForReview']);
-Route::post('loan-applications/{loanApplication}/appraise', [LoanAppraisalController::class, 'appraise']);
-Route::post('loan-applications/{loanApplication}/request-documents', [LoanAppraisalController::class, 'requestDocuments']);
-Route::post('loan-applications/{loanApplication}/return-for-correction', [LoanAppraisalController::class, 'returnForCorrection']);
-Route::post('loan-applications/{loanApplication}/resume-review', [LoanAppraisalController::class, 'resumeReview']);
-Route::post('loan-applications/{loanApplication}/reject', [LoanAppraisalController::class, 'reject']);
+    // Appraisal actions
+    Route::post('loan-applications/{loanApplication}/take-for-review', [LoanAppraisalController::class, 'takeForReview']);
+    Route::post('loan-applications/{loanApplication}/appraise', [LoanAppraisalController::class, 'appraise']);
+    Route::post('loan-applications/{loanApplication}/request-documents', [LoanAppraisalController::class, 'requestDocuments']);
+    Route::post('loan-applications/{loanApplication}/return-for-correction', [LoanAppraisalController::class, 'returnForCorrection']);
+    Route::post('loan-applications/{loanApplication}/resume-review', [LoanAppraisalController::class, 'resumeReview']);
+    Route::post('loan-applications/{loanApplication}/reject', [LoanAppraisalController::class, 'reject']);
 
-// Three-tier committee approval actions
-Route::post('loan-applications/{loanApplication}/bm-recommend', [LoanCommitteeController::class, 'bmRecommend']);
-Route::post('loan-applications/{loanApplication}/committee/return-for-correction', [LoanCommitteeController::class, 'returnForCorrection']);
-Route::post('loan-applications/{loanApplication}/votes', [LoanCommitteeController::class, 'castVote']);
-Route::get('loan-applications/{loanApplication}/votes', [LoanCommitteeController::class, 'getVotes']);
-Route::patch('loan-applications/{loanApplication}/votes/{staffId}/abstain', [LoanCommitteeController::class, 'markAbstention']);
-Route::patch('loan-applications/{loanApplication}/confirm-terms', [LoanCommitteeController::class, 'confirmTerms']);
-Route::get('loan-applications/{loanApplication}/proposed-schedule', [LoanCommitteeController::class, 'proposedSchedule']);
-Route::get('loan-applications/{loanApplication}/proposed-schedule/export', [LoanCommitteeController::class, 'exportProposedSchedule']);
+    // Three-tier committee approval actions
+    Route::post('loan-applications/{loanApplication}/bm-recommend', [LoanCommitteeController::class, 'bmRecommend']);
+    Route::post('loan-applications/{loanApplication}/committee/return-for-correction', [LoanCommitteeController::class, 'returnForCorrection']);
+    Route::post('loan-applications/{loanApplication}/votes', [LoanCommitteeController::class, 'castVote']);
+    Route::get('loan-applications/{loanApplication}/votes', [LoanCommitteeController::class, 'getVotes']);
+    Route::patch('loan-applications/{loanApplication}/votes/{staffId}/abstain', [LoanCommitteeController::class, 'markAbstention']);
+    Route::patch('loan-applications/{loanApplication}/confirm-terms', [LoanCommitteeController::class, 'confirmTerms']);
+    Route::get('loan-applications/{loanApplication}/proposed-schedule', [LoanCommitteeController::class, 'proposedSchedule']);
+    Route::get('loan-applications/{loanApplication}/proposed-schedule/export', [LoanCommitteeController::class, 'exportProposedSchedule']);
+});
 
-// Timeline
-Route::get('loan-applications/{loanApplication}/timeline', [LoanApplicationController::class, 'timeline']);
-// Approval actions
-Route::get('loan-applications/{loanApplication}/approvals', [LoanApprovalController::class, 'index']);
-Route::post('loan-applications/{loanApplication}/approve', [LoanApprovalController::class, 'approve']);
-Route::post('loan-applications/{loanApplication}/decline', [LoanApprovalController::class, 'decline']);
-Route::get('loan-applications/{loanApplication}/documents', [LoanDocumentController::class, 'index']);
-Route::post('loan-applications/{loanApplication}/documents', [LoanDocumentController::class, 'store']);
-Route::patch('loan-applications/{loanApplication}/documents/{document}', [LoanDocumentController::class, 'update']);
-Route::delete('loan-applications/{loanApplication}/documents/{document}', [LoanDocumentController::class, 'destroy']);
-Route::get('loan-applications/{loanApplication}/documents/{document}/download', [LoanDocumentController::class, 'download']);
-Route::get('loan-applications/{loanApplication}/collaterals', [LoanCollateralController::class, 'index']);
-Route::post('loan-applications/{loanApplication}/collaterals', [LoanCollateralController::class, 'store']);
-Route::delete('loan-applications/{loanApplication}/collaterals/{collateral}', [LoanCollateralController::class, 'destroy']);
-Route::apiResource('loan-applications', LoanApplicationController::class);
+Route::middleware('feature:loans')->group(function () {
+    // Timeline
+    Route::get('loan-applications/{loanApplication}/timeline', [LoanApplicationController::class, 'timeline']);
+    // Approval actions
+    Route::get('loan-applications/{loanApplication}/approvals', [LoanApprovalController::class, 'index']);
+    Route::post('loan-applications/{loanApplication}/approve', [LoanApprovalController::class, 'approve']);
+    Route::post('loan-applications/{loanApplication}/decline', [LoanApprovalController::class, 'decline']);
+    Route::get('loan-applications/{loanApplication}/documents', [LoanDocumentController::class, 'index']);
+    Route::post('loan-applications/{loanApplication}/documents', [LoanDocumentController::class, 'store']);
+    Route::patch('loan-applications/{loanApplication}/documents/{document}', [LoanDocumentController::class, 'update']);
+    Route::delete('loan-applications/{loanApplication}/documents/{document}', [LoanDocumentController::class, 'destroy']);
+    Route::get('loan-applications/{loanApplication}/documents/{document}/download', [LoanDocumentController::class, 'download']);
+    Route::get('loan-applications/{loanApplication}/collaterals', [LoanCollateralController::class, 'index']);
+    Route::post('loan-applications/{loanApplication}/collaterals', [LoanCollateralController::class, 'store']);
+    Route::delete('loan-applications/{loanApplication}/collaterals/{collateral}', [LoanCollateralController::class, 'destroy']);
+    Route::apiResource('loan-applications', LoanApplicationController::class);
+});
 
 use App\Tenant\Http\Controllers\Api\V1\ExpenseReportController;
 
@@ -292,12 +302,14 @@ Route::post('savings-transfer', [SavingsTransferController::class, 'store']);
 Route::get('onboarding-settings', [OnboardingSettingsController::class, 'show']);
 Route::put('onboarding-settings', [OnboardingSettingsController::class, 'update']);
 
-// Loan Settings
-Route::get('loan-settings', [LoanSettingsController::class, 'show']);
-Route::put('loan-settings', [LoanSettingsController::class, 'update']);
+Route::middleware('feature:loans')->group(function () {
+    // Loan Settings
+    Route::get('loan-settings', [LoanSettingsController::class, 'show']);
+    Route::put('loan-settings', [LoanSettingsController::class, 'update']);
 
-Route::get('loan-arrears-tiers', [LoanArrearsTierController::class, 'index']);
-Route::put('loan-arrears-tiers', [LoanArrearsTierController::class, 'bulkUpdate']);
+    Route::get('loan-arrears-tiers', [LoanArrearsTierController::class, 'index']);
+    Route::put('loan-arrears-tiers', [LoanArrearsTierController::class, 'bulkUpdate']);
+});
 
 // Public Holiday Settings
 Route::get('public-holidays', [PublicHolidayController::class, 'index']);
@@ -356,7 +368,7 @@ Route::group(['prefix' => '', 'middleware' => []], function () {
                
             ]);
         });
-        Route::group(['controller' => LoanProductController::class, 'middleware' => []], function () {
+        Route::group(['controller' => LoanProductController::class, 'middleware' => ['feature:loans']], function () {
             routeListV2([
                 [
                     'route' => 'loan-products',
@@ -398,7 +410,7 @@ Route::group(['prefix' => '', 'middleware' => []], function () {
 
             ]);
         });
-        Route::group(['controller' => LoanProductController::class, 'middleware' => []], function () {
+        Route::group(['controller' => LoanProductController::class, 'middleware' => ['feature:loans']], function () {
             routeListV2([
                 [
                     'route' => 'loan-products',
@@ -408,7 +420,7 @@ Route::group(['prefix' => '', 'middleware' => []], function () {
         });
     });
 
-    Route::group(['controller' => LoanApplicationController::class, 'middleware' => []], function () {
+    Route::group(['controller' => LoanApplicationController::class, 'middleware' => ['feature:loans']], function () {
         Route::group(['prefix' => 'loan-applications/'], function () {
             routeListV2([
                 [
@@ -1079,7 +1091,7 @@ Route::group(['prefix' => '', 'middleware' => []], function () {
         // Route::post('settings-list',   "settings_list")->name('members-settings-list');
         // Route::post('users-drop-down',   "users_drop_down")->name('staff-users-drop-down');
     });
-    Route::group(['prefix' => 'shares/', 'controller' => SharesController::class, 'middleware' => []], function () {
+    Route::group(['prefix' => 'shares/', 'controller' => SharesController::class, 'middleware' => ['feature:shares']], function () {
         Route::group(['prefix' => 'holders/'], function () {
             routeListV2([
                 [

@@ -17,7 +17,9 @@ class PermissionMiddleware
      */
     public function handle(Request $request, Closure $next, $permission = null)
     {
-        $user = Auth::guard('sanctum')->user();
+        $user = Auth::guard('sanctum')->user()
+            ?: Auth::guard('platform')->user()
+            ?: Auth::guard('tenant')->user();
 
         if (! $permission) {
             return response()->json(['error' => "Target class [$permission] does not exist."], 400);
