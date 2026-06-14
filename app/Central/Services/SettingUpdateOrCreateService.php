@@ -70,32 +70,50 @@ class SettingUpdateOrCreateService extends GlobalHelpers
 
     public function featuresCreate()
     {
-        $req = request()->all();
-        request()->validate([
-            'name' => 'required|string|max:100',
-            'key'  => 'required|string|max:60',
-        ]);
+        return $this->TryCatch(function () {
+            request()->validate([
+                'name' => 'required|string|max:100',
+                'key'  => 'required|string|max:60',
+            ]);
 
-        $fields = [
-            'name'      => trim($req['name']),
-            'key'       => \Illuminate\Support\Str::snake(strtolower(trim($req['key']))),
-            'is_active' => true,
-        ];
+            $key  = \Illuminate\Support\Str::snake(strtolower(trim(request('key'))));
+            $name = trim(request('name'));
 
-        $this->UpdateOrCreateRecord('plan_features', $fields);
+            $exists = DB::connection('master')
+                ->table('plan_features')
+                ->where('key', $key)
+                ->whereNull('deleted_at')
+                ->exists();
 
-        $service = new SettingService;
+            if ($exists) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'key' => ['A feature with this key already exists.'],
+                ]);
+            }
 
-        return $service->featuresList();
+            DB::connection('master')->table('plan_features')->insert([
+                'name'       => $name,
+                'key'        => $key,
+                'is_active'  => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            return app(SettingService::class)->featuresList();
+        });
     }
 
     public function featuresDelete()
     {
-        $this->DeleteRecord('plan_features', request());
+        return $this->TryCatch(function () {
+            request()->validate(['id' => 'required|integer']);
 
-        $service = new SettingService;
+            DB::connection('master')->table('plan_features')
+                ->where('id', request('id'))
+                ->update(['deleted_at' => now()]);
 
-        return $service->featuresList();
+            return app(SettingService::class)->featuresList();
+        });
     }
 
     public function plansDelete()
@@ -108,13 +126,6 @@ class SettingUpdateOrCreateService extends GlobalHelpers
 
     public function plansCreate()
     {
-        $allFeatureKeys = DB::connection('master')
-            ->table('plan_features')
-            ->whereNull('deleted_at')
-            ->where('is_active', true)
-            ->pluck('key')
-            ->toArray();
-
         $req = request()->all();
         request()->validate([
             'cost'         => 'required|numeric|min:0',
@@ -124,6 +135,13 @@ class SettingUpdateOrCreateService extends GlobalHelpers
             'name'         => 'required|string',
             'features'     => 'nullable',
         ]);
+
+        $allFeatureKeys = DB::connection('master')
+            ->table('plan_features')
+            ->whereNull('deleted_at')
+            ->where('is_active', true)
+            ->pluck('key')
+            ->toArray();
 
         $fields = $this->plansUOrCFields($req);
 
