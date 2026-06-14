@@ -16,6 +16,7 @@ class License extends Model
 
     protected $fillable = [
         'tenant_id',
+        'plan_id',
         'plan',
         'starts_at',
         'expires_at',
@@ -31,6 +32,7 @@ class License extends Model
         'expires_at' => 'datetime',
         'grace_ends_at' => 'datetime',
         'features' => 'array',
+        'plan_id' => 'integer',
         'max_members' => 'integer',
         'max_users' => 'integer',
     ];
@@ -42,6 +44,6 @@ class License extends Model
 
     public function plan(): BelongsTo
     {
-        return $this->belongsTo(Plan::class, 'plan', 'slug');
+        return $this->belongsTo(Plan::class);
     }
 }

@@ -24,7 +24,7 @@ class DashboardService extends GlobalHelpers
     FROM licenses
 ');
         $callrevenueAnalysis = DB::table('licenses as ls')
-            ->join('plans as pl', 'ls.plan', '=', 'pl.id')
+            ->join('plans as pl', 'ls.plan_id', '=', 'pl.id')
             ->select([
                 DB::raw('SUM(pl.price) as total_revenue'),
                 DB::raw('pl.billing_cycle AS billing_type'),

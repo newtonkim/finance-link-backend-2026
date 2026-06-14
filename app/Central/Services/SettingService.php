@@ -29,7 +29,7 @@ class SettingService extends SettingUpdateOrCreateService
         'pl.max_users as mxusrs',
         'pl.slug as slug',
         'pl.name as plan_name',
-        'created_at AS created_at',
+        'pl.created_at AS created_at',
     ];
 
     private $paginatedBy = 100;
@@ -39,12 +39,78 @@ class SettingService extends SettingUpdateOrCreateService
         $req = request();
 
         return $this->TryCatch(function () use ($req) {
-            $query = DB::table('plans as pl')->select([...$this->plansDbFields]);
+            $tenantCountSub = "
+                (SELECT COUNT(lc.id) FROM licenses lc
+                 WHERE lc.status = 'active'
+                   AND (lc.plan = CAST(pl.id AS CHAR) OR lc.plan = pl.slug))
+            ";
+
+            $query = DB::table('plans as pl')
+                ->select([
+                    ...$this->plansDbFields,
+                    'pl.features as features',
+                    DB::raw("($tenantCountSub) as tenant_count"),
+                    DB::raw("COALESCE(pl.price, 0) * ($tenantCountSub) as mrr_contribution"),
+                ]);
+
             if ($req->has('search_keyword')) {
                 $query = $this->dynamic_search_db_query($query, $req['search_keyword'], $this->plansDbFields);
             }
 
-            return $query->whereNull('pl.deleted_at')->orderBy('id', 'DESC')->paginate($this->paginatedBy);
+            return $query->whereNull('pl.deleted_at')->orderBy('pl.id', 'ASC')->paginate($this->paginatedBy);
+        });
+    }
+
+    public function plansStats()
+    {
+        return $this->TryCatch(function () {
+            $plans = DB::table('plans')->whereNull('deleted_at')->get(['id', 'slug', 'price', 'billing_cycle']);
+            $totalPlans = $plans->count();
+
+            $activeSubscribers = DB::table('licenses')
+                ->where('status', 'active')
+                ->distinct('tenant_id')
+                ->count('tenant_id');
+
+            $mrr = 0;
+            foreach ($plans as $plan) {
+                $tenantCount = DB::table('licenses')
+                    ->where('status', 'active')
+                    ->where(function ($q) use ($plan) {
+                        $q->where('plan', (string) $plan->id)->orWhere('plan', $plan->slug);
+                    })
+                    ->count();
+
+                $monthlyPrice = match ($plan->billing_cycle ?? 'monthly') {
+                    'weekly'  => (float) $plan->price * 4.33,
+                    'monthly' => (float) $plan->price,
+                    'quarterly' => (float) $plan->price / 3,
+                    'annual', 'yearly' => (float) $plan->price / 12,
+                    default   => (float) $plan->price,
+                };
+                $mrr += $monthlyPrice * $tenantCount;
+            }
+
+            $avgPerTenant = $activeSubscribers > 0 ? round($mrr / $activeSubscribers, 2) : 0;
+
+            return [
+                'total_plans'        => $totalPlans,
+                'active_subscribers' => $activeSubscribers,
+                'mrr'                => round($mrr, 2),
+                'avg_per_tenant'     => $avgPerTenant,
+            ];
+        });
+    }
+
+    public function featuresList()
+    {
+        return $this->TryCatch(function () {
+            return DB::connection('master')
+                ->table('plan_features')
+                ->whereNull('deleted_at')
+                ->where('is_active', true)
+                ->orderBy('id')
+                ->get(['id', 'key', 'name']);
         });
     }
 
@@ -170,6 +236,29 @@ class SettingService extends SettingUpdateOrCreateService
             }
 
             return $branding;
+        });
+    }
+
+    public function currencySettings()
+    {
+        return $this->TryCatch(function () {
+            $settings = DB::connection('master')->table('central_currency_settings')->first();
+
+            if (! $settings) {
+                return [
+                    'default_currency' => 'UGX',
+                    'enabled_currencies' => ['UGX'],
+                ];
+            }
+
+            $enabled = is_string($settings->enabled_currencies)
+                ? json_decode($settings->enabled_currencies, true)
+                : $settings->enabled_currencies;
+
+            return [
+                'default_currency' => $settings->default_currency ?: 'UGX',
+                'enabled_currencies' => is_array($enabled) && count($enabled) ? array_values($enabled) : [$settings->default_currency ?: 'UGX'],
+            ];
         });
     }
 

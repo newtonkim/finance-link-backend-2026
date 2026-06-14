@@ -2,6 +2,7 @@
 
 namespace App\Domain\Licensing\Services;
 
+use App\Central\Models\Plan;
 use App\Domain\Licensing\Entities\License;
 use App\Domain\Tenancy\Entities\Tenant;
 use Illuminate\Support\Str;
@@ -13,10 +14,13 @@ class LicenseGenerator
      */
     public function generateMonthly(Tenant $tenant): License
     {
+        $planId = $this->planIdFor('monthly');
+
         return License::create([
             'id' => (string) Str::uuid(),
             'tenant_id' => $tenant->id,
-            'plan' => 'monthly',
+            'plan_id' => $planId,
+            'plan' => (string) ($planId ?? 'monthly'),
             'starts_at' => now(),
             'expires_at' => now()->addMonth(),
             'status' => 'active',
@@ -28,10 +32,13 @@ class LicenseGenerator
      */
     public function generateYearly(Tenant $tenant): License
     {
+        $planId = $this->planIdFor('yearly');
+
         return License::create([
             'id' => (string) Str::uuid(),
             'tenant_id' => $tenant->id,
-            'plan' => 'yearly',
+            'plan_id' => $planId,
+            'plan' => (string) ($planId ?? 'yearly'),
             'starts_at' => now(),
             'expires_at' => now()->addYear(),
             'status' => 'active',
@@ -50,12 +57,30 @@ class LicenseGenerator
         return License::create([
             'id' => (string) Str::uuid(),
             'tenant_id' => $license->tenant_id,
-            'plan' => $license->plan,
+            'plan_id' => $license->plan_id,
+            'plan' => (string) ($license->plan_id ?? $license->plan),
             'starts_at' => now(),
-            'expires_at' => $license->plan === 'monthly'
+            'expires_at' => $this->isMonthly($license)
                 ? now()->addMonth()
                 : now()->addYear(),
             'status' => 'active',
         ]);
+    }
+
+    private function planIdFor(string $slug): ?int
+    {
+        return Plan::query()->where('slug', $slug)->value('id');
+    }
+
+    private function isMonthly(License $license): bool
+    {
+        if ($license->plan_id) {
+            return Plan::query()
+                ->whereKey($license->plan_id)
+                ->where('billing_cycle', 'monthly')
+                ->exists();
+        }
+
+        return $license->plan === 'monthly';
     }
 }

@@ -134,16 +134,11 @@ class GlobalHelpers extends BaseController
         try {
             return $cal();
         } catch (\Throwable $th) {
-            $error = [
-                'status' => 'FAILED',
-                'error' => $th,
-                'message' => $th->getMessage(),
-                'file' => $th->getFile(),
-                'line' => $th->getLine(),
-                'code' => $th->getCode(),
-            ];
+            Log::error($th->getMessage(), [
+                'exception' => $th,
+            ]);
 
-            return $error;
+            throw $th;
         }
     }
 

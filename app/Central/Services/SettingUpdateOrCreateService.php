@@ -5,6 +5,7 @@ namespace App\Central\Services;
 use App\Http\Globals\GlobalHelpers;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 class SettingUpdateOrCreateService extends GlobalHelpers
 {
@@ -38,6 +39,42 @@ class SettingUpdateOrCreateService extends GlobalHelpers
         });
     }
 
+    public function currencySettingsUpdate()
+    {
+        return $this->TryCatch(function () {
+            $allowedCodes = [
+                'USD', 'EUR', 'GBP', 'JPY', 'CHF', 'CAD', 'AUD', 'CNY', 'HKD', 'SGD', 'INR', 'MXN',
+                'KES', 'UGX', 'TZS', 'RWF', 'ZAR', 'NGN', 'GHS', 'AED', 'SAR',
+            ];
+
+            $validated = request()->validate([
+                'default_currency' => ['required', 'string', Rule::in($allowedCodes)],
+                'enabled_currencies' => ['nullable', 'array'],
+                'enabled_currencies.*' => ['string', Rule::in($allowedCodes)],
+            ]);
+
+            $enabled = collect($validated['enabled_currencies'] ?? [])
+                ->push($validated['default_currency'])
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+
+            DB::connection('master')->table('central_currency_settings')
+                ->updateOrInsert(
+                    ['id' => 1],
+                    [
+                        'default_currency' => $validated['default_currency'],
+                        'enabled_currencies' => json_encode($enabled),
+                        'updated_at' => now(),
+                        'created_at' => now(),
+                    ]
+                );
+
+            return app(SettingService::class)->currencySettings();
+        });
+    }
+
     protected function rolesUOrCFields($req)
     {
         return $this->removeAllNullValues(
@@ -51,18 +88,147 @@ class SettingUpdateOrCreateService extends GlobalHelpers
 
     protected function plansUOrCFields($req)
     {
+        $name = $req['name'] ?? null;
+        $slug = $name ? \Illuminate\Support\Str::slug($name) : null;
+
         return $this->removeAllNullValues(
             [
-                'price' => $req['cost'] ?? null,
+                'price'         => $req['cost'] ?? null,
                 'billing_cycle' => $req['billing_type'] ?? null,
-                'max_members' => $req['mx_mbrs'] ?? null,
-                'max_users' => $req['mxusrs'] ?? null,
-                'features' => $req['features'] ?? null,
-                'slug' => isset($req['name']) ? $req['name'] : null,
-                'name' => isset($req['name']) ? $req['name'].'Plan' : null,
-                'days' => isset($req['days']) ? $req['days'] : null,
+                'max_members'   => isset($req['mx_mbrs']) ? (int) $req['mx_mbrs'] : null,
+                'max_users'     => isset($req['mxusrs'])  ? (int) $req['mxusrs']  : null,
+                'features'      => $req['features'] ?? null,
+                'slug'          => $slug,
+                'name'          => $name,
+                'days'          => $req['days'] ?? null,
             ]
         );
+    }
+
+    public function featuresCreate()
+    {
+        return $this->TryCatch(function () {
+            request()->validate([
+                'name' => 'required|string|max:100',
+                'key'  => 'required|string|max:60',
+            ]);
+
+            $key  = \Illuminate\Support\Str::snake(strtolower(trim(request('key'))));
+            $name = trim(request('name'));
+
+            $exists = DB::connection('master')
+                ->table('plan_features')
+                ->where('key', $key)
+                ->whereNull('deleted_at')
+                ->exists();
+
+            if ($exists) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'key' => ['A feature with this key already exists.'],
+                ]);
+            }
+
+            DB::connection('master')->table('plan_features')->insert([
+                'name'       => $name,
+                'key'        => $key,
+                'is_active'  => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            return app(SettingService::class)->featuresList();
+        });
+    }
+
+    public function featuresUpdate()
+    {
+        return $this->TryCatch(function () {
+            request()->validate([
+                'id'   => 'required|integer|exists:master.plan_features,id',
+                'name' => 'required|string|max:100',
+                'key'  => 'required|string|max:60',
+            ]);
+
+            $id = (int) request('id');
+            $key = \Illuminate\Support\Str::snake(strtolower(trim(request('key'))));
+            $name = trim(request('name'));
+
+            $exists = DB::connection('master')
+                ->table('plan_features')
+                ->where('key', $key)
+                ->where('id', '!=', $id)
+                ->whereNull('deleted_at')
+                ->exists();
+
+            if ($exists) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'key' => ['A feature with this key already exists.'],
+                ]);
+            }
+
+            DB::connection('master')->transaction(function () use ($id, $name, $key): void {
+                $feature = DB::connection('master')
+                    ->table('plan_features')
+                    ->where('id', $id)
+                    ->whereNull('deleted_at')
+                    ->lockForUpdate()
+                    ->first();
+
+                abort_if(! $feature, 404, 'Feature not found.');
+
+                DB::connection('master')->table('plan_features')
+                    ->where('id', $id)
+                    ->update([
+                        'name' => $name,
+                        'key' => $key,
+                        'updated_at' => now(),
+                    ]);
+
+                if ($feature->key !== $key) {
+                    DB::connection('master')
+                        ->table('plans')
+                        ->whereNotNull('features')
+                        ->orderBy('id')
+                        ->chunkById(100, function ($plans) use ($feature, $key): void {
+                            foreach ($plans as $plan) {
+                                $features = is_string($plan->features)
+                                    ? json_decode($plan->features, true)
+                                    : $plan->features;
+
+                                if (! is_array($features) || ! array_key_exists($feature->key, $features)) {
+                                    continue;
+                                }
+
+                                $features[$key] = $features[$feature->key];
+                                unset($features[$feature->key]);
+
+                                DB::connection('master')
+                                    ->table('plans')
+                                    ->where('id', $plan->id)
+                                    ->update([
+                                        'features' => json_encode($features),
+                                        'updated_at' => now(),
+                                    ]);
+                            }
+                        });
+                }
+            });
+
+            return app(SettingService::class)->featuresList();
+        });
+    }
+
+    public function featuresDelete()
+    {
+        return $this->TryCatch(function () {
+            request()->validate(['id' => 'required|integer']);
+
+            DB::connection('master')->table('plan_features')
+                ->where('id', request('id'))
+                ->update(['deleted_at' => now()]);
+
+            return app(SettingService::class)->featuresList();
+        });
     }
 
     public function plansDelete()
@@ -75,43 +241,35 @@ class SettingUpdateOrCreateService extends GlobalHelpers
 
     public function plansCreate()
     {
-        $features = [
-            'reports' => 'reports',
-            'loans' => 'loans',
-            'savings' => 'savings',
-            'shares' => 'shares',
-        ];
         $req = request()->all();
         request()->validate([
-            'cost' => 'required|min:0|',
+            'cost'         => 'required|numeric|min:0',
             'billing_type' => 'required',
-            'mx_mbrs' => 'required',
-            'mxusrs' => 'required',
-            'features' => 'required',
-            'name' => 'required',
+            'mx_mbrs'      => 'required|numeric|min:0',
+            'mxusrs'       => 'required|numeric|min:0',
+            'name'         => 'required|string',
+            'features'     => 'nullable',
         ]);
+
+        $allFeatureKeys = DB::connection('master')
+            ->table('plan_features')
+            ->whereNull('deleted_at')
+            ->where('is_active', true)
+            ->pluck('key')
+            ->toArray();
+
         $fields = $this->plansUOrCFields($req);
-        // / this block helpe in cleaning the features structure
-        foreach ($fields as $key2 => $value2) {
-            if ($key2 == 'features') {
-                $array = array_map(function ($t) {
-                    return trim($t, '"');
-                }, (array) $value2);
-                foreach ($features as $key => $value) {
-                    $keyIndex = in_array($value, $array);
-                    if ($keyIndex) {
-                        $fields['features'][$value] = true;
-                    } else {
-                        $fields['features'][$value] = false;
-                    }
-                    foreach ($fields['features'] as $key3 => $value3) {
-                        if (is_numeric($key3)) {
-                            unset($fields['features'][$key3]);
-                        }
-                    }
-                }
-            }
+
+        // Build a boolean features map from the submitted array of IDs
+        $selectedIds = array_map(
+            fn ($t) => trim((string) $t, '"'),
+            (array) ($req['features'] ?? [])
+        );
+        $featuresMap = [];
+        foreach ($allFeatureKeys as $key) {
+            $featuresMap[$key] = in_array($key, $selectedIds);
         }
+        $fields['features'] = $featuresMap;
         $fields['created_at'] = now();
 
         $this->UpdateOrCreateRecord('plans', $fields);

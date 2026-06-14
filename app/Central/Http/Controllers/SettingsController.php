@@ -70,9 +70,34 @@ class SettingsController extends SettingService
         return $this->Response(['data' => $this->RolesRemoveAbility()]);
     }
 
+    public function get_features_list()
+    {
+        return $this->Response(['data' => $this->featuresList()]);
+    }
+
+    public function features_create()
+    {
+        return $this->Response(['data' => $this->featuresCreate()]);
+    }
+
+    public function features_update()
+    {
+        return $this->Response(['data' => $this->featuresUpdate()]);
+    }
+
+    public function features_delete()
+    {
+        return $this->Response(['data' => $this->featuresDelete()]);
+    }
+
     public function get_plans_list()
     {
         return $this->Response(['data' => $this->plansList()]);
+    }
+
+    public function get_plans_stats()
+    {
+        return $this->Response(['data' => $this->plansStats()]);
     }
 
     public function plans_create()
@@ -103,6 +128,16 @@ class SettingsController extends SettingService
     public function update_branding()
     {
         return $this->Response(['data' => $this->brandingUpdate()]);
+    }
+
+    public function get_currency_settings()
+    {
+        return $this->Response(['data' => $this->currencySettings()]);
+    }
+
+    public function update_currency_settings()
+    {
+        return $this->Response(['data' => $this->currencySettingsUpdate()]);
     }
 
     public function store(Request $request) {}

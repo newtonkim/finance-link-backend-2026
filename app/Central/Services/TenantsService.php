@@ -34,7 +34,7 @@ class TenantsService extends TenantsUpdateOrCreateService
 
             $tenant = DB::table('tenants AS ts')
                 ->Leftjoin('licenses as ls', 'ls.tenant_id', '=', 'ts.id')
-                ->Leftjoin('plans as pl', 'pl.id', '=', 'ls.plan')
+                ->Leftjoin('plans as pl', 'pl.id', '=', 'ls.plan_id')
                 ->orderBy('ts.created_at', 'DESC')
                 ->where('ts.id', $req->id)->first([
                     ...$this->tenantDbFields,
@@ -78,6 +78,7 @@ class TenantsService extends TenantsUpdateOrCreateService
             $query = DB::table('tenants as ts')->select([
                 ...$this->tenantDbFields,
                 DB::raw("(SELECT expires_at FROM licenses WHERE tenant_id = ts.id AND status = 'active' ORDER BY expires_at DESC LIMIT 1) AS license_expires_at"),
+                DB::raw('(SELECT id FROM licenses WHERE tenant_id = ts.id ORDER BY expires_at DESC LIMIT 1) AS license_id'),
             ]);
             if ($req->has('search_keyword')) {
                 $query = $this->dynamic_search_db_query($query, $req['search_keyword'], $this->tenantDbFields, $this->searchFields);

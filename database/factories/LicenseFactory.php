@@ -24,6 +24,7 @@ class LicenseFactory extends Factory
         return [
             'id' => (string) Str::uuid(),
             'tenant_id' => Tenant::factory(),
+            'plan_id' => null,
             'plan' => 'Professional',
             'starts_at' => now(),
             'expires_at' => now()->addYear(),
