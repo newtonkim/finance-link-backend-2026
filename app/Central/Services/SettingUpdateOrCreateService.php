@@ -51,18 +51,51 @@ class SettingUpdateOrCreateService extends GlobalHelpers
 
     protected function plansUOrCFields($req)
     {
+        $name = $req['name'] ?? null;
+        $slug = $name ? \Illuminate\Support\Str::slug($name) : null;
+
         return $this->removeAllNullValues(
             [
-                'price' => $req['cost'] ?? null,
+                'price'         => $req['cost'] ?? null,
                 'billing_cycle' => $req['billing_type'] ?? null,
-                'max_members' => $req['mx_mbrs'] ?? null,
-                'max_users' => $req['mxusrs'] ?? null,
-                'features' => $req['features'] ?? null,
-                'slug' => isset($req['name']) ? $req['name'] : null,
-                'name' => isset($req['name']) ? $req['name'].'Plan' : null,
-                'days' => isset($req['days']) ? $req['days'] : null,
+                'max_members'   => isset($req['mx_mbrs']) ? (int) $req['mx_mbrs'] : null,
+                'max_users'     => isset($req['mxusrs'])  ? (int) $req['mxusrs']  : null,
+                'features'      => $req['features'] ?? null,
+                'slug'          => $slug,
+                'name'          => $name,
+                'days'          => $req['days'] ?? null,
             ]
         );
+    }
+
+    public function featuresCreate()
+    {
+        $req = request()->all();
+        request()->validate([
+            'name' => 'required|string|max:100',
+            'key'  => 'required|string|max:60',
+        ]);
+
+        $fields = [
+            'name'      => trim($req['name']),
+            'key'       => \Illuminate\Support\Str::snake(strtolower(trim($req['key']))),
+            'is_active' => true,
+        ];
+
+        $this->UpdateOrCreateRecord('plan_features', $fields);
+
+        $service = new SettingService;
+
+        return $service->featuresList();
+    }
+
+    public function featuresDelete()
+    {
+        $this->DeleteRecord('plan_features', request());
+
+        $service = new SettingService;
+
+        return $service->featuresList();
     }
 
     public function plansDelete()
@@ -75,43 +108,35 @@ class SettingUpdateOrCreateService extends GlobalHelpers
 
     public function plansCreate()
     {
-        $features = [
-            'reports' => 'reports',
-            'loans' => 'loans',
-            'savings' => 'savings',
-            'shares' => 'shares',
-        ];
+        $allFeatureKeys = DB::connection('master')
+            ->table('plan_features')
+            ->whereNull('deleted_at')
+            ->where('is_active', true)
+            ->pluck('key')
+            ->toArray();
+
         $req = request()->all();
         request()->validate([
-            'cost' => 'required|min:0|',
+            'cost'         => 'required|numeric|min:0',
             'billing_type' => 'required',
-            'mx_mbrs' => 'required',
-            'mxusrs' => 'required',
-            'features' => 'required',
-            'name' => 'required',
+            'mx_mbrs'      => 'required|numeric|min:0',
+            'mxusrs'       => 'required|numeric|min:0',
+            'name'         => 'required|string',
+            'features'     => 'nullable',
         ]);
+
         $fields = $this->plansUOrCFields($req);
-        // / this block helpe in cleaning the features structure
-        foreach ($fields as $key2 => $value2) {
-            if ($key2 == 'features') {
-                $array = array_map(function ($t) {
-                    return trim($t, '"');
-                }, (array) $value2);
-                foreach ($features as $key => $value) {
-                    $keyIndex = in_array($value, $array);
-                    if ($keyIndex) {
-                        $fields['features'][$value] = true;
-                    } else {
-                        $fields['features'][$value] = false;
-                    }
-                    foreach ($fields['features'] as $key3 => $value3) {
-                        if (is_numeric($key3)) {
-                            unset($fields['features'][$key3]);
-                        }
-                    }
-                }
-            }
+
+        // Build a boolean features map from the submitted array of IDs
+        $selectedIds = array_map(
+            fn ($t) => trim((string) $t, '"'),
+            (array) ($req['features'] ?? [])
+        );
+        $featuresMap = [];
+        foreach ($allFeatureKeys as $key) {
+            $featuresMap[$key] = in_array($key, $selectedIds);
         }
+        $fields['features'] = $featuresMap;
         $fields['created_at'] = now();
 
         $this->UpdateOrCreateRecord('plans', $fields);

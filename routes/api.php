@@ -117,6 +117,11 @@ Route::group(['prefix' => 'v1/central/',  'middleware' => []], function () {
 
         Route::group(['prefix' => 'plans/'], function () {
             routeList(['list', 'create', 'delete', 'details'], 'plans', 'settings-');
+            Route::post('stats', [SettingsController::class, 'get_plans_stats'])->name('settings-plans-stats');
+        });
+
+        Route::group(['prefix' => 'features/'], function () {
+            routeList(['list', 'create', 'delete'], 'features', 'settings-');
         });
     });
 });

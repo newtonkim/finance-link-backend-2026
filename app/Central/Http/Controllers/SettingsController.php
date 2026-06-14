@@ -70,9 +70,29 @@ class SettingsController extends SettingService
         return $this->Response(['data' => $this->RolesRemoveAbility()]);
     }
 
+    public function get_features_list()
+    {
+        return $this->Response(['data' => $this->featuresList()]);
+    }
+
+    public function features_create()
+    {
+        return $this->Response(['data' => $this->featuresCreate()]);
+    }
+
+    public function features_delete()
+    {
+        return $this->Response(['data' => $this->featuresDelete()]);
+    }
+
     public function get_plans_list()
     {
         return $this->Response(['data' => $this->plansList()]);
+    }
+
+    public function get_plans_stats()
+    {
+        return $this->Response(['data' => $this->plansStats()]);
     }
 
     public function plans_create()
