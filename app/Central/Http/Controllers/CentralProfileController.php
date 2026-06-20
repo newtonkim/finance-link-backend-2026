@@ -4,6 +4,7 @@ namespace App\Central\Http\Controllers;
 
 use App\Http\Globals\GlobalHelpers;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -27,16 +28,26 @@ class CentralProfileController extends GlobalHelpers
         'created_at',
     ];
 
+    /**
+     * The central API authenticates via a Sanctum Bearer token, not the default
+     * session guard — so auth()->id() is null here. Resolve the platform user
+     * the same way the central.auth middleware does.
+     */
+    private function centralUser()
+    {
+        return Auth::guard('sanctum')->user() ?: Auth::guard('platform')->user();
+    }
+
     /** GET /v1/central/profile */
     public function show()
     {
-        return $this->Response(['data' => $this->profileRow(auth()->id())]);
+        return $this->Response(['data' => $this->profileRow($this->centralUser()?->id)]);
     }
 
     /** POST /v1/central/profile/update */
     public function update(Request $request)
     {
-        $id = auth()->id();
+        $id = $this->centralUser()?->id;
 
         $request->validate([
             'staff_fall_name' => 'nullable|string|max:255',
@@ -79,7 +90,7 @@ class CentralProfileController extends GlobalHelpers
     /** POST /v1/central/profile/delete */
     public function destroy(Request $request)
     {
-        $user = auth()->user();
+        $user = $this->centralUser();
 
         return $this->TryCatch(function () use ($user) {
             // Soft-delete and deactivate the account.
