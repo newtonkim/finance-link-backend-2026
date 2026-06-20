@@ -6,6 +6,7 @@ use App\Exports\GroupMemberSavingsExport;
 use App\Exports\GroupSavingsExport;
 use App\Tenant\Modules\Settings\Models\SaccoBranding;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Database\Query\Expression;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
@@ -41,15 +42,47 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
         'sacct.created_at AS created_at',
     ];
 
+    /**
+     * Normalise the optional `status` request filter into an array (for whereIn)
+     * or null when absent / set to "all".
+     */
+    private function statusFilter(): ?array
+    {
+        $status = request('status');
+
+        return ($status !== null && $status != 'all') ? [$status] : null;
+    }
+
+    /**
+     * SQL expression for a member's full name: salutation + name.
+     */
+    private function memberNameExpr(string $alias = 'mb', string $as = 'member_name'): Expression
+    {
+        return DB::raw("CONCAT(IFNULL($alias.salutation,''), ' ', $alias.name) AS $as");
+    }
+
+    /**
+     * SQL expression normalising a member's stored `profile_path` into a
+     * web-servable `/storage/...` URL (or NULL when not set).
+     */
+    private function memberImageExpr(string $alias = 'mb', string $as = 'member_image'): Expression
+    {
+        return DB::raw("CASE
+                        WHEN $alias.profile_path IS NOT NULL AND $alias.profile_path != '' AND $alias.profile_path LIKE '/storage/%' THEN $alias.profile_path
+                        WHEN $alias.profile_path IS NOT NULL AND $alias.profile_path != '' AND $alias.profile_path LIKE 'storage/%' THEN CONCAT('/', $alias.profile_path)
+                        WHEN $alias.profile_path IS NOT NULL AND $alias.profile_path != '' THEN CONCAT('/storage/', $alias.profile_path)
+                        ELSE NULL
+                    END AS $as");
+    }
+
     public function groupAccountTransactions()
     {
         return $this->TryCatch(function () {
-            return $this->TryCatch(function () {
-                $req = request();
-                $groupId = $req['group_id'] ?? null;
-                $staus = isset($req['status']) && $req['status'] != 'all' ? [$req['status']] : null;
+            $req = request();
+            $groupId = $req['group_id'] ?? null;
+            $staus = $this->statusFilter();
 
-                return DB::table('group_savings_accounts as sgac')
+            return DB::table('group_savings_accounts as sgac')
                     ->join('savings_products AS sp', 'sp.id', '=', 'sgac.savings_product_id')
                     ->join('transactions AS tr', 'tr.group_savings_account_id', '=', 'sgac.id')
                     ->join('members AS mb', 'mb.id', '=', 'tr.member_id')
@@ -59,7 +92,7 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
                         'mb.id AS member_id',
                         'mb.code AS member_code',
                         'mb.phone AS member_phone',
-                        DB::raw("CONCAT(IFNULL(mb.salutation,''), ' ', mb.name) AS member_name"),
+                        $this->memberNameExpr(),
                         'sp.name AS product',
                         'sgac.balance AS blc',
                         'sgac.status AS status',
@@ -77,17 +110,19 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
                     ->orderBy('tr.id', 'DESC')
                     // ->orderBy('sgac.id', 'DESC')
                     ->whereNull('tr.deleted_at')->orderBy('tr.id', 'DESC')->paginate($this->perpage());
-            });
         });
     }
 
-    public function groupAccountTransactionsDownload()
+    /**
+     * Joined, filtered and searched group savings transactions report rows —
+     * shared by the PDF/Excel download and the printable view.
+     */
+    private function groupTransactionsReportItems(): array
     {
-        // return $this->TryCatch(function () {
         $req = request();
-        $groupId = $req['group_id'];
-        $staus = isset($req['status']) && $req['status'] != 'all' ? [$req['status']] : null;
-        $query = DB::table('group_savings_accounts as sgac')
+        $staus = $this->statusFilter();
+
+        return DB::table('group_savings_accounts as sgac')
             ->join('savings_products AS sp', 'sp.id', '=', 'sgac.savings_product_id')
             ->join('transactions AS tr', 'tr.group_savings_account_id', '=', 'sgac.id')
             ->join('members AS mb', 'mb.id', '=', 'tr.member_id')
@@ -96,7 +131,7 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
                 'tr.reference AS code',
                 'mb.code AS member_code',
                 'mb.phone AS member_phone',
-                DB::raw("CONCAT(IFNULL(mb.salutation,''), ' ', mb.name) AS member_name"),
+                $this->memberNameExpr(),
                 'sp.name AS product',
                 'sgac.balance AS blc',
                 'sgac.status AS status',
@@ -106,7 +141,7 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
                 'tr.amount AS amount',
                 'tr.transaction_date AS transaction_date',
             ])
-            ->where('sgac.savings_group_id', $groupId)
+            ->where('sgac.savings_group_id', $req['group_id'])
             ->when($staus != null, function ($query) use ($staus) {
                 $query->whereIn('tr.type', $staus);
             })
@@ -122,8 +157,14 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
                     'tr.reference',
                 ]);
             })
-            ->paginate($this->perpage());
-        $data = $query->items();
+            ->paginate($this->perpage())
+            ->items();
+    }
+
+    public function groupAccountTransactionsDownload()
+    {
+        $req = request();
+        $data = $this->groupTransactionsReportItems();
 
         $fileName = 'group-saving-transactions-' . now()->format('Y-m-d_H-i-s') . '.pdf';
         if ($req['value'] == 'PDF') {
@@ -132,13 +173,10 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
             return $pdf->download($fileName);
         }
 
-        //  php artisan make:export GroupSavingsExport
         return Excel::download(
             new GroupSavingsExport($data),
             $fileName . '.xlsx'
         );
-
-        // });
     }
 
     public function downloadGroupMembersList()
@@ -160,7 +198,7 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
                     'mb.status as member_status',
                     'sgm.code as member_group_code',
                     DB::raw('(SELECT SUM(balance) from loans where member_id=mb.id) as loan_balance'),
-                    DB::raw("CONCAT(IFNULL(salutation,''), ' ', mb.name) as member_name"),
+                    $this->memberNameExpr(),
                     'sgm.created_at AS created_at',
                 ])
                 ->whereRaw('sgm.savings_group_id=?', [$groupId])
@@ -190,51 +228,9 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
 
     public function printGroupAccountTransactions()
     {
-        // return $this->TryCatch(function () {
-        $req = request();
-        $groupId = $req['group_id'];
-        $staus = isset($req['status']) && $req['status'] != 'all' ? [$req['status']] : null;
-        $query = DB::table('group_savings_accounts as sgac')
-            ->join('savings_products AS sp', 'sp.id', '=', 'sgac.savings_product_id')
-            ->join('transactions AS tr', 'tr.group_savings_account_id', '=', 'sgac.id')
-            ->join('members AS mb', 'mb.id', '=', 'tr.member_id')
-            ->select([
-                'sgac.id AS id',
-                'tr.reference AS code',
-                'mb.code AS member_code',
-                'mb.phone AS member_phone',
-                DB::raw("CONCAT(IFNULL(mb.salutation,''), ' ', mb.name) AS member_name"),
-                'sp.name AS product',
-                'sgac.balance AS blc',
-                'sgac.status AS status',
-                'sgac.created_at AS created_at',
-                'tr.narration AS narration',
-                'tr.charge_amount AS charge',
-                'tr.amount AS amount',
-                'tr.transaction_date AS transaction_date',
-            ])
-            ->where('sgac.savings_group_id', $groupId)
-            ->when($staus != null, function ($query) use ($staus) {
-                $query->whereIn('tr.type', $staus);
-            })
-            ->orderBy('sgac.id')
-            ->whereNull('tr.deleted_at')
-            ->orderBy('tr.id', 'DESC')
-            ->when($req->has('search_keyword'), function ($query) use ($req) {
-                $query = $this->dynamic_search_db_query($query, $req['search_keyword'], [
-                    'mb.name',
-                    'mb.code',
-                    'mb.phone',
-                    'sp.name',
-                    'tr.reference',
-                ]);
-            })
-            ->paginate($this->perpage());
-        $data = $query->items();
+        $data = $this->groupTransactionsReportItems();
 
-        return view('saving-account.print-group-saving-account-transactions', array_merge(['data' => $data, 'paperSize' => $req['scale']], $this->brandingViewData()))->render();
-
-        // });
+        return view('saving-account.print-group-saving-account-transactions', array_merge(['data' => $data, 'paperSize' => request('scale')], $this->brandingViewData()))->render();
     }
 
     public function memberAccountDetails()
@@ -253,7 +249,7 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
                     'ac.interest_rate As intrest',
                     'ac.account_opening_balance As opblc',
                     'ac.consider_min_balance As minBalance',
-                    DB::raw("CONCAT(IFNULL(salutation,''), ' ', mb.name) As member_name"),
+                    $this->memberNameExpr(),
                 ])->whereRaw('ac.id=?', $req['id'])->first();
             $collection = [];
             if ($query) {
@@ -322,7 +318,7 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
                 ->join('branches as br', 'br.id', '=', 'mb.branch_id')
                 ->select([
                     'mb.code AS member_code',
-                    DB::raw("CONCAT(IFNULL(salutation,''), ' ', mb.name) As member_name"),
+                    $this->memberNameExpr(),
                     // DB::raw('null As Status'), // active/domant
                     DB::raw("'" . $group_code . "' AS group_code"),
                     DB::raw("'member' As role"), // active/domant
@@ -345,7 +341,7 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
                 ->select([
                     'mb.code AS code',
                     'br.code AS branch_code',
-                    DB::raw("CONCAT(IFNULL(salutation,''), ' ', mb.name) As member_name"),
+                    $this->memberNameExpr(),
                     DB::raw('0 As new_account'), // 1/0
                     DB::raw('null As Status'), // active/domant
                     DB::raw('1 As consider_min_balance'), // // 1/0
@@ -375,7 +371,7 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
                     'br.code AS branch_code',
                     'mb.code AS code',
                     DB::raw('sa.code As account_code'),
-                    DB::raw("CONCAT(IFNULL(salutation,''), ' ', mb.name) As member_name"),
+                    $this->memberNameExpr(),
                     // DB::raw("null As product_code"), //product_id
                     DB::raw('0 As amount'), // 1000
                     DB::raw('0 As charge'),
@@ -400,7 +396,7 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
         return $this->TryCatch(function () {
             // Debunking method let try it
             $req = request();
-            $staus = isset($req['status']) && $req['status'] != 'all' ? [$req['status']] : null;
+            $staus = $this->statusFilter();
             $query = DB::table('savings_account_transfers as sacct')
                 ->whereRaw('sacct.branch_id=?', $req->branch_id)
                 ->whereNull('sacct.deleted_at')->orderBy('id', 'DESC')
@@ -489,7 +485,7 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
 
                     'mb.id AS member_id',
                     'mb.code AS member_code',
-                    DB::raw("CONCAT(IFNULL(mb.salutation,''), ' ', mb.name) As member_name"),
+                    $this->memberNameExpr(),
                 ])->first();
             $query->branch_details = $this->isJSONToArray($query->branch_details);
 
@@ -510,11 +506,11 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
                     'acTo.balance AS account_balance',
                     'sp.name AS transfer_to_product',
                     'sp2.name AS transfer_from_product',
-                    DB::raw("CONCAT(IFNULL(mb2.salutation,''), ' ', mb2.name) As from_member_name"),
-                    DB::raw("CONCAT(IFNULL(mb.salutation,''), ' ', mb.name) As to_member_name"),
+                    $this->memberNameExpr('mb2', 'from_member_name'),
+                    $this->memberNameExpr('mb', 'to_member_name'),
                     'acFrom.code AS from_account_code',
                     'acTo.code AS to_account_code',
-                    // DB::raw("CONCAT(IFNULL(mb.salutation,''), ' ', mb.name) As to_member_name"),
+                    // $this->memberNameExpr('mb', 'to_member_name'),
                 ])
                 ->chunk($chunkSize, function ($transfers) use (&$transfetList) {
                     foreach ($transfers as $transfer) {
@@ -568,14 +564,14 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
     {
         return $this->TryCatch(function () {
             $req = request();
-            $staus = isset($req['status']) && $req['status'] != 'all' ? [$req['status']] : null;
+            $staus = $this->statusFilter();
             $query = DB::table('savings_accounts as ac')
                 ->Join('members AS mb', 'ac.member_id', '=', 'mb.id')
                 ->Join('savings_products AS sp', 'sp.id', '=', 'ac.savings_product_id')
                 ->select([
                     ...$this->savingsAccountDbFields,
                     'sp.name As product',
-                    DB::raw("CONCAT(IFNULL(salutation,''), ' ', mb.name) As member_name"),
+                    $this->memberNameExpr(),
                 ]);
             if ($staus) {
                 $query->whereIn('ac.status', $staus);
@@ -599,7 +595,7 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
     {
         return $this->TryCatch(function () {
             $req = request();
-            $staus = isset($req['status']) && $req['status'] != 'all' ? [$req['status']] : null;
+            $staus = $this->statusFilter();
             $query = DB::table('savings_accounts as ac')
                 ->Join('members AS mb', 'ac.member_id', '=', 'mb.id')
                 ->Join('savings_products AS sp', 'sp.id', '=', 'ac.savings_product_id')
@@ -607,13 +603,8 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
                     ...$this->savingsAccountDbFields,
                     'sp.name As product',
                     "ac.payment_mod_account_id as payment_mod",
-                    DB::raw("CONCAT(IFNULL(salutation,''), ' ', mb.name) As member_name"),
-                    DB::raw("CASE
-                        WHEN mb.profile_path IS NOT NULL AND mb.profile_path != '' AND mb.profile_path LIKE '/storage/%' THEN mb.profile_path
-                        WHEN mb.profile_path IS NOT NULL AND mb.profile_path != '' AND mb.profile_path LIKE 'storage/%' THEN CONCAT('/', mb.profile_path)
-                        WHEN mb.profile_path IS NOT NULL AND mb.profile_path != '' THEN CONCAT('/storage/', mb.profile_path)
-                        ELSE NULL
-                    END AS member_image"),
+                    $this->memberNameExpr(),
+                    $this->memberImageExpr(),
                 ]);
             if ($staus) {
                 $query->whereIn('ac.status', $staus);
@@ -673,7 +664,7 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
 
         return $this->TryCatch(function () use ($req) {
             $brach = $req->branch_id;
-            $staus = isset($req['status']) && $req['status'] != 'all' ? [$req['status']] : null;
+            $staus = $this->statusFilter();
             $query = DB::table('savings_groups as gac')
                 ->Join('staff AS sf', 'sf.id', '=', 'gac.created_by')
                 ->LeftJoin('savings_group_members AS sgm', 'sgm.savings_group_id', '=', 'gac.id')
@@ -729,7 +720,7 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
                     'mb.phone as phone',
                     'mb.code as member_code',
                     'sgm.code as member_group_code',
-                    DB::raw("CONCAT(IFNULL(salutation,''), ' ', mb.name) as member_name"),
+                    $this->memberNameExpr(),
                     'sgm.created_at AS created_at',
                 ])
                 ->whereRaw('sgm.savings_group_id=?', [$groupId])
@@ -774,7 +765,7 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
 
             $req = request();
             $groupId = (int) ($req['group_id']) ?? null;  // dont do what you  thinking  we save=ing Ram
-            $status = isset($req['status']) && $req['status'] !== 'all' ? [$req['status']] : null;
+            $status = $this->statusFilter();
 
             return DB::table('loan_applications as la')
                 ->when($groupId, function ($query) use ($groupId) {
@@ -814,7 +805,7 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
                     'la.id as application_id',
                     'ln.loan_no as code',
                     'ln.balance as blc',
-                    DB::raw("CONCAT(IFNULL(mb.salutation,''), ' ', mb.name) as member_name"),
+                    $this->memberNameExpr(),
                     'mb.id as member_id',
                     'mb.code as member_code',
                     'mb.phone as member_phone',
@@ -876,7 +867,7 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
                     'mb.status as member_status',
                     'sgm.code as member_group_code',
                     'sgm.balance as total_amount_deposited',
-                    DB::raw("CONCAT(IFNULL(salutation,''), ' ', mb.name) as member_name"),
+                    $this->memberNameExpr(),
                     'sgm.created_at AS created_at',
                     DB::raw('COALESCE(ls.total_loan_balance, 0) as total_loan_balance'),
                     'ls.loan_id',
