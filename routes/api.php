@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Globals\GlobalHelpers;
+use App\Tenant\Http\Controllers\Api\V1\PublicBrandingController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
@@ -36,6 +37,9 @@ Route::prefix('v1/auth')->middleware(['auth:sanctum'])->group(function () {
 // ── Authenticated: Tenant-scoped ───────────────────────────────
 Route::prefix('v1/tenant')->middleware(['tenant.api'])->group(function () {
     Route::post('auth/login', [AuthController::class, 'login']);
+
+    // Public branding for the tenant login page (no auth required).
+    Route::get('public-branding', [PublicBrandingController::class, 'show']);
 
     Route::get('debug-auth', function (Request $request) {
         return response()->json([
