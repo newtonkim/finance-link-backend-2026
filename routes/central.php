@@ -1,5 +1,6 @@
 <?php
 
+use App\Central\Http\Controllers\CentralProfileController;
 use App\Central\Http\Controllers\DashboardController;
 use App\Central\Http\Controllers\LicenseController;
 use App\Central\Http\Controllers\SettingsController;
@@ -14,6 +15,11 @@ Route::middleware(['api', 'central.domain', 'central.auth'])
     ->group(function () {
         Route::get('/me', [AuthController::class, 'user'])->name('me');
         Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+        // Self-service profile (no staff-management permission required).
+        Route::get('/profile', [CentralProfileController::class, 'show'])->name('profile.show');
+        Route::post('/profile/update', [CentralProfileController::class, 'update'])->name('profile.update');
+        Route::post('/profile/delete', [CentralProfileController::class, 'destroy'])->name('profile.delete');
 
         Route::get('/dashboard/summary', [DashboardController::class, 'summary'])
             ->middleware('permission:dashboard-module-link-view')
