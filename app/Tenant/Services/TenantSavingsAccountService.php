@@ -83,33 +83,33 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
             $staus = $this->statusFilter();
 
             return DB::table('group_savings_accounts as sgac')
-                    ->join('savings_products AS sp', 'sp.id', '=', 'sgac.savings_product_id')
-                    ->join('transactions AS tr', 'tr.group_savings_account_id', '=', 'sgac.id')
-                    ->join('members AS mb', 'mb.id', '=', 'tr.member_id')
-                    ->select([
-                        'sgac.id AS id',
-                        'tr.reference AS code',
-                        'mb.id AS member_id',
-                        'mb.code AS member_code',
-                        'mb.phone AS member_phone',
-                        $this->memberNameExpr(),
-                        'sp.name AS product',
-                        'sgac.balance AS blc',
-                        'sgac.status AS status',
-                        'sgac.created_at AS created_at',
-                        'tr.id AS tr_id',
-                        'tr.narration AS narration',
-                        'tr.charge_amount AS charge',
-                        'tr.amount AS amount',
-                        'tr.transaction_date AS transaction_date',
-                    ])
-                    ->where('sgac.savings_group_id', $groupId)
-                    ->when($staus != null, function ($query) use ($staus) {
-                        $query->whereIn('tr.type', $staus);
-                    })
-                    ->orderBy('tr.id', 'DESC')
+                ->join('savings_products AS sp', 'sp.id', '=', 'sgac.savings_product_id')
+                ->join('transactions AS tr', 'tr.group_savings_account_id', '=', 'sgac.id')
+                ->join('members AS mb', 'mb.id', '=', 'tr.member_id')
+                ->select([
+                    'sgac.id AS id',
+                    'tr.reference AS code',
+                    'mb.id AS member_id',
+                    'mb.code AS member_code',
+                    'mb.phone AS member_phone',
+                    $this->memberNameExpr(),
+                    'sp.name AS product',
+                    'sgac.balance AS blc',
+                    'sgac.status AS status',
+                    'sgac.created_at AS created_at',
+                    'tr.id AS tr_id',
+                    'tr.narration AS narration',
+                    'tr.charge_amount AS charge',
+                    'tr.amount AS amount',
+                    'tr.transaction_date AS transaction_date',
+                ])
+                ->where('sgac.savings_group_id', $groupId)
+                ->when($staus != null, function ($query) use ($staus) {
+                    $query->whereIn('tr.type', $staus);
+                })
+                ->orderBy('tr.id', 'DESC')
                     // ->orderBy('sgac.id', 'DESC')
-                    ->whereNull('tr.deleted_at')->orderBy('tr.id', 'DESC')->paginate($this->perpage());
+                ->whereNull('tr.deleted_at')->orderBy('tr.id', 'DESC')->paginate($this->perpage());
         });
     }
 
@@ -166,7 +166,7 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
         $req = request();
         $data = $this->groupTransactionsReportItems();
 
-        $fileName = 'group-saving-transactions-' . now()->format('Y-m-d_H-i-s') . '.pdf';
+        $fileName = 'group-saving-transactions-'.now()->format('Y-m-d_H-i-s').'.pdf';
         if ($req['value'] == 'PDF') {
             $pdf = Pdf::loadView('saving-account.print-group-saving-account-transactions', array_merge(['data' => $data, 'paperSize' => $req['scale']], $this->brandingViewData()));
 
@@ -175,7 +175,7 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
 
         return Excel::download(
             new GroupSavingsExport($data),
-            $fileName . '.xlsx'
+            $fileName.'.xlsx'
         );
     }
 
@@ -209,7 +209,7 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
                     }
                 });
 
-            $fileName = 'group-memebers-' . now()->format('Y-m-d_H-i-s') . '.pdf';
+            $fileName = 'group-memebers-'.now()->format('Y-m-d_H-i-s').'.pdf';
             if ($req['value'] == 'PDF') {
                 $pdf = Pdf::loadView('saving-account.print-group-saving-account-members', array_merge(['data' => $getMembers, 'group_name' => $groupName->group_name, 'group_code' => $groupName->group_code, 'paperSize' => $req['scale']]));
 
@@ -219,7 +219,7 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
             //  php artisan make:export GroupSavingsExport
             return Excel::download(
                 new GroupMemberSavingsExport($getMembers),
-                $fileName . '.xlsx'
+                $fileName.'.xlsx'
             );
         });
 
@@ -250,6 +250,7 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
                     'ac.account_opening_balance As opblc',
                     'ac.consider_min_balance As minBalance',
                     $this->memberNameExpr(),
+                    $this->memberImageExpr(),
                 ])->whereRaw('ac.id=?', $req['id'])->first();
             $collection = [];
             if ($query) {
@@ -258,9 +259,9 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
                     ->where('account_id', $query->id)
                     ->orderBy('id', 'desc')
                     ->select([
-                 
+
                         //  DB::raw('(SELECT SUM(amount+charge_amount) FROM transactions WHERE umbrella_code = transactions.umbrella_code AND type = "deposit" AND id =transactions.id) AS amount'),
-                        
+
                         'charge_amount as charge',
                         DB::raw('deposited_amount_before_charge total'),
                         'transactions.is_reversed as reversed',
@@ -296,19 +297,20 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
     {
         return $this->TryCatch(function () {
             return [
-                "group_type" => "group type",
-                "group_code" => "group code",
-                "savings_product" => "product code",
-                "opening_balance" => "opening balance",
-                "initial_deposit" => "initial deposit",
-                "group_name" => "group name",
-                "primary_contact_phone" => "group number",
-                "date_created" => "created time",
-                "group_location" => "group location",
-                "group_description" => "group desction",
+                'group_type' => 'group type',
+                'group_code' => 'group code',
+                'savings_product' => 'product code',
+                'opening_balance' => 'opening balance',
+                'initial_deposit' => 'initial deposit',
+                'group_name' => 'group name',
+                'primary_contact_phone' => 'group number',
+                'date_created' => 'created time',
+                'group_location' => 'group location',
+                'group_description' => 'group desction',
             ];
         });
     }
+
     public function groupMemberDownloadTemplate()
     {
         return $this->TryCatch(function () {
@@ -320,7 +322,7 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
                     'mb.code AS member_code',
                     $this->memberNameExpr(),
                     // DB::raw('null As Status'), // active/domant
-                    DB::raw("'" . $group_code . "' AS group_code"),
+                    DB::raw("'".$group_code."' AS group_code"),
                     DB::raw("'member' As role"), // active/domant
                 ]);
 
@@ -332,6 +334,7 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
                 ->whereNull('mb.deleted_at')->orderBy('mb.id', 'DESC')->paginate($this->perpage());
         });
     }
+
     public function downloadMemberAccountImportTemplate()
     {
         return $this->TryCatch(function () {
@@ -376,7 +379,7 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
                     DB::raw('0 As amount'), // 1000
                     DB::raw('0 As charge'),
                     DB::raw("CONCAT('CASH') As method"),
-                    DB::raw("CONCAT('" . ($req['type'] ?? 'deposit') . "') as type"),
+                    DB::raw("CONCAT('".($req['type'] ?? 'deposit')."') as type"),
                     DB::raw('null As date'),
                     DB::raw('null As narration'),
                     DB::raw('0 As charge_by_system'),
@@ -462,16 +465,14 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
                 ->Join('staff AS staff', 'staff.id', '=', 'sacct.created_by')
                 ->select([
                     ...$this->transferDbFields,
-                    "sacct.description as narration",
-                    "staff.name as created_by",
-                    "sacct.transaction_date as transaction_date",
-                    DB::raw("CONCAT('" . htmlspecialchars(config('app.url')) . "','/', mb.profile_path) AS to_member_image"),
-                    DB::raw("CONCAT('" . htmlspecialchars(config('app.url')) . "','/', from.profile_path) AS from_member_image"),
+                    'sacct.description as narration',
+                    'staff.name as created_by',
+                    'sacct.transaction_date as transaction_date',
+                    DB::raw("CONCAT('".htmlspecialchars(config('app.url'))."','/', mb.profile_path) AS to_member_image"),
+                    DB::raw("CONCAT('".htmlspecialchars(config('app.url'))."','/', from.profile_path) AS from_member_image"),
                     'sp.code AS to_product_code',
                     'sp2.code AS from_product_code',
                     DB::raw("JSON_OBJECT('branch',brch.name,'code',brch.code,'address',brch.address,'phone',brch.phone) AS branch_details "),
-
-
 
                     DB::raw('(SELECT SUM(amount) 
                   FROM savings_account_transfers 
@@ -602,7 +603,7 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
                 ->select([
                     ...$this->savingsAccountDbFields,
                     'sp.name As product',
-                    "ac.payment_mod_account_id as payment_mod",
+                    'ac.payment_mod_account_id as payment_mod',
                     $this->memberNameExpr(),
                     $this->memberImageExpr(),
                 ]);
@@ -618,11 +619,11 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
                         'sp.name',
                         'mb.name As member_name',
                         'mb.code',
-                        'mb.phone'
+                        'mb.phone',
                     ],
                     filterable: [
-                        "member_name" => 'mb.name',
-                        "product" => 'sp.name'
+                        'member_name' => 'mb.name',
+                        'product' => 'sp.name',
 
                     ]
                 );
@@ -743,19 +744,28 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
         $req = request();
 
         return $this->TryCatch(function () use ($req) {
-            $groupId = $req['id'];
-            $query = DB::table('savings_accounts as acc')
-                ->select([
-                    'id',
-                    'consider_min_balance',
-                    'initial_deposit',
-                    'account_opening_balance as opening_balance',
-                    'savings_product_id',
-                    'account_type',
-                    'member_id',
-                ])->whereRaw('acc.id=?', [$groupId])->first();
+            $accountId = $req['id'];
 
-            return $query;
+            return DB::table('savings_accounts as acc')
+                ->join('members as mb', 'acc.member_id', '=', 'mb.id')
+                ->leftJoin('savings_products as sp', 'sp.id', '=', 'acc.savings_product_id')
+                ->select([
+                    'acc.id',
+                    'acc.consider_min_balance',
+                    'acc.initial_deposit',
+                    'acc.account_opening_balance as opening_balance',
+                    'acc.savings_product_id',
+                    'acc.account_type',
+                    'acc.member_id',
+                    'acc.code as account_code',
+                    'acc.balance as blc',
+                    'acc.status',
+                    'sp.name as product',
+                    $this->memberNameExpr('mb', 'member_name'),
+                    $this->memberImageExpr('mb', 'member_image'),
+                ])
+                ->whereRaw('acc.id=?', [$accountId])
+                ->first();
         });
     }
 
@@ -829,7 +839,7 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
                 ->select([
                     ...$this->grSavingsAccountDbFields,
                     'gac.description as desc',
-                    DB::raw("CONCAT('" . htmlspecialchars(config('app.url')) . "','/', gac.image_path) AS group_image"),
+                    DB::raw("CONCAT('".htmlspecialchars(config('app.url'))."','/', gac.image_path) AS group_image"),
 
                     // 'gac.total_balance as blc',
                     DB::raw('(SELECT SUM(sgac.balance) FROM group_savings_accounts AS sgac 
@@ -1041,7 +1051,7 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
                     'webp' => 'image/webp',
                     default => 'image/jpeg',
                 };
-                $logoDataUri = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($logoAbsPath));
+                $logoDataUri = 'data:'.$mime.';base64,'.base64_encode(file_get_contents($logoAbsPath));
             }
         }
 
