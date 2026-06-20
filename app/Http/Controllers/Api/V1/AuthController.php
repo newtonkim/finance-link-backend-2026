@@ -52,8 +52,10 @@ class AuthController extends Authservice
                 'user' => $user,
                 'permissions' => $this->collectPermission($user->id, $user instanceof Staff && $user->is_tenant_admin),
                 'branch_context' => $request->type === 'tenant' ? BranchContext::authContextFor($user) : null,
-                'Setting' => $this->collectAllSystemSetting(),
-                'branding' => $this->collectSystemBranding(),
+                // system_settings & sacco_branding are tenant-only tables; they don't exist
+                // in the central DB, so only collect them when a tenant DB is in context.
+                'Setting' => $request->type === 'tenant' ? $this->collectAllSystemSetting() : (object) [],
+                'branding' => $request->type === 'tenant' ? $this->collectSystemBranding() : null,
             ],
         ];
         // Ensure super users are redirected to central dashboard
