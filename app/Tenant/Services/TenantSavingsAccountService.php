@@ -608,6 +608,12 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
                     'sp.name As product',
                     "ac.payment_mod_account_id as payment_mod",
                     DB::raw("CONCAT(IFNULL(salutation,''), ' ', mb.name) As member_name"),
+                    DB::raw("CASE
+                        WHEN mb.profile_path IS NOT NULL AND mb.profile_path != '' AND mb.profile_path LIKE '/storage/%' THEN mb.profile_path
+                        WHEN mb.profile_path IS NOT NULL AND mb.profile_path != '' AND mb.profile_path LIKE 'storage/%' THEN CONCAT('/', mb.profile_path)
+                        WHEN mb.profile_path IS NOT NULL AND mb.profile_path != '' THEN CONCAT('/storage/', mb.profile_path)
+                        ELSE NULL
+                    END AS member_image"),
                 ]);
             if ($staus) {
                 $query->whereIn('ac.status', $staus);
