@@ -54,7 +54,7 @@ class CentralProfileController extends GlobalHelpers
             'staff_email' => ['nullable', 'email', Rule::unique('master.platform_users', 'email')->ignore($id)],
             'password' => 'nullable|string|min:8',
             'system_role' => 'nullable|string|max:255',
-            'avatar' => 'nullable|image|max:2048',
+            'avatar' => 'nullable|image|max:5120',
         ]);
 
         return $this->TryCatch(function () use ($request, $id) {
