@@ -48,20 +48,22 @@ class SavingsAccountController extends TenantSavingsAccountService
     {
         return $this->Response(['data' => self::groupAccountDownloadTemplate()]);
     }
+
     public function group_member_download_template()
     {
         return $this->Response(['data' => self::groupMemberDownloadTemplate()]);
     }
 
-
     public function import_groups()
     {
         return $this->Response(['data' => self::importGroups()]);
     }
+
     public function import_group_account_member()
     {
         return $this->Response(['data' => self::importGroupAccountMembers()]);
     }
+
     public function download_members_account_import_template()
     {
         return $this->Response(['data' => self::downloadMemberAccountImportTemplate()]);
@@ -184,7 +186,6 @@ class SavingsAccountController extends TenantSavingsAccountService
         return $this->Response(['data' => self::groupAccountProfileCompleteness()]);
     }
 
-    
     public function groups_drop_down_list()
     {
         return $this->Response(['data' => self::groupsDropDownList()]);
@@ -429,6 +430,8 @@ class SavingsAccountController extends TenantSavingsAccountService
                 'member_id' => $savingsAccount->member_id,
                 'type' => 'deposit',
                 'amount' => $validated['amount'],
+                // Gross marker: receipt and ledger derive net = gross − charge from this.
+                'deposited_amount_before_charge' => $validated['amount'],
                 'payment_mode' => $validated['payment_mode'] ?? null,
                 'deposited_by' => $validated['deposited_by'] ?? null,
                 'transaction_date' => $validated['deposit_date'],

@@ -10,6 +10,7 @@ use App\Tenant\Http\Resources\MemberResource;
 use App\Tenant\Http\Resources\SavingsAccountResource;
 use App\Tenant\Http\Resources\SavingsProductResource;
 use App\Tenant\Modules\Accounting\Services\SavingsJournalService;
+use App\Tenant\Modules\Charges\Contracts\ChargeCalculatorServiceInterface;
 use App\Tenant\Modules\Members\Models\MemberCharge;
 use App\Tenant\Modules\Members\Services\MemberChargeService;
 use App\Tenant\Modules\Savings\Models\GeneralCharge;
@@ -17,9 +18,9 @@ use App\Tenant\Modules\Savings\Models\SavingsAccount;
 use App\Tenant\Modules\Savings\Models\SavingsProduct;
 use App\Tenant\Modules\Savings\Services\SavingsAccountService;
 use App\Tenant\Modules\Settings\Models\OnboardingSettings;
-use App\Tenant\Modules\Charges\Contracts\ChargeCalculatorServiceInterface;
 use App\Tenant\Modules\Shares\Contracts\ShareAccountingServiceInterface;
 use App\Tenant\Modules\Shares\Models\Share;
+use App\Tenant\Modules\Transactions\Models\Transaction;
 use App\Tenant\Services\MemberService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -40,25 +41,27 @@ class MemberController extends MemberService
         protected ChargeCalculatorServiceInterface $chargeCalculator,
     ) {}
 
-  
     public function member_saving_accounts_drop_down_list()
     {
         return $this->Response([
             'data' => self::MemberSavingAccountsDropDownList(),
         ]);
     }
+
     public function download_members_opening_balance_import_template()
     {
         return $this->Response([
             'data' => self::downloadMemberImportTemplate(),
         ]);
     }
+
     public function general_product_charges_drop_down_list()
     {
         return $this->Response([
             'data' => self::GeneralProductChargesDropDownList(),
         ]);
     }
+
     public function unarchive_members_action()
     {
         return $this->Response([
@@ -321,7 +324,7 @@ class MemberController extends MemberService
             return response()->json([
                 'success' => 422,
                 'message' => "Initial deposit must be at least UGX {$registrationTotal} to cover registration charges.",
-                'errors'  => ['initial_deposit' => ["Initial deposit must be at least UGX {$registrationTotal} to cover registration charges."]],
+                'errors' => ['initial_deposit' => ["Initial deposit must be at least UGX {$registrationTotal} to cover registration charges."]],
             ], 422);
         }
 
@@ -434,15 +437,32 @@ class MemberController extends MemberService
     {
         $member->load([
             'savingsAccounts.savingsProduct',
-            // 'transactions' => function ($query) use($member) {
-            //    return  DB::table('transactions')->where('member_id', $member->id)->orderBy('created_at', 'desc');
-            // },
-            'transactions' => function ($query) {
-                $query->with('account')->orderBy('created_at', 'desc');
-            },
             'referredBy:id,name',
             'registeredBy:id,name',
         ]);
+
+        // Legacy account-creation/deposit paths write transactions linked only by
+        // account_id (member_id left null), so the member_id hasMany relation misses
+        // them and the profile ledger shows nothing. Load by member_id OR the
+        // member's own savings account ids (excluding loan transactions) so every
+        // savings movement appears regardless of which column was populated.
+        $savingsAccountIds = $member->savingsAccounts->pluck('id')->all();
+        $transactions = Transaction::with('account')
+            ->where(function ($query) use ($member, $savingsAccountIds) {
+                $query->where('member_id', $member->id);
+                if (! empty($savingsAccountIds)) {
+                    $query->orWhere(function ($scoped) use ($savingsAccountIds) {
+                        $scoped->whereIn('account_id', $savingsAccountIds)
+                            ->where(function ($type) {
+                                $type->whereNull('account_type')
+                                    ->orWhereNotIn('account_type', ['loan', 'loan_transaction']);
+                            });
+                    });
+                }
+            })
+            ->orderBy('created_at', 'desc')
+            ->get();
+        $member->setRelation('transactions', $transactions);
 
         $savingsProducts = SavingsProduct::where('status', 'active')
             ->with('charges')

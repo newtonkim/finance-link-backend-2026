@@ -2,10 +2,14 @@
 
 namespace Tests;
 
+use App\Central\Models\License;
+use App\Central\Models\Plan;
+use App\Domain\Tenancy\Entities\Tenant;
+use App\Http\Middleware\SetTenantDatabase;
 use App\Tenant\Http\Middleware\EnsureTenantDomain;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 
 /**
  * Base class for tenant isolation tests.
@@ -17,22 +21,28 @@ abstract class TenantTestCase extends BaseTestCase
     protected static bool $tenantMigrationsBootstrapped = false;
 
     private mixed $savedErrorHandler = null;
+
     private mixed $savedExceptionHandler = null;
 
     protected function setUp(): void
     {
         // Capture Pest/PHPUnit's handlers before Laravel boots and overrides them
-        $this->savedErrorHandler = set_error_handler(function () { return false; });
+        $this->savedErrorHandler = set_error_handler(function () {
+            return false;
+        });
         restore_error_handler();
 
-        $this->savedExceptionHandler = set_exception_handler(function () { return false; });
+        $this->savedExceptionHandler = set_exception_handler(function () {
+            return false;
+        });
         restore_exception_handler();
 
         parent::setUp();
 
         // TenantTestCase wires the DB connection directly; skip the HTTP
-        // middleware that checks for X-Tenant-Subdomain header.
+        // middleware that checks/switches tenant databases for real requests.
         $this->withoutMiddleware(EnsureTenantDomain::class);
+        $this->withoutMiddleware(SetTenantDatabase::class);
 
         self::$tenantMigrationsBootstrapped = true;
 
@@ -58,15 +68,58 @@ abstract class TenantTestCase extends BaseTestCase
 
         // Seed branches — rolled back after each test.
         DB::connection('mysql')->table('branches')->insertOrIgnore([
-            ['id' => 1, 'name' => 'Head Office', 'code' => 'HQ', 'is_active' => 1, 'system_type' => 'system', 'created_at' => \Illuminate\Support\Carbon::now(), 'updated_at' => \Illuminate\Support\Carbon::now()],
-            ['id' => 2, 'name' => 'Branch Two', 'code' => 'B2', 'is_active' => 1, 'system_type' => 'user_created', 'created_at' => \Illuminate\Support\Carbon::now(), 'updated_at' => \Illuminate\Support\Carbon::now()],
-            ['id' => 3, 'name' => 'Branch Three', 'code' => 'B3', 'is_active' => 1, 'system_type' => 'user_created', 'created_at' => \Illuminate\Support\Carbon::now(), 'updated_at' => \Illuminate\Support\Carbon::now()],
+            ['id' => 1, 'name' => 'Head Office', 'code' => 'HQ', 'is_active' => 1, 'system_type' => 'system', 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
+            ['id' => 2, 'name' => 'Branch Two', 'code' => 'B2', 'is_active' => 1, 'system_type' => 'user_created', 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
+            ['id' => 3, 'name' => 'Branch Three', 'code' => 'B3', 'is_active' => 1, 'system_type' => 'user_created', 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
         ]);
 
         // Seed a system staff actor (id=1) so journal entries can reference posted_by=1.
         DB::connection('mysql')->table('staff')->insertOrIgnore([
-            ['id' => 1, 'name' => 'System', 'email' => 'system@test.local', 'password' => 'x', 'branch_id' => 1, 'created_at' => \Illuminate\Support\Carbon::now(), 'updated_at' => \Illuminate\Support\Carbon::now()],
+            ['id' => 1, 'name' => 'System', 'email' => 'system@test.local', 'password' => 'x', 'branch_id' => 1, 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
         ]);
+
+        DB::connection('mysql')->table('tenants')->updateOrInsert(
+            ['id' => 'test'],
+            [
+                'name' => 'Test Tenant',
+                'subdomain' => 'test',
+                'database_name' => config('database.connections.mysql.database'),
+                'status' => 'active',
+                'created_at' => Carbon::now(),
+                'updated_at' => Carbon::now(),
+            ]
+        );
+
+        License::query()->where('tenant_id', 'test')->delete();
+
+        $plan = Plan::create([
+            'name' => 'Tenant Test Plan '.uniqid(),
+            'slug' => 'tenant-test-plan-'.uniqid(),
+            'price' => 0,
+            'billing_cycle' => 'monthly',
+            'features' => [
+                'loans' => true,
+                'reports' => true,
+                'savings' => true,
+                'shares' => true,
+                'expenses' => true,
+                'accounting' => true,
+            ],
+        ]);
+
+        License::create([
+            'tenant_id' => 'test',
+            'plan_id' => $plan->id,
+            'plan' => (string) $plan->id,
+            'starts_at' => Carbon::now()->subMonth()->toDateString(),
+            'expires_at' => Carbon::now()->addMonth()->toDateString(),
+            'status' => 'active',
+        ]);
+
+        // The HTTP host is localhost in tests, so IdentifyTenant can't resolve the
+        // tenant from the subdomain. Bind it explicitly so the license/feature
+        // middleware guarding tenant routes has its context in every tenant test.
+        app()->instance('currentTenant', Tenant::where('subdomain', 'test')->first());
     }
 
     protected function tearDown(): void
@@ -99,5 +152,4 @@ abstract class TenantTestCase extends BaseTestCase
             $this->savedExceptionHandler = null;
         }
     }
-
 }
