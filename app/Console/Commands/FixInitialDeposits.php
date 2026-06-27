@@ -56,15 +56,23 @@ class FixInitialDeposits extends Command
 
     private function backfillTenant(Tenant $tenant): void
     {
-        // Only touch accounts that have an opening deposit but no ledger activity at
-        // all — that is exactly the gate-suppressed case. Accounts with any existing
-        // transaction are left untouched to avoid double-posting.
+        // Backfill the opening deposit for any account that has an initial deposit
+        // but no opening-deposit transaction recorded — the gate-suppressed case.
+        // Keyed on the opening marker (not "zero transactions") so accounts that
+        // have since had other activity still get their missing opening entry, and
+        // re-runs never duplicate it.
         $accounts = SavingsAccount::where('initial_deposit', '>', 0)
             ->whereNotExists(function ($query) {
                 $query->select(DB::raw(1))
                     ->from('transactions')
                     ->whereColumn('transactions.account_id', 'savings_accounts.id')
-                    ->whereNull('transactions.deleted_at');
+                    ->whereNull('transactions.deleted_at')
+                    ->where('transactions.type', 'deposit')
+                    ->where(function ($marker) {
+                        $marker->where('transactions.deposited_by', 'System (Initial Deposit)')
+                            ->orWhere('transactions.narration', 'like', 'Initial deposit%')
+                            ->orWhere('transactions.reference', 'like', self::REF_PREFIX.'%');
+                    });
             })
             ->get();
 
@@ -72,12 +80,19 @@ class FixInitialDeposits extends Command
 
         foreach ($accounts as $account) {
             $gross = (float) $account->initial_deposit;
-            $charge = round($gross - (float) $account->balance, 2);
+            // Derive the opening charge from product config (cannot use the current
+            // balance once the account has had other movements).
+            $charge = $this->openingCharge($account->savings_product_id, $gross);
             $when = $account->created_at ?? now();
 
-            DB::connection('tenant')->transaction(function () use ($account, $gross, $charge, $when) {
+            // Shared receipt number so the deposit and its charge group together on
+            // the receipt and in the ledger (matches how live deposits are linked).
+            $receiptNumber = $this->reference();
+
+            DB::connection('tenant')->transaction(function () use ($account, $gross, $charge, $when, $receiptNumber) {
                 Transaction::create([
                     'reference' => $this->reference(),
+                    'receipt_number' => $receiptNumber,
                     'member_id' => $account->member_id,
                     'type' => 'deposit',
                     'amount' => $gross,
@@ -96,6 +111,8 @@ class FixInitialDeposits extends Command
                 if ($charge > 0) {
                     Transaction::create([
                         'reference' => $this->reference(),
+                        'receipt_number' => $receiptNumber,
+                        'grouped_with' => $receiptNumber,
                         'member_id' => $account->member_id,
                         'type' => 'charge',
                         'amount' => 0,
@@ -126,5 +143,27 @@ class FixInitialDeposits extends Command
     private function reference(): string
     {
         return self::REF_PREFIX.now()->format('YmdHis').'-'.mt_rand(100000, 999999);
+    }
+
+    /** Opening deposit charge for the product, mirroring ProductChargesservice. */
+    private function openingCharge(?int $productId, float $amount): float
+    {
+        if (! $productId) {
+            return 0.0;
+        }
+
+        $charge = DB::connection('tenant')->table('savings_product_charges')
+            ->where('savings_product_id', $productId)
+            ->where('type', 'deposit')
+            ->whereRaw('? BETWEEN minimum_amount AND maximum_amount', [$amount])
+            ->first(['amount', 'charge_type']);
+
+        if (! $charge) {
+            return 0.0;
+        }
+
+        return $charge->charge_type === 'percentage'
+            ? round($amount * (float) $charge->amount / 100, 2)
+            : (float) $charge->amount;
     }
 }
