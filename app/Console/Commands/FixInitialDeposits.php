@@ -90,7 +90,7 @@ class FixInitialDeposits extends Command
             $receiptNumber = $this->reference();
 
             DB::connection('tenant')->transaction(function () use ($account, $gross, $charge, $when, $receiptNumber) {
-                Transaction::create([
+                $deposit = Transaction::create([
                     'reference' => $this->reference(),
                     'receipt_number' => $receiptNumber,
                     'member_id' => $account->member_id,
@@ -104,12 +104,14 @@ class FixInitialDeposits extends Command
                     'account_id' => $account->id,
                     'account_type' => SavingsAccount::class,
                     'narration' => 'Initial deposit',
-                    'created_at' => $when,
-                    'updated_at' => $when,
                 ]);
+                // created_at is not mass-assignable, so Eloquent stamps it with the
+                // current time. Force it to the account creation time so the opening
+                // sorts before any later same-day deposit in the ledger.
+                $this->stampCreatedAt($deposit, $when);
 
                 if ($charge > 0) {
-                    Transaction::create([
+                    $chargeTxn = Transaction::create([
                         'reference' => $this->reference(),
                         'receipt_number' => $receiptNumber,
                         'grouped_with' => $receiptNumber,
@@ -122,9 +124,8 @@ class FixInitialDeposits extends Command
                         'account_id' => $account->id,
                         'account_type' => SavingsAccount::class,
                         'narration' => 'Initial deposit charge: '.number_format($charge, 2),
-                        'created_at' => $when,
-                        'updated_at' => $when,
                     ]);
+                    $this->stampCreatedAt($chargeTxn, $when);
                 }
             });
 
@@ -143,6 +144,15 @@ class FixInitialDeposits extends Command
     private function reference(): string
     {
         return self::REF_PREFIX.now()->format('YmdHis').'-'.mt_rand(100000, 999999);
+    }
+
+    /** Force created_at/updated_at (not mass-assignable) to the given time. */
+    private function stampCreatedAt(Transaction $transaction, $when): void
+    {
+        Transaction::where('id', $transaction->id)->update([
+            'created_at' => $when,
+            'updated_at' => $when,
+        ]);
     }
 
     /** Opening deposit charge for the product, mirroring ProductChargesservice. */
