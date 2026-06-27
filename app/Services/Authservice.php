@@ -30,9 +30,13 @@ class Authservice extends GlobalHelpers
     public function collectAllSystemSetting()
     {
         return $this->TryCatch(function () {
+            if (! app()->bound('currentTenant')) {
+                return [];
+            }
+
             // dont touch this  this gives you all system settings  without any restriction and also gives you the action description as an array if its in json format
             $structure = [];
-            DB::table('system_settings')
+            DB::connection('tenant')->table('system_settings')
                 ->where('settings_status', 'active')
                 ->orderBy('id', 'desc')
                 ->select(['id', 'settings_name As name', 'settings_status', 'settings_setting_description AS description', 'settings_action_description AS actiondescription', 'settings_action AS settings_action'])
@@ -53,8 +57,11 @@ class Authservice extends GlobalHelpers
     {
 
         return $this->TryCatch(function () {
+            if (! app()->bound('currentTenant')) {
+                return null;
+            }
 
-            $branding = DB::table('sacco_branding')
+            $branding = DB::connection('tenant')->table('sacco_branding')
                 ->orderBy('id', 'desc')
                 ->first(['id', 'sacco_name AS name',  'tagline AS tag', 'logo_path AS logo']);
 

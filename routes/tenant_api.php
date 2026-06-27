@@ -331,6 +331,7 @@ Route::get('sacco-branding', [SaccoBrandingController::class, 'show']);
 Route::post('sacco-branding', [SaccoBrandingController::class, 'update']);
 
 // Transactions — legacy direct-reverse (kept for backwards compat, bypasses approval)
+Route::get('transactions/{transaction}/receipt', [TransactionController::class, 'receipt']);
 Route::post('transactions/{transaction}/reverse', [TransactionController::class, 'reverse']);
 
 // Transaction Reversals (with approval workflow)

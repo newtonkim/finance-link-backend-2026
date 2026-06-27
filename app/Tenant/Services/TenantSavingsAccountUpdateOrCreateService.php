@@ -444,27 +444,32 @@ class TenantSavingsAccountUpdateOrCreateService extends CrudHelders
             request()->merge(['type' => 'withdraw', 'amount' => $amountNeeded, 'product_id' => $accountDetails->savings_product_id ?? null]);
             $chargeDetails = $charge->productCharges();
             $chargedAmount = $chargeDetails->cost;
-            $amount = $amountNeeded + $chargedAmount; // we add the charge to the amount to be withdrawn because the charge is paid by the member
-            $getBlc = $accountDetails->balance; // we get the balance before the transaction to be used in the transaction record and also to check if the balance is sufficient for the withdrawal including the charges
+            $amount = $amountNeeded; // Convention A: charge is deducted from the gross withdrawal, not added to the account debit.
+            $netPaid = $amountNeeded - $chargedAmount;
+            $getBlc = $accountDetails->balance; // balance before transaction, used to check the gross withdrawal debit.
             $computedBlc = $getBlc - $amount;
             $feedBack = null;
             $trasactionList = [];
             // return $amountNeeded;
             if ($computedBlc < 0) {
-                $possibleAmountToWithdraw = $getBlc - $chargedAmount; // we calculate the possible amount to withdraw by subtracting the charge from the current balance
+                $possibleAmountToWithdraw = $getBlc;
                 $feedBack = "FAILED:Insufficient balance. 
-        \n The total amount to withdraw including charges is
+        \n The account debit for this withdrawal is
         \n UGX {$amount}, but the current balance is UGX {$getBlc}.
-        \n You can withdraw up to UGX {$possibleAmountToWithdraw} after accounting for the charges.";
+        \n You can withdraw up to UGX {$possibleAmountToWithdraw}.";
             }
 
             if ($accountDetails->balance < $amount) {
                 $feedBack = "FAILED:Insufficient balance. 
-          \n The total amount to withdraw including charges is
+          \n The account debit for this withdrawal is
           \n UGX {$amount}, but the current balance is UGX {$accountDetails->balance},";
             }
+
+            if ($chargedAmount >= $amountNeeded) {
+                $feedBack = 'FAILED:Withdrawal charge must be less than the withdrawal amount.';
+            }
             
-            if ($computedBlc >= 0) {
+            if ($computedBlc >= 0 && ! str_contains((string) $feedBack, 'FAILED')) {
                 $this->UpdateOrCreateRecord(
                     'savings_accounts',
                     [
@@ -472,8 +477,8 @@ class TenantSavingsAccountUpdateOrCreateService extends CrudHelders
                     ],
                     ['id' => $id]
                 );
-                $feedBack = $req['narration'] ?? "You have successfully withdrawn UGX {$amountNeeded},";
-                $trasactionList['withdrawal'] = ['amount' => $amountNeeded,'payment_mode_id'=>$req['payment_mode_id']??null, 'transaction_type' => "withdrawal", 'narration' => $feedBack ?? null, 'type' => 'withdrawal'];
+                $feedBack = $req['narration'] ?? "You have successfully withdrawn UGX {$amountNeeded}; net paid UGX {$netPaid}, charge UGX {$chargedAmount}.";
+                $trasactionList['withdrawal'] = ['amount' => $amountNeeded, 'charge_amount' => $chargedAmount,'payment_mode_id'=>$req['payment_mode_id']??null, 'transaction_type' => "withdrawal", 'narration' => $feedBack ?? null, 'type' => 'withdrawal'];
                 $trasactionList['charge_amount'] = ['charge_amount' => $chargedAmount,'payment_mode_id'=>null,  'narration' => 'withdrawal charges for this account of ' . $amountNeeded, 'transaction_type' => 'withdrawal-charge', 'type' => 'withdrawal-charge'];
                 }
 

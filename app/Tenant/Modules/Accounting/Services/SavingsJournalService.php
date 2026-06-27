@@ -54,16 +54,66 @@ class SavingsJournalService
             $account->loadMissing('savingsProduct');
             $cash = $this->coa->resolvePaymentModeAccount($transaction->payment_mode ?? 'bank_transfer');
             $savings = $this->coa->resolveSavingsLiabilityAccount($account);
+            $chargeRows = collect();
+
+            if ($transaction->receipt_number) {
+                $chargeRows = Transaction::query()
+                    ->where('receipt_number', $transaction->receipt_number)
+                    ->where('account_id', $account->id)
+                    ->where('type', 'charge')
+                    ->where('amount', 0)
+                    ->where('id', '!=', $transaction->id)
+                    ->get();
+            }
+
+            $chargeTotal = (float) $chargeRows->sum(fn (Transaction $txn) => (float) ($txn->charge_amount ?? 0));
+            if ($chargeTotal <= 0) {
+                $chargeTotal = (float) ($transaction->charge_amount ?? 0);
+            }
+
+            $grossAmount = (float) $transaction->amount;
+            $chargeTotal = min($chargeTotal, $grossAmount);
+            $cashAmount = max($grossAmount - $chargeTotal, 0);
+            $lines = [
+                $this->line($savings, debit: $grossAmount, memberId: $transaction->member_id, savingsId: $account->id),
+                $this->line($cash, credit: $cashAmount),
+            ];
+
+            if ($chargeRows->isNotEmpty()) {
+                $remainingFee = $chargeTotal;
+                foreach ($chargeRows as $chargeTxn) {
+                    $lineAmount = min((float) ($chargeTxn->charge_amount ?? 0), $remainingFee);
+                    if ($lineAmount <= 0) {
+                        continue;
+                    }
+
+                    $fee = $chargeTxn->gl_credit_account_id
+                        ? (ChartOfAccount::on('tenant')
+                            ->where('id', $chargeTxn->gl_credit_account_id)
+                            ->where('is_active', true)
+                            ->first() ?? $this->coa->resolveByGlCode(GlCodes::FEE_ACCOUNT_MAINTENANCE))
+                        : $this->coa->resolveByGlCode(GlCodes::FEE_ACCOUNT_MAINTENANCE);
+
+                    $lines[] = $this->line($fee, credit: $lineAmount);
+                    $remainingFee -= $lineAmount;
+                }
+            } elseif ($chargeTotal > 0) {
+                $fee = $transaction->gl_credit_account_id
+                    ? (ChartOfAccount::on('tenant')
+                        ->where('id', $transaction->gl_credit_account_id)
+                        ->where('is_active', true)
+                        ->first() ?? $this->coa->resolveByGlCode(GlCodes::FEE_ACCOUNT_MAINTENANCE))
+                    : $this->coa->resolveByGlCode(GlCodes::FEE_ACCOUNT_MAINTENANCE);
+
+                $lines[] = $this->line($fee, credit: $chargeTotal);
+            }
 
             return $this->post(
                 journalType: 'SAVINGS_WITHDRAWAL',
                 transaction: $transaction,
                 account: $account,
                 narration: $transaction->narration ?? "Savings withdrawal – {$account->account_no}",
-                lines: [
-                    $this->line($savings, debit: $transaction->amount, memberId: $transaction->member_id, savingsId: $account->id),
-                    $this->line($cash, credit: $transaction->amount),
-                ]
+                lines: $lines
             );
         });
     }

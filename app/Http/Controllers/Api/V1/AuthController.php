@@ -42,6 +42,7 @@ class AuthController extends Authservice
 
         $tokenName = $request->type === 'central' ? 'central-token' : 'tenant-token';
         $token = $user->createToken($tokenName)->plainTextToken;
+        $isTenantLogin = $request->type === 'tenant';
 
         $response = [
             'success' => true,
@@ -51,9 +52,9 @@ class AuthController extends Authservice
                 'token_type' => 'Bearer',
                 'user' => $user,
                 'permissions' => $this->collectPermission($user->id, $user instanceof Staff && $user->is_tenant_admin),
-                'branch_context' => $request->type === 'tenant' ? BranchContext::authContextFor($user) : null,
-                'Setting' => $this->collectAllSystemSetting(),
-                'branding' => $this->collectSystemBranding(),
+                'branch_context' => $isTenantLogin ? BranchContext::authContextFor($user) : null,
+                'Setting' => $isTenantLogin ? $this->collectAllSystemSetting() : [],
+                'branding' => $isTenantLogin ? $this->collectSystemBranding() : null,
             ],
         ];
         // Ensure super users are redirected to central dashboard
