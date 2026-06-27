@@ -15,6 +15,7 @@ class MemberHelpers extends GlobalHelpers
             [
                 'umbrella_code' => $data['umbrella_code'],
                 'reference' => $data['reference'],
+                'receipt_number' => $data['receipt_number'] ?? $data['umbrella_code'] ?? $data['reference'] ?? null,
                 'code' => $data['code'] ?? null,
                 'member_id' => $data['member'],
                 'savings_account_transfers_id' => $data['savings_account_transfers_id'] ?? null,

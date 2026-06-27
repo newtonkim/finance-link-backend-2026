@@ -65,7 +65,7 @@ class MemberResource extends JsonResource
                     return [
                         'id' => $account->id,
                         'account_no' => $account->account_no,
-                        'payment_mod' => $account->payment_mod_account_id??null,
+                        'payment_mod' => $account->payment_mod_account_id ?? null,
                         'account_type' => $account->account_type,
                         'balance' => $account->balance,
                         'balance_formatted' => TenantMoney::format($account->balance),
@@ -78,7 +78,19 @@ class MemberResource extends JsonResource
                 });
             }),
             'transactions' => $this->whenLoaded('transactions', function () {
-                return $this->transactions->map(function ($txn) {
+                // transactions.account_type is overloaded with a transaction-type label
+                // (e.g. "deposit", "withdrawal"), so the morphTo account() relation cannot
+                // resolve and account_no comes back null. Resolve the real account directly
+                // by account_id instead.
+                // account_no is nullable and largely unpopulated; `code` is the
+                // NOT NULL unique identifier, so fall back to it for display.
+                $savingsAccounts = DB::connection('tenant')->table('savings_accounts')
+                    ->where('member_id', $this->id)
+                    ->whereNull('deleted_at')
+                    ->get(['id', 'account_no', 'code', 'account_type'])
+                    ->keyBy('id');
+
+                return $this->transactions->map(function ($txn) use ($savingsAccounts) {
                     return [
                         'id' => $txn->id,
                         'reference' => $txn->reference,
@@ -86,13 +98,13 @@ class MemberResource extends JsonResource
                         'amount_before_charge' => $txn->deposited_amount_before_charge,
                         'charge_amount' => $txn->charge_amount,
                         'group_savings_account_id' => $txn->group_savings_account_id,
-                        'running_balance' => $txn->group_savings_account_id>0? $txn->group_member_account_balance_before_transaction: $txn->amount_before_transactions,
+                        'running_balance' => $txn->group_savings_account_id > 0 ? $txn->group_member_account_balance_before_transaction : $txn->amount_before_transactions,
                         'amount' => $txn->amount,
                         'umbrella_code' => $txn->umbrella_code,
                         'amount_after_charge' => DB::table('transactions')->where('umbrella_code', $txn->umbrella_code)->select(
-                            
-                       $txn->type=='deposit' ? DB::raw('sum(amount) as amount'): DB::raw('sum(amount+charge_amount) as amount')
-                        
+
+                            $txn->type == 'deposit' ? DB::raw('sum(amount) as amount') : DB::raw('sum(amount+charge_amount) as amount')
+
                         )->first()->amount,
                         // ->sum('amount+charge_amount'),
                         'amount_formatted' => TenantMoney::format($txn->amount),
@@ -107,11 +119,22 @@ class MemberResource extends JsonResource
                         'charge_name' => $txn->charge_name,
                         'reversal_of' => $txn->reversal_of,
                         'grouped_with' => $txn->grouped_with,
-                        'account' => $txn->account ? [
-                            'id' => $txn->account->id,
-                            'account_no' => $txn->account->account_no,
-                            'account_type' => $txn->account->account_type,
-                        ] : null,
+                        'account' => (function () use ($txn, $savingsAccounts) {
+                            $acct = $txn->account_id ? ($savingsAccounts[$txn->account_id] ?? null) : null;
+                            if ($acct) {
+                                return [
+                                    'id' => (int) $txn->account_id,
+                                    'account_no' => $acct->account_no ?: $acct->code,
+                                    'account_type' => $acct->account_type,
+                                ];
+                            }
+
+                            return $txn->account ? [
+                                'id' => $txn->account->id,
+                                'account_no' => $txn->account->account_no,
+                                'account_type' => $txn->account->account_type,
+                            ] : null;
+                        })(),
                     ];
                 });
             }),

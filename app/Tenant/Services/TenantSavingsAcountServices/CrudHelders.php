@@ -24,6 +24,7 @@ class CrudHelders extends GlobalHelpers
         return $this->removeAllNullValues(
             [
                 'reference' => $data['reference'] ?? null,
+                'receipt_number' => $data['receipt_number'] ?? $data['umbrella_code'] ?? $data['reference'] ?? null,
                 'code' => $data['code'] ?? null,
                 'member_id' => $data['member'] ?? null,
                 'savings_account_transfers_id' => $data['savings_account_transfers_id'] ?? null,

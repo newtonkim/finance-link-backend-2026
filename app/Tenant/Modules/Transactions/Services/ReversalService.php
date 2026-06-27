@@ -99,9 +99,16 @@ class ReversalService
         DB::connection('tenant')->transaction(function () use ($reversal, $transaction, $actor) {
             $rootReceipt = $transaction->receipt_number;
             $rootReference = $transaction->grouped_with ?? $transaction->reference;
+            $groupReceipt = $rootReceipt ?? $transaction->umbrella_code ?? $rootReference;
 
             if ($rootReceipt) {
                 $group = Transaction::where('receipt_number', $rootReceipt)
+                    ->where('is_reversed', false)
+                    ->where('account_id', $transaction->account_id)
+                    ->orderBy('id')
+                    ->get();
+            } elseif ($transaction->umbrella_code) {
+                $group = Transaction::where('umbrella_code', $transaction->umbrella_code)
                     ->where('is_reversed', false)
                     ->where('account_id', $transaction->account_id)
                     ->orderBy('id')
@@ -129,7 +136,12 @@ class ReversalService
                 $netDelta += match ($txn->type) {
                     'deposit' => -(float) $txn->amount,
                     'withdrawal' => +(float) $txn->amount,
+                    'withdraw' => +(float) $txn->amount,
                     'charge' => +(float) $txn->amount,
+                    'deposit-charge' => $this->transactionAmount($txn),
+                    'deposit-Charge' => $this->transactionAmount($txn),
+                    'withdrawal-charge' => $this->transactionAmount($txn),
+                    'withdraw-charge' => $this->transactionAmount($txn),
                     default => 0.0,
                 };
             }
@@ -153,10 +165,11 @@ class ReversalService
 
                 $reversalTxn = Transaction::create([
                     'reference' => $reversalRef,
-                    'receipt_number' => $rootReceipt ?? $rootReference,
+                    'umbrella_code' => $txn->umbrella_code,
+                    'receipt_number' => $groupReceipt,
                     'member_id' => $txn->member_id,
                     'type' => 'reversal',
-                    'amount' => $txn->amount,
+                    'amount' => $this->transactionAmount($txn),
                     'payment_mode' => $txn->payment_mode,
                     'deposited_by' => $actor->name,
                     'transaction_date' => now()->toDateString(),
@@ -247,6 +260,10 @@ class ReversalService
             return;
         }
 
+        if ($txn->type === 'charge' && (float) $txn->amount <= 0) {
+            return;
+        }
+
         $savingsAccount = SavingsAccount::find($txn->account_id);
         $reversalTxn = Transaction::where('reference', $reversalRef)->first();
 
@@ -259,8 +276,24 @@ class ReversalService
         match ($txn->type) {
             'deposit' => $this->savingsJournal->postWithdrawal($reversalTxn, $savingsAccount),
             'withdrawal' => $this->savingsJournal->postDeposit($reversalTxn, $savingsAccount),
+            'withdraw' => $this->savingsJournal->postDeposit($reversalTxn, $savingsAccount),
             'charge' => $this->savingsJournal->postChargeReversal($reversalTxn, $savingsAccount),
+            'deposit-charge' => $this->savingsJournal->postChargeReversal($reversalTxn, $savingsAccount),
+            'deposit-Charge' => $this->savingsJournal->postChargeReversal($reversalTxn, $savingsAccount),
+            'withdrawal-charge' => $this->savingsJournal->postChargeReversal($reversalTxn, $savingsAccount),
+            'withdraw-charge' => $this->savingsJournal->postChargeReversal($reversalTxn, $savingsAccount),
             default => null,
         };
+    }
+
+    private function transactionAmount(Transaction $transaction): float
+    {
+        $amount = (float) ($transaction->amount ?? 0);
+
+        if ($amount > 0) {
+            return $amount;
+        }
+
+        return (float) ($transaction->charge_amount ?? 0);
     }
 }

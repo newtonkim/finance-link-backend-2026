@@ -176,13 +176,54 @@ class SavingsAccountStatementService implements SavingsAccountStatementServiceIn
         if (in_array($type, ['withdrawal', 'withdraw', 'transfer_out'], true)) {
             return [0.0, $amount];
         }
+
+        if ($this->isWithdrawalChargeMarker($r)) {
+            return [0.0, 0.0];
+        }
+
         // All charge types: use `amount` when present (modern path),
         // otherwise fall back to `charge_amount` (legacy MemberHelpers stores
         // the fee in `charge_amount` and leaves `amount = 0`).
-        if (in_array($type, ['charge', 'general-charge', 'deposit-charge', 'withdraw-charge'], true)) {
+        if (in_array($type, ['charge', 'general-charge', 'deposit-charge', 'withdraw-charge', 'withdrawal-charge'], true)) {
             return [0.0, $amount > 0 ? $amount : $chargeAmount];
         }
 
         return [0.0, 0.0]; // unknown type — caller emits warning
+    }
+
+    private function isWithdrawalChargeMarker(Transaction $transaction): bool
+    {
+        $type = strtolower((string) $transaction->type);
+
+        if (! str_contains($type, 'charge')) {
+            return false;
+        }
+
+        if ((float) $transaction->amount > 0) {
+            return false;
+        }
+
+        if (str_contains($type, 'withdraw')) {
+            return true;
+        }
+
+        $text = strtolower(trim(implode(' ', array_filter([
+            $transaction->narration,
+            $transaction->charge_name,
+        ]))));
+
+        if (str_contains($text, 'withdraw')) {
+            return true;
+        }
+
+        if (! $transaction->receipt_number) {
+            return false;
+        }
+
+        return Transaction::query()
+            ->where('receipt_number', $transaction->receipt_number)
+            ->where('account_id', $transaction->account_id)
+            ->whereIn('type', ['withdrawal', 'withdraw'])
+            ->exists();
     }
 }
