@@ -31,11 +31,11 @@ class CrudHelders extends GlobalHelpers
                 'type' => $data['transaction_type'],
                 // 'amount' => $data['payment_mode'],
                 'amount' => $data['amount'],
-                'deposited_amount_before_charge' => $data['deposited_amount_before_charge'] ?? $data['amount']??null,
-                'group_member_account_balance_before_transaction' => $data['group_member_account_balance_before_transaction']??null,
+                'deposited_amount_before_charge' => $data['deposited_amount_before_charge'] ?? $data['amount'] ?? null,
+                'group_member_account_balance_before_transaction' => $data['group_member_account_balance_before_transaction'] ?? null,
                 'charge_amount' => $data['charge_amount'],
                 'umbrella_code' => $data['umbrella_code'] ?? null,
-                'payment_mode' => $data['payment_method']?? null, 
+                'payment_mode' => $data['payment_method'] ?? null,
                 'deposited_by' => $data['deposited_by'] ?? 'System (Initial Deposit)',
                 'transaction_date' => $data['transaction_date'],
                 'account_id' => $data['accid'] ?? null,
@@ -60,7 +60,7 @@ class CrudHelders extends GlobalHelpers
             'balance' => $req['blc'] ?? null,
             'initial_deposit' => $req['in_deposit'] ?? null,
             'account_opening_balance' => $req['opening_balance'] ?? null,
-            'consider_min_balance' => $req['cm_balance']??null,
+            'consider_min_balance' => $req['cm_balance'] ?? null,
             // 'consider_min_balance' => $req['cm_balance'] >= 1 ? true : ($req['cm_balance'] == 0 ? '0' : null),
             // 'selected_charges' => $req['charges'] ?? null,
             'status' => $req['status'] ?? null,
@@ -78,7 +78,7 @@ class CrudHelders extends GlobalHelpers
             'new_account' => ['required', 'in:1,depositing,0'],
             'account_id' => ['required', 'exists:savings_accounts,id'],
         ]);
-        //code
+        // code
         $chargedAmount = null;
         $to = $req['account_id'];
         $trasactionList = [];
@@ -98,14 +98,15 @@ class CrudHelders extends GlobalHelpers
             if ($createTransactionAlso && $deposit < 0) {
                 return $this->amountError($deposit);
             }
-            $trasactionList['deposit'] = ['deposited_amount_before_charge' => $req['deposit'], 'code' => $req['transaction_reference'] ?? null, 'amount' => $deposit, 'transaction_type' => "deposit", 'narration' => $req['narration'] ?? null, 'type' => 'deposit'];
+            $trasactionList['deposit'] = ['deposited_amount_before_charge' => $req['deposit'], 'code' => $req['transaction_reference'] ?? null, 'amount' => $deposit, 'transaction_type' => 'deposit', 'narration' => $req['narration'] ?? null, 'type' => 'deposit'];
             // $trasactionList['deposit'] = ['amount' => $deposit, 'transaction_type' => $getTheProductCharges?->charge_type, 'charge_amount' => $chargedAmount, 'narration' => $req['narration'], 'type' => 'deposit'];
-            if ($chargedAmount > 0)
-                $trasactionList['charge_amount'] = ['charge_amount' => $chargedAmount, 'narration' =>  'Deposit charges of '.$chargedAmount.'  for this amount of ' . $req['deposit'], 'transaction_type' => 'deposit-charge', 'type' => 'deposit-charge'];
+            if ($chargedAmount > 0) {
+                $trasactionList['charge_amount'] = ['charge_amount' => $chargedAmount, 'narration' => 'Deposit charges of '.$chargedAmount.'  for this amount of '.$req['deposit'], 'transaction_type' => 'deposit-charge', 'type' => 'deposit-charge'];
+            }
         }
 
         $getAmount = DB::table('savings_accounts')->where('id', $to)->first(['balance AS blc', 'account_opening_balance', 'initial_deposit']);
-        if (!$getAmount) {
+        if (! $getAmount) {
             throw new \Exception("Savings account with ID {$to} not found.");
         }
         $codeSequence = new CodeSequence;
@@ -165,7 +166,7 @@ class CrudHelders extends GlobalHelpers
         $checkIfHaveSomeAccounts = DB::table('savings_accounts')->where('member_id', $req['member'])->first(['id']);
         $NeededMinAmount = number_format($checkfrTheproduct->minimum_balance, 2);
         $deposit = isset($req['in_deposit']) ? (float) $req['in_deposit'] : 0;
-        $consinderMinBalance=$settings->saccoSavingsAccountsConsiderMinimumBalance();
+        $consinderMinBalance = $settings->saccoSavingsAccountsConsiderMinimumBalance();
 
         if (($checkfrTheproduct && $consinderMinBalance && isset($checkIfHaveSomeAccounts) && $checkIfHaveSomeAccounts->id) && $deposit < (float) $NeededMinAmount) {
             // / error  shows the min amount required
@@ -184,24 +185,29 @@ class CrudHelders extends GlobalHelpers
                 $chargedAmount = $getTheProductCharges->cost;
             }
             $deposit = $deposit - ($chargedAmount);
-            if ($chargedAmount > 0)
-                $listCharges['deposit_charges'] = ['charge_amount' => $chargedAmount, 'narration' =>  'Initial deposit charge: ' . $chargedAmount . ' blc :' . $deposit, 'transaction_type' => 'charge', 'type' => 'charge'];
-
+            if ($chargedAmount > 0) {
+                $listCharges['deposit_charges'] = ['charge_amount' => $chargedAmount, 'narration' => 'Initial deposit charge: '.$chargedAmount.' blc :'.$deposit, 'transaction_type' => 'charge', 'type' => 'charge'];
+            }
 
             if (($createTransactionAlso) && $deposit < $NeededMinAmount) {
                 // if (($createTransactionAlso == true || $createTransactionAlso == 1) && $deposit < $NeededMinAmount) {
-                return $this->amountError($deposit, addtionalMessage: ' Minimum balance required is =' . $NeededMinAmount . ' for this product. deposit' . $deposit);
+                return $this->amountError($deposit, addtionalMessage: ' Minimum balance required is ='.$NeededMinAmount.' for this product. deposit'.$deposit);
             }
         }
 
-        $saccoAcountData = $this->savingAccountUOrCFields([...$req, 'blc' => $deposit ?? null,'cm_balance'=>$consinderMinBalance]);
+        $saccoAcountData = $this->savingAccountUOrCFields([...$req, 'blc' => $deposit ?? null, 'cm_balance' => $consinderMinBalance]);
         if (! isset($req['id'])) {
             $saccoAcountData['code'] = $codeSequence->codeSequence($req['code'] ?? null, type: 'savings-accounts', moduleTarget: 'savings-accounts', tableTaget: 'savings_accounts');
         }
 
         $saveAccountDetails = $this->UpdateOrCreateRecord('savings_accounts', $saccoAcountData);
         if (isset($deposit)) { // check it first  befor the next level save the RAM
-            if (($createTransactionAlso == true || $createTransactionAlso == 1)) { // / check for the final level
+            // Always record the opening deposit (and its charge) as ledger entries:
+            // it is a real money movement and must be journaled for audit and for the
+            // member transactions ledger to reconcile to the account balance. The
+            // `saccoAccountOnAccountCreationShowInitialDeposit` setting only governs
+            // optional UI display, not whether the financial record exists.
+            if (((float) ($req['in_deposit'] ?? 0)) > 0) { // / check for the final level
                 foreach ($listCharges as $chargeType => $information) {
                     $code = $codeSequence->codeSequence($information['code'] ?? null);
                     $TransactionData = $this->transactionUorCFields([
@@ -209,7 +215,7 @@ class CrudHelders extends GlobalHelpers
                         'code' => $code,
                         'member' => $req['member'],
                         'deposited_amount_before_charge' => $information['deposited_amount_before_charge'] ?? null,
- 
+
                         'transaction_type' => $information['transaction_type'],
                         'amount' => $information['amount'] ?? 0,
                         'charge_amount' => $information['charge_amount'] ?? null,
@@ -220,7 +226,7 @@ class CrudHelders extends GlobalHelpers
                         'payment_mode_id' => $req['payment_mode_id'] ?? null,
                         'transaction_type' => $chargeType,
                         'narration' => $information['narration'] ?? null,
-                        // 'b4trn' => $deposit ?? null, this affects the new accounts 
+                        // 'b4trn' => $deposit ?? null, this affects the new accounts
 
                     ]);
                     $this->UpdateOrCreateRecord('transactions', $TransactionData);
