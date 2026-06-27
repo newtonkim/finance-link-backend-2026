@@ -38,8 +38,8 @@ class MemberService extends MemberUpdateOrCreateService
         $filters = request()->all()['filters'] ?? null;
         // $statements = DB::table('')->whereIn();
 
-
     }
+
     public function membersList()
     {
         $req = request();
@@ -57,7 +57,7 @@ class MemberService extends MemberUpdateOrCreateService
                         WHEN mbs.profile_path IS NOT NULL AND mbs.profile_path != '' THEN CONCAT('/storage/', mbs.profile_path)
                         ELSE NULL
                     END AS profile"),
-                    ...$this->memebrDbFields
+                    ...$this->memebrDbFields,
                 ]);
             if ($req->has('search_keyword')) {
 
@@ -65,10 +65,10 @@ class MemberService extends MemberUpdateOrCreateService
                     'mbs.name',
                     'member_type',
                     'mbs.code',
-                    ...$this->memebrDbFields
+                    ...$this->memebrDbFields,
                 ], filterable: [
-                    "member_type" => "mbs.member_type",
-                    "joined_date" => "mbs.joined_date",
+                    'member_type' => 'mbs.member_type',
+                    'joined_date' => 'mbs.joined_date',
                 ]);
             }
 
@@ -78,13 +78,13 @@ class MemberService extends MemberUpdateOrCreateService
             if ($staus != null) {
                 if (in_array('dormant', $staus)) {
                     $query->whereNotNull('mbs.dormant_date');
-                } else
+                } else {
                     $query->whereIn('mbs.status', $staus);
+                }
             }
-            if (!in_array('dormant', $staus ?? [])) {
+            if (! in_array('dormant', $staus ?? [])) {
                 $query->whereNull('mbs.dormant_date');
             }
-
 
             return $query->orderBy('created_at', 'DESC')->paginate($this->perpage());
         });
@@ -95,7 +95,7 @@ class MemberService extends MemberUpdateOrCreateService
         $req = request();
 
         return $this->TryCatch(function () use ($req) {
-            $runingBlanc = DB::table("savings_accounts")->where('member_id', '=', $req->member_id)->whereNull('deleted_at')->get()->sum('balance');
+            $runingBlanc = DB::table('savings_accounts')->where('member_id', '=', $req->member_id)->whereNull('deleted_at')->get()->sum('balance');
             $MemberQueryDetails = DB::table('members AS mbs')
                 ->whereRaw('mbs.id=?', [$req->member_id])
                 ->leftJoin('shares AS shr', 'shr.member_id', '=', 'mbs.id')
@@ -103,14 +103,19 @@ class MemberService extends MemberUpdateOrCreateService
                 ->select([
                     // DB::raw("CONCAT(IFNULL(salutation,''), ':', mbs.name) As salutation_name"),
                     ...$this->memebrDbFields,
-                    DB::raw("IF(mbs.profile_picture IS NOT NULL AND mbs.profile_picture != '', CONCAT('/storage/', mbs.profile_picture), NULL) AS profile"),
-
+                    DB::raw("CASE
+                        WHEN mbs.profile_picture IS NOT NULL AND mbs.profile_picture != '' THEN CONCAT('/storage/', mbs.profile_picture)
+                        WHEN mbs.profile_path IS NOT NULL AND mbs.profile_path != '' AND mbs.profile_path LIKE '/storage/%' THEN mbs.profile_path
+                        WHEN mbs.profile_path IS NOT NULL AND mbs.profile_path != '' AND mbs.profile_path LIKE 'storage/%' THEN CONCAT('/', mbs.profile_path)
+                        WHEN mbs.profile_path IS NOT NULL AND mbs.profile_path != '' THEN CONCAT('/storage/', mbs.profile_path)
+                        ELSE NULL
+                    END AS profile"),
 
                     'mbs.initial_deposit AS initial_deposit',
                     'shr.total_value AS total_shares_value',
                     // 'shr.share_no AS share_no',
                     // 'shr.share_value AS share_value',
-                    // 
+                    //
                     DB::raw("IF(mbs.status !='Active', '0',shr.share_no) as share_value"),
                     // 'shr.share_value AS share_value',
                     'mbs.created_at AS created_at',
@@ -136,7 +141,6 @@ class MemberService extends MemberUpdateOrCreateService
                 ])
                 ->first();
 
-
             $MemberQueryDetails->total_balance = $runingBlanc;
 
             $OtherHelpers = new OtherHelpers;
@@ -158,7 +162,13 @@ class MemberService extends MemberUpdateOrCreateService
                 DB::raw("CONCAT(IFNULL(salutation,''), ':', name) As salutation_name"),
                 ...$this->memebrDbFields,
                 'initial_deposit AS initial_deposit',
-                DB::raw("IF(mbs.profile_picture IS NOT NULL AND mbs.profile_picture != '', CONCAT('/storage/', mbs.profile_picture), IF(mbs.profile_path IS NOT NULL AND mbs.profile_path != '', CONCAT('/storage/', mbs.profile_path), NULL)) AS profile"),
+                DB::raw("CASE
+                        WHEN mbs.profile_picture IS NOT NULL AND mbs.profile_picture != '' THEN CONCAT('/storage/', mbs.profile_picture)
+                        WHEN mbs.profile_path IS NOT NULL AND mbs.profile_path != '' AND mbs.profile_path LIKE '/storage/%' THEN mbs.profile_path
+                        WHEN mbs.profile_path IS NOT NULL AND mbs.profile_path != '' AND mbs.profile_path LIKE 'storage/%' THEN CONCAT('/', mbs.profile_path)
+                        WHEN mbs.profile_path IS NOT NULL AND mbs.profile_path != '' THEN CONCAT('/storage/', mbs.profile_path)
+                        ELSE NULL
+                    END AS profile"),
                 'created_at AS created_at',
                 'updated_at AS updated_at',
                 'salutation As salutation',
@@ -230,21 +240,21 @@ class MemberService extends MemberUpdateOrCreateService
         $req = request();
         request()->validate([
             'search_keyword' => ['nullable', 'string', 'max:20'],
-            'type'           => ['required', 'string', 'in:onboarding'],
-            'id'             => ['required', 'integer', 'exists:tenant.savings_products,id'],
+            'type' => ['required', 'string', 'in:onboarding'],
+            'id' => ['required', 'integer', 'exists:tenant.savings_products,id'],
         ]);
 
         return $this->TryCatch(function () use ($req) {
             // 'onboarding' is the only consumer today (members Create.vue);
             // it maps to general_charges.application='on_registration' linked via
             // the savings_product_charges pivot with type='registration'.
-            $pivotType   = 'registration';
+            $pivotType = 'registration';
             $application = 'on_registration';
 
             $query = DB::table('savings_product_charges AS spc')
                 ->join('general_charges AS gchrg', 'gchrg.id', '=', 'spc.general_charge_id')
                 ->where('spc.savings_product_id', $req->id)
-                // ->where('spc.type', $pivotType) // newton explain why this is here 
+                // ->where('spc.type', $pivotType) // newton explain why this is here
                 ->where('gchrg.application', $application)
                 ->where('gchrg.is_active', 1)
                 ->whereNull('gchrg.deleted_at')
@@ -264,6 +274,7 @@ class MemberService extends MemberUpdateOrCreateService
             return $query->orderBy('gchrg.id', 'DESC')->paginate($this->perpage());
         });
     }
+
     public function MemberSavingAccountsDropDownList()
     {
         $req = request();
@@ -290,6 +301,7 @@ class MemberService extends MemberUpdateOrCreateService
                 ->orderBy('sacct.id', 'DESC')->paginate($this->perpage());
         });
     }
+
     public function savingsProducts()
     {
         return $this->dropDownList('savings_products');
@@ -406,13 +418,13 @@ class MemberService extends MemberUpdateOrCreateService
             $query =
                 DB::table('shares AS shr')
                 // ->Leftjoin('members AS mbs', 'shr.member_id', '=', 'mbs.id')// just for debuging
-                ->join('members AS mbs', 'shr.member_id', '=', 'mbs.id')
-                ->select([
-                    'mbs.id',
-                    DB::raw("CONCAT( IFNULL(mbs.name,'')) as name"),
-                    DB::raw('(shr.share_no) as total_shares'),
-                    DB::raw('mbs.id AS member_id'),
-                ]);
+                    ->join('members AS mbs', 'shr.member_id', '=', 'mbs.id')
+                    ->select([
+                        'mbs.id',
+                        DB::raw("CONCAT( IFNULL(mbs.name,'')) as name"),
+                        DB::raw('(shr.share_no) as total_shares'),
+                        DB::raw('mbs.id AS member_id'),
+                    ]);
             if ($req->has('search_keyword')) {
                 $query = $this->dynamic_search_db_query($query, $req['search_keyword'], ['mbs.id AS id', 'name']);
             }
