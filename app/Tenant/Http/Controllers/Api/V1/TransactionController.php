@@ -162,7 +162,7 @@ class TransactionController extends Controller
         $main = $this->mainReceiptTransaction($group) ?? $transaction;
         $charges = $group->filter(fn (Transaction $txn) => $this->isChargeTransaction($txn));
         $chargeTotal = $charges->sum(fn (Transaction $txn) => $this->transactionAmount($txn));
-        $mainAmount = $this->transactionAmount($main);
+        $mainAmount = $this->principalAmount($main);
         $direction = $this->receiptDirection($main);
 
         $account = $main->account ?: $transaction->account;
@@ -379,6 +379,25 @@ class TransactionController extends Controller
         return (float) ($transaction->charge_amount ?? 0);
     }
 
+    /**
+     * Gross amount of the principal (deposit/withdrawal) line.
+     *
+     * `amount` is stored inconsistently across paths — the modern flow saves the
+     * gross while the legacy flow saves the net (charge already removed). The
+     * gross is always available in deposited_amount_before_charge, so prefer it
+     * to keep the receipt's net = gross − charge consistent with the ledger.
+     */
+    private function principalAmount(Transaction $transaction): float
+    {
+        $gross = (float) ($transaction->deposited_amount_before_charge ?? 0);
+
+        if ($gross > 0) {
+            return $gross;
+        }
+
+        return $this->transactionAmount($transaction);
+    }
+
     private function receiptDirection(Transaction $transaction): ?string
     {
         return match ($transaction->type) {
@@ -390,7 +409,9 @@ class TransactionController extends Controller
 
     private function formatReceiptLine(Transaction $transaction, string $lineType): array
     {
-        $amount = $this->transactionAmount($transaction);
+        $amount = $lineType === 'principal'
+            ? $this->principalAmount($transaction)
+            : $this->transactionAmount($transaction);
 
         return [
             'id' => $transaction->id,
