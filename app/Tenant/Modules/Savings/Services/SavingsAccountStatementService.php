@@ -49,20 +49,15 @@ class SavingsAccountStatementService implements SavingsAccountStatementServiceIn
         $dateTo = $dateTo ?? now()->toDateString();
         $dateFrom = $dateFrom ?? now()->subDays(90)->toDateString();
 
-        $opening = $this->sumCreditsMinusDebits(
-            $this->baseQuery($savingsAccountId)->whereDate('transaction_date', '<', $dateFrom)->get()
-        );
-
         $periodRows = $this->baseQuery($savingsAccountId)
             ->whereBetween('transaction_date', [$dateFrom, $dateTo])
             ->orderBy('transaction_date')->orderBy('id')
             ->get();
 
-        $running = $opening;
         $totalCredit = 0.0;
         $totalDebit = 0.0;
         $warnings = [];
-        $rows = [];
+        $prepared = [];
 
         $knownTypes = ['deposit', 'transfer_in', 'interest', 'withdrawal', 'withdraw', 'transfer_out', 'charge', 'general-charge', 'deposit-charge', 'withdraw-charge', 'withdrawal-charge'];
 
@@ -73,22 +68,41 @@ class SavingsAccountStatementService implements SavingsAccountStatementServiceIn
 
                 continue;
             }
-            $running += $credit - $debit;
             $totalCredit += $credit;
             $totalDebit += $debit;
-            $rows[] = [
-                'id' => $r->id,
-                // Always YYYY-MM-DD regardless of whether the underlying column is DATE or DATETIME
-                'date' => substr((string) $r->transaction_date, 0, 10),
-                'description' => $this->describe($r),
-                'credit' => round($credit, 2),
-                'debit' => round($debit, 2),
-                'running_balance' => round($running, 2),
-                'is_reversal' => ! empty($r->reversal_of),
+            $prepared[] = [
+                'row' => [
+                    'id' => $r->id,
+                    // Always YYYY-MM-DD regardless of whether the underlying column is DATE or DATETIME
+                    'date' => substr((string) $r->transaction_date, 0, 10),
+                    'description' => $this->describe($r),
+                    'credit' => round($credit, 2),
+                    'debit' => round($debit, 2),
+                    'is_reversal' => ! empty($r->reversal_of),
+                ],
+                'movement' => $credit - $debit,
             ];
         }
 
-        $closing = $opening + $totalCredit - $totalDebit;
+        // The account balance is the source of truth. Anchor the closing balance
+        // to what the account actually holds as of the statement end date, then
+        // derive the brought-forward opening so the running balance reconciles —
+        // rather than trusting that every historical transaction classifies
+        // perfectly (legacy/imported rows do not).
+        $movementsAfter = $this->sumCreditsMinusDebits(
+            $this->baseQuery($savingsAccountId)->whereDate('transaction_date', '>', $dateTo)->get()
+        );
+        $closing = round((float) $account->balance - $movementsAfter, 2);
+        $opening = round($closing - ($totalCredit - $totalDebit), 2);
+
+        $running = $opening;
+        $rows = [];
+        foreach ($prepared as $p) {
+            $running += $p['movement'];
+            $p['row']['running_balance'] = round($running, 2);
+            $rows[] = $p['row'];
+        }
+
         $this->assertReconciles($closing, $rows);
 
         return [
