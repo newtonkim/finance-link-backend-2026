@@ -128,8 +128,14 @@ class ReversalService
                 $group = collect([$transaction]);
             }
 
-            // Net balance delta
-            $account = $transaction->account;
+            // Net balance delta.
+            // The `account_type` column is overloaded with transaction-type labels
+            // (e.g. 'deposit') that the morph map points at Transaction, so the
+            // `account` relation can resolve to the wrong model. Resolve the real
+            // savings account by id whenever the morph is not a SavingsAccount.
+            $account = $transaction->account instanceof SavingsAccount
+                ? $transaction->account
+                : SavingsAccount::find($transaction->account_id);
             $netDelta = 0.0;
 
             foreach ($group as $txn) {
