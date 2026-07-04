@@ -64,7 +64,8 @@ class MemberResource extends JsonResource
 
                     return [
                         'id' => $account->id,
-                        'account_no' => $account->account_no,
+                        'account_no' => $account->account_no ?? $account->code,
+                        'code' => $account->code,
                         'payment_mod' => $account->payment_mod_account_id ?? null,
                         'account_type' => $account->account_type,
                         'balance' => $account->balance,
