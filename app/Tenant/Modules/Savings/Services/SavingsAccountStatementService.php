@@ -176,10 +176,14 @@ class SavingsAccountStatementService implements SavingsAccountStatementServiceIn
         $amount = (float) $r->amount;
         $chargeAmount = (float) ($r->charge_amount ?? 0);
 
-        if (in_array($type, ['deposit', 'transfer_in', 'interest'], true)) {
+        // Money into the savings account: deposits, transfers in, interest, and
+        // loan proceeds disbursed to the account.
+        if (in_array($type, ['deposit', 'transfer_in', 'interest', 'loan_disbursement'], true)) {
             return [$amount, 0.0];
         }
-        if (in_array($type, ['withdrawal', 'withdraw', 'transfer_out'], true)) {
+        // Money out of the savings account: withdrawals, transfers out, and loan
+        // repayments funded from the account.
+        if (in_array($type, ['withdrawal', 'withdraw', 'transfer_out', 'loan_repayment'], true)) {
             return [0.0, $amount];
         }
 
