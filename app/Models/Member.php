@@ -8,29 +8,35 @@ use App\Tenant\Modules\Members\Models\MemberCharge;
 use App\Tenant\Modules\Savings\Models\SavingsAccount;
 use App\Tenant\Modules\Shares\Models\Share;
 use App\Tenant\Modules\Transactions\Models\Transaction;
+use Database\Factories\MemberFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
+use Laravel\Sanctum\HasApiTokens;
 
 /**
  * @property int $id
+ *
  * @method static \Illuminate\Database\Eloquent\Builder|Member query()
  * @method static \Illuminate\Database\Eloquent\Builder|Member where($column, $operator = null, $value = null, $boolean = 'and')
  * @method static \Illuminate\Database\Eloquent\Builder|Member create(array $attributes = [])
  * @method static \Illuminate\Database\Eloquent\Builder|Member findOrFail($id, $columns = ['*'])
- * @mixin \Illuminate\Database\Eloquent\Model
- * @mixin \Illuminate\Database\Eloquent\Builder
+ *
+ * @mixin Model
+ * @mixin Builder
  */
 class Member extends Authenticatable
 {
-    use BelongsToAuthenticatedBranch, HasFactory, Notifiable, SoftDeletes, TwoFactorAuthenticatable;
+    use BelongsToAuthenticatedBranch, HasApiTokens, HasFactory, Notifiable, SoftDeletes, TwoFactorAuthenticatable;
 
     protected static function newFactory()
     {
-        return \Database\Factories\MemberFactory::new();
+        return MemberFactory::new();
     }
 
     const TYPE_FULL = 'full';
