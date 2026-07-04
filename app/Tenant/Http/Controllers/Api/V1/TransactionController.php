@@ -80,8 +80,13 @@ class TransactionController extends Controller
                 $group = collect([$transaction]);
             }
 
-            // Calculate net balance delta for the account in one pass
-            $account = $transaction->account;
+            // Calculate net balance delta for the account in one pass.
+            // account_type is overloaded with transaction-type labels (e.g.
+            // 'deposit') that the morph map points at Transaction, so resolve the
+            // real savings account by id whenever the morph is not a SavingsAccount.
+            $account = $transaction->account instanceof SavingsAccount
+                ? $transaction->account
+                : SavingsAccount::find($transaction->account_id);
             $netDelta = 0.0;
 
             foreach ($group as $txn) {
