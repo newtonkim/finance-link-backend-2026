@@ -82,6 +82,18 @@ it('MemberSelfService rejects member tokens on staff tenant routes', function ()
         ->assertForbidden();
 });
 
+it('MemberSelfService rejects inactive staff tokens on staff tenant routes', function () {
+    $staff = Staff::factory()->create([
+        'status' => 'inactive',
+        'is_tenant_admin' => true,
+    ]);
+
+    $this->actingAs($staff, 'sanctum')
+        ->getJson('http://test.mfukopro.test/api/v1/tenant/savings-accounts')
+        ->assertForbidden()
+        ->assertJsonPath('message', 'Staff account is not active.');
+});
+
 it('MemberSelfService returns account and member statements for owned accounts', function () {
     $member = Member::factory()->create(['status' => 'active']);
     $account = SavingsAccount::factory()->create(['member_id' => $member->id, 'balance' => 500]);

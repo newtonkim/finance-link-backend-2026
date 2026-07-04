@@ -25,6 +25,10 @@ class EnsureStaffApiUser
             return response()->json(['message' => 'Staff authentication is required.'], 403);
         }
 
+        if ($user->status !== 'active') {
+            return response()->json(['message' => 'Staff account is not active.'], 403);
+        }
+
         return $next($request);
     }
 }
