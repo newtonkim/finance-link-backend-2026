@@ -183,14 +183,19 @@ class SavingsAccountStatementService implements SavingsAccountStatementServiceIn
             return [0.0, $amount];
         }
 
-        if ($this->isWithdrawalChargeMarker($r)) {
-            return [0.0, 0.0];
-        }
+        // Any charge-type transaction, however the type is spelled across the
+        // various posting paths: 'charge', 'general-charge', 'deposit-charge',
+        // 'deposit_charges', 'withdraw-charge', etc.
+        if (str_contains($type, 'charge')) {
+            // A withdrawal charge is a fee taken off the payout — income, not a
+            // savings movement — so it must not debit the running balance.
+            if ($this->isWithdrawalChargeMarker($r)) {
+                return [0.0, 0.0];
+            }
 
-        // All charge types: use `amount` when present (modern path),
-        // otherwise fall back to `charge_amount` (legacy MemberHelpers stores
-        // the fee in `charge_amount` and leaves `amount = 0`).
-        if (in_array($type, ['charge', 'general-charge', 'deposit-charge', 'withdraw-charge', 'withdrawal-charge'], true)) {
+            // A deposit-side charge reduces the balance. Use `amount` when the
+            // fee is posted there (modern path), otherwise `charge_amount`
+            // (legacy path stores the fee there and leaves `amount = 0`).
             return [0.0, $amount > 0 ? $amount : $chargeAmount];
         }
 
