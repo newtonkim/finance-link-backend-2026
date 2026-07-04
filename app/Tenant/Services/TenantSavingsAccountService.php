@@ -646,8 +646,8 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
             ->select([
                 DB::raw('COUNT(*) as total_groups'),
                 DB::raw("SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active_groups"),
-                // DB::raw("SUM(CASE WHEN status = 'inactive' THEN 1 ELSE 0 END) as inactive_groups"),
-                // DB::raw("SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_groups"),
+                // Suspended, expired or trial — anything that is not active.
+                DB::raw("SUM(CASE WHEN status != 'active' THEN 1 ELSE 0 END) as needs_attention"),
             ])
             ->whereNull('deleted_at');
 
@@ -655,7 +655,20 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
             $query->where('branch_id', $branchId);
         }
 
-        return $query->first();
+        $row = $query->first();
+
+        // Total members across all (matching) groups.
+        $memberQuery = DB::table('savings_group_members as sgm')
+            ->join('savings_groups as sg', 'sg.id', '=', 'sgm.savings_group_id')
+            ->whereNull('sg.deleted_at');
+
+        if ($branchId) {
+            $memberQuery->where('sg.branch_id', $branchId);
+        }
+
+        $row->total_members = $memberQuery->count();
+
+        return $row;
     }
 
     public function groupAccountList()
