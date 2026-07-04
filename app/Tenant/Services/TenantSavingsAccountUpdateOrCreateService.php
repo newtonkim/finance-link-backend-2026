@@ -85,7 +85,7 @@ class TenantSavingsAccountUpdateOrCreateService extends CrudHelders
                 'balance' => $data['amount'] ?? null,
                 'is_new_account' => $data['new_account'] ?? null,
                 'status' => $data['status'] ?? null,
-                "payment_mod_account_id" => $data['payment_mode_id'] ?? null
+                'payment_mod_account_id' => $data['payment_mode_id'] ?? null,
             ]
         );
     }
@@ -116,18 +116,18 @@ class TenantSavingsAccountUpdateOrCreateService extends CrudHelders
                             'primary_contact_phone' => $value->primary_contact_phone,
                             'date_created' => $date,
                             'created_at' => $date,
-                            'location' => $value->group_location ?? NULL,
+                            'location' => $value->group_location ?? null,
                             'branch_id' => $branch_id,
                             'code' => $code,
-                            'description' => $value->group_description ??  'no destription during migration',
+                            'description' => $value->group_description ?? 'no destription during migration',
                         ];
                         $inThisInsetCheck = $this->UpdateOrCreateRecord('savings_groups', $workedOnIdsFields);
                         $details = $this->UpdateOrCreateRecord('group_savings_accounts', [
                             'savings_group_id' => $inThisInsetCheck->id,
                             'branch_id' => $branch_id,
                             'savings_product_id' => $savingProductList[$value->savings_product] ?? null,
-                            "opening_balance" => $value->opening_balance ?? 0,
-                            "initial_deposit" => $value->initial_deposit ?? 0,
+                            'opening_balance' => $value->opening_balance ?? 0,
+                            'initial_deposit' => $value->initial_deposit ?? 0,
                         ]);
 
                         $workedOnIds[] = $workedOnIdsFields;
@@ -150,9 +150,9 @@ class TenantSavingsAccountUpdateOrCreateService extends CrudHelders
         if (! empty($failed)) {
             return ['failed' => $failed];
         }
+
         return $workedOnIds;
     }
-
 
     public function importGroupAccountMembers()
     {
@@ -169,7 +169,7 @@ class TenantSavingsAccountUpdateOrCreateService extends CrudHelders
             foreach ($chunkIds as $value) { // pass by reference
 
                 try {
-                    //code...
+                    // code...
                     if (isset($memberCodedList[$value->member_code])) {
                         $code = $codeSequence->codeSequence($req['code'] ?? null, type: 'savings-group', moduleTarget: 'savings-group', tableTaget: 'savings_groups');
                         $workedOnIdsFields = [
@@ -177,7 +177,7 @@ class TenantSavingsAccountUpdateOrCreateService extends CrudHelders
                             'savings_group_id' => $listsavingsGroupsds[$value->group_code],
                             'role' => $value->role ?? 'member',
                             'branch_id' => $req['branch_id'],
-                            'code' => $value->code ?? $code
+                            'code' => $value->code ?? $code,
 
                         ];
                         $inThisInsetCheck = $this->UpdateOrCreateRecord('savings_group_members', $workedOnIdsFields);
@@ -203,8 +203,10 @@ class TenantSavingsAccountUpdateOrCreateService extends CrudHelders
         if (! empty($failed)) {
             return ['failed' => $failed];
         }
+
         return $workedOnIds;
     }
+
     private function groupWithdrawalMethod($currentBalance, $amount, $chargedAmount, $req, $getMemberGroup)
     {
         $settings = new FindsettingsAction(['savings-group']);
@@ -216,23 +218,27 @@ class TenantSavingsAccountUpdateOrCreateService extends CrudHelders
                 ->where('guarantor_type', 'group')
                 ->sum('guarantee_amount');
             if ($sumOfTheMoney > 0 && $sumOfTheMoney <= $amount) {
-                return throw new \Exception('You cannot withdraw beyond the guaranteed amount. ' . $sumOfTheMoney);
+                return throw new \Exception('You cannot withdraw beyond the guaranteed amount. '.$sumOfTheMoney);
             }
         }
 
         $newBalance = $currentBalance->balance - ($amount + $chargedAmount);
         $amountAtaHand = $amount - $chargedAmount;
-        $transactionList['withdraw'] = ["amount" => ($amount + $chargedAmount), 'deposited_amount_before_charge' => $amount, 'group_member_account_balance_before_transaction' => $getMemberGroup->balance,    "narration" =>  $req['narration'] ??  ("You have successfully withdrawn UGX {$amount}, including a charge of UGX {$chargedAmount}."),     "type" => 'withdraw',     "transaction_type" => 'withdraw',];
-        $transactionList['deposit_charge'] = ["type" => "withdraw",    'narration' => "Withdrawal Charge",    "charge_amount" => $chargedAmount,    'transaction_type' => 'withdraw',];
-        return ['transaction-list' => $transactionList, "balance" => $newBalance];
+        $transactionList['withdraw'] = ['amount' => ($amount + $chargedAmount), 'deposited_amount_before_charge' => $amount, 'group_member_account_balance_before_transaction' => $getMemberGroup->balance,    'narration' => $req['narration'] ?? ("You have successfully withdrawn UGX {$amount}, including a charge of UGX {$chargedAmount}."),     'type' => 'withdraw',     'transaction_type' => 'withdraw'];
+        $transactionList['deposit_charge'] = ['type' => 'withdraw',    'narration' => 'Withdrawal Charge',    'charge_amount' => $chargedAmount,    'transaction_type' => 'withdraw'];
+
+        return ['transaction-list' => $transactionList, 'balance' => $newBalance];
     }
+
     private function groupDepositeMethod($currentBalance, $amount, $chargedAmount, $req, $getMemberGroup)
     {
         $newBalance = $currentBalance->balance + ($amount - $chargedAmount);
-        $transactionList['deposit'] = ["amount" => ($amount - $chargedAmount), 'deposited_amount_before_charge' => $amount, 'group_member_account_balance_before_transaction' => $getMemberGroup->balance,   "narration" =>  $req['narration'] ?? ($req['type'] === 'deposit' ? "You have successfully deposited UGX {$amount}, after a charge of UGX {$chargedAmount}.  to you Group Account" : "You have successfully withdrawn UGX {$amount}, including a charge of UGX {$chargedAmount}."),    "type" => 'deposit',    "transaction_type" => 'deposit',];
-        $transactionList['deposit_charge'] = ["type" => "deposit-Charge",    'narration' => "Deposit Charge",    "charge_amount" => $chargedAmount,    'transaction_type' => 'deposit-charge',];
-        return ['transaction-list' => $transactionList, "balance" => $newBalance];
+        $transactionList['deposit'] = ['amount' => ($amount - $chargedAmount), 'deposited_amount_before_charge' => $amount, 'group_member_account_balance_before_transaction' => $getMemberGroup->balance,   'narration' => $req['narration'] ?? ($req['type'] === 'deposit' ? "You have successfully deposited UGX {$amount}, after a charge of UGX {$chargedAmount}.  to you Group Account" : "You have successfully withdrawn UGX {$amount}, including a charge of UGX {$chargedAmount}."),    'type' => 'deposit',    'transaction_type' => 'deposit'];
+        $transactionList['deposit_charge'] = ['type' => 'deposit-charge',    'narration' => 'Deposit Charge',    'charge_amount' => $chargedAmount,    'transaction_type' => 'deposit-charge'];
+
+        return ['transaction-list' => $transactionList, 'balance' => $newBalance];
     }
+
     public function groupSavingAccountDepositWithdrawal()
     {
         request()->validate([
@@ -247,7 +253,7 @@ class TenantSavingsAccountUpdateOrCreateService extends CrudHelders
         return $this->TryCatch(function () {
             return $this->transaction(function () {
                 $req = request()->all();
-                $codeSequence = new CodeSequence;;
+                $codeSequence = new CodeSequence;
 
                 $groupId = $req['group_account_id'];
                 $table = 'group_savings_accounts';
@@ -262,10 +268,9 @@ class TenantSavingsAccountUpdateOrCreateService extends CrudHelders
                 $getTheProductCharges = $caller->productCharges();
                 $chargedAmount = $getTheProductCharges->cost;
                 if ($req['type'] === 'deposit') {
-                    if ((float)$chargedAmount === (float)$req['amount']) {
+                    if ((float) $chargedAmount === (float) $req['amount']) {
                         throw new \Exception('You cannot deposit the same amount as the charge.');
                     }
-
 
                     $getMemberGroup = DB::table('savings_group_members')->where('member_id', $req['member_id'])->first(['balance', 'id']);
                     $collection = $this->groupDepositeMethod($currentBalance, $amount, $chargedAmount, $req, $getMemberGroup);
@@ -276,7 +281,7 @@ class TenantSavingsAccountUpdateOrCreateService extends CrudHelders
                         return throw new \Exception('Group savings account not found.');
                     }
                     // $transactionList['group_member_account_balance_before_transaction'] = $getMemberGroup->balance;
-                    $this->UpdateOrCreateRecord("savings_group_members", ['balance' => $getMemberGroup->balance + ($amount - $chargedAmount)], ['id' => $currentBalance->savings_group_id]);
+                    $this->UpdateOrCreateRecord('savings_group_members', ['balance' => $getMemberGroup->balance + ($amount - $chargedAmount)], ['id' => $currentBalance->savings_group_id]);
                 } else {
 
                     $getMemberGroup = DB::table('savings_group_members')->where('member_id', $req['member_id'])->first(['balance', 'id']);
@@ -287,7 +292,7 @@ class TenantSavingsAccountUpdateOrCreateService extends CrudHelders
                     if (! $getMemberGroup) {
                         return throw new \Exception('Group savings account not found.');
                     }
-                    $this->UpdateOrCreateRecord("savings_group_members", ['balance' => $getMemberGroup->balance + ($amount - $chargedAmount)], ['id' => $currentBalance->savings_group_id]);
+                    $this->UpdateOrCreateRecord('savings_group_members', ['balance' => $getMemberGroup->balance + ($amount - $chargedAmount)], ['id' => $currentBalance->savings_group_id]);
                 }
                 if ($newBalance < 0) {
                     return throw new \Exception('Insufficient balance.');
@@ -431,7 +436,6 @@ class TenantSavingsAccountUpdateOrCreateService extends CrudHelders
         return $workedOnIds;
     }
 
-
     public function memberAccountWithdrawal()
     {
         return $this->transaction(function () {
@@ -468,7 +472,7 @@ class TenantSavingsAccountUpdateOrCreateService extends CrudHelders
             if ($chargedAmount >= $amountNeeded) {
                 $feedBack = 'FAILED:Withdrawal charge must be less than the withdrawal amount.';
             }
-            
+
             if ($computedBlc >= 0 && ! str_contains((string) $feedBack, 'FAILED')) {
                 $this->UpdateOrCreateRecord(
                     'savings_accounts',
@@ -478,9 +482,9 @@ class TenantSavingsAccountUpdateOrCreateService extends CrudHelders
                     ['id' => $id]
                 );
                 $feedBack = $req['narration'] ?? "You have successfully withdrawn UGX {$amountNeeded}; net paid UGX {$netPaid}, charge UGX {$chargedAmount}.";
-                $trasactionList['withdrawal'] = ['amount' => $amountNeeded, 'charge_amount' => $chargedAmount,'payment_mode_id'=>$req['payment_mode_id']??null, 'transaction_type' => "withdrawal", 'narration' => $feedBack ?? null, 'type' => 'withdrawal'];
-                $trasactionList['charge_amount'] = ['charge_amount' => $chargedAmount,'payment_mode_id'=>null,  'narration' => 'withdrawal charges for this account of ' . $amountNeeded, 'transaction_type' => 'withdrawal-charge', 'type' => 'withdrawal-charge'];
-                }
+                $trasactionList['withdrawal'] = ['amount' => $amountNeeded, 'charge_amount' => $chargedAmount, 'payment_mode_id' => $req['payment_mode_id'] ?? null, 'transaction_type' => 'withdrawal', 'narration' => $feedBack ?? null, 'type' => 'withdrawal'];
+                $trasactionList['charge_amount'] = ['charge_amount' => $chargedAmount, 'payment_mode_id' => null,  'narration' => 'withdrawal charges for this account of '.$amountNeeded, 'transaction_type' => 'withdrawal-charge', 'type' => 'withdrawal-charge'];
+            }
 
             $transactionDate = $req['transact_date'] ?? Carbon::now()->toDateTimeString();
             $codeSequence = new CodeSequence;
@@ -509,7 +513,7 @@ class TenantSavingsAccountUpdateOrCreateService extends CrudHelders
                     'accid' => $accountDetails->id,
                     'type' => $value['type'],
                     'narration' => $value['narration'] ?? null,
-                    'b4trn' => $accountDetails->balance, 
+                    'b4trn' => $accountDetails->balance,
                 ]);
                 // payment_mode
 
@@ -600,14 +604,14 @@ class TenantSavingsAccountUpdateOrCreateService extends CrudHelders
                     $memberService = new MemberHelpers;
                     $checker = $memberService->createNewSaccoMemebers($fields, $req);
                     if (isset($checker) && isset($checker['error'])) {
-                        throw new \Exception('share quantity must be greater than or equal to ' . $checker['error'] . ' shares', 400);
+                        throw new \Exception('share quantity must be greater than or equal to '.$checker['error'].' shares', 400);
                     }
                     $memberList = $checker['member']->id;
                 }
                 $OtherHelpers->addAmemberIntoAgroup(['memberslist' => $memberList, 'group_id' => $getGroupId, 'group_account_id' => $req['account_code'] ?? null], true);
                 $List = app(TenantSavingsAccountService::class);
                 if (count($membernameString)) {
-                    throw new \Exception('Group can only have one member Likes: ' . implode(',', $membernameString) . ' are skipped ', 400);
+                    throw new \Exception('Group can only have one member Likes: '.implode(',', $membernameString).' are skipped ', 400);
                 }
 
                 return $List->groupAccountList();
@@ -838,12 +842,12 @@ class TenantSavingsAccountUpdateOrCreateService extends CrudHelders
                             } else {
                                 $codeSequence = isset($value->type) ? str_contains(strtolower($value->type), 'w') ? 'WDL' : 'DPL' : '';
                                 $inThisInsetCheck = $this->UpdateOrCreateRecord('transactions', [
-                                    'reference' => 'SAC-' . $codeSequence . '-' . time() . '-' . mt_rand(10000000, 99999999),
+                                    'reference' => 'SAC-'.$codeSequence.'-'.time().'-'.mt_rand(10000000, 99999999),
                                     'member_id' => $getMemberId,
                                     'amount' => $value->amount,
                                     'payment_mode' => isset($value->method) ? $value->method : 'cash',
-                                    'deposited_by' => 'System (' . $detaminTheType . ' data Migration)',
-                                    'type' => $detaminTheType . '_charges',
+                                    'deposited_by' => 'System ('.$detaminTheType.' data Migration)',
+                                    'type' => $detaminTheType.'_charges',
                                     'charge_amount' => $value->charge,
                                     'transaction_date' => $value->date ?? Carbon::now()->toDateTimeString(),
                                     'account_id' => $AccountIds[$value->account_code],
@@ -945,7 +949,7 @@ class TenantSavingsAccountUpdateOrCreateService extends CrudHelders
                     'transaction_date' => $req['date'] ?? Carbon::now()->toDateTimeString(),
                     'account_id' => $trans->account_id,
                     'account_type' => SavingsAccount::class, // account_type
-                    'narration' => $req['reference'] . ": $acountblc :" . $req['narration'],
+                    'narration' => $req['reference'].": $acountblc :".$req['narration'],
                     'branch_id' => $req['branch_id'] ?? null,
                 ]);
 
