@@ -298,7 +298,7 @@ class SavingsTransactionPostingService
         $min = (float) ($charge['minimum_amount'] ?? 0);
         $max = (float) ($charge['maximum_amount'] ?? 0);
 
-        return ! ($max > 0 && ($amount < $min || $amount > $max));
+        return $amount >= $min && ($max <= 0 || $amount <= $max);
     }
 
     private function calculateChargeAmount(array $charge, float $amount): float
