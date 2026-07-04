@@ -4,6 +4,8 @@ use App\Central\Http\Middleware\EnsureCentralDomain;
 use App\Central\Http\Middleware\EnsureCentralUser;
 use App\Domain\Licensing\Entities\License;
 use App\Http\Middleware\EnforceLicense;
+use App\Http\Middleware\EnsureMemberApiUser;
+use App\Http\Middleware\EnsureStaffApiUser;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\IdentifyTenant;
 use App\Http\Middleware\PermissionMiddleware;
@@ -70,6 +72,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'central.domain' => EnsureCentralDomain::class,
             'feature' => EnsurePlanFeatureEnabled::class,
             'tenant.api' => EnsureTenantDomain::class,
+            'member.api' => EnsureMemberApiUser::class,
+            'staff.api' => EnsureStaffApiUser::class,
             // 'role'        => \Spatie\Permission\Middlewares\RoleMiddleware::class,
             // 'permission'  => \Spatie\Permission\Middlewares\PermissionMiddleware::class,
             'permission' => PermissionMiddleware::class,

@@ -6,12 +6,11 @@ use App\Support\BranchContext;
 use App\Tenant\Http\Resources\SavingsAccountResource;
 use App\Tenant\Modules\Accounting\Models\ChartOfAccount;
 use App\Tenant\Modules\Accounting\Services\SavingsJournalService;
-use App\Tenant\Modules\Charges\Contracts\ChargeApplicationServiceInterface;
-use App\Tenant\Modules\Members\Services\MemberChargeService;
 use App\Tenant\Modules\Savings\Models\SavingsAccount;
 use App\Tenant\Modules\Savings\Models\SavingsProduct;
 use App\Tenant\Modules\Savings\Services\FixedDepositInterestService;
 use App\Tenant\Modules\Savings\Services\SavingsAccountService;
+use App\Tenant\Modules\Savings\Services\SavingsTransactionPostingService;
 use App\Tenant\Modules\Transactions\Models\Transaction;
 use App\Tenant\Services\TenantSavingsAccountService;
 use Illuminate\Http\JsonResponse;
@@ -19,14 +18,13 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\ValidationException;
 
 class SavingsAccountController extends TenantSavingsAccountService
 {
     public function __construct(
         protected SavingsAccountService $service,
         protected SavingsJournalService $savingsJournal,
-        private readonly ChargeApplicationServiceInterface $chargeApplication,
+        private readonly SavingsTransactionPostingService $postingService,
     ) {}
 
     /**
@@ -349,14 +347,6 @@ class SavingsAccountController extends TenantSavingsAccountService
      */
     public function deposit(Request $request, SavingsAccount $savingsAccount)
     {
-        $member = $savingsAccount->member;
-        if ($member && $member->status !== 'active') {
-            return response()->json([
-                'message' => 'Member account is pending approval and cannot deposit.',
-                'errors' => ['member' => ['This member must be approved before any transactions can be made.']],
-            ], 403);
-        }
-
         $validated = $request->validate([
             'deposit_date' => 'required|date',
             'amount' => 'required|numeric|min:0.01',
@@ -366,101 +356,7 @@ class SavingsAccountController extends TenantSavingsAccountService
             'use_for_loan_repayment' => 'nullable|string|in:yes,no',
         ]);
 
-        $receiptNumber = $this->generateReceiptNumber();
-        $transactionRef = $this->generateTransactionReference();
-        $branchId = BranchContext::actingBranchId();
-
-        DB::connection('tenant')->transaction(function () use ($savingsAccount, $validated, $member, $receiptNumber, $transactionRef, $branchId) {
-            $savingsAccount->balance += $validated['amount'];
-            $savingsAccount->loadMissing('savingsProduct.charges');
-
-            // Apply deposit charges
-            $depositAmount = (float) $validated['amount'];
-            $selectedCharges = $this->resolveSelectedCharges($savingsAccount);
-            foreach ($selectedCharges as $charge) {
-                if (($charge['type'] ?? '') !== 'deposit') {
-                    continue;
-                }
-
-                // Respect amount range if defined
-                $min = (float) ($charge['minimum_amount'] ?? 0);
-                $max = (float) ($charge['maximum_amount'] ?? 0);
-                if ($max > 0 && ($depositAmount < $min || $depositAmount > $max)) {
-                    continue;
-                }
-
-                $chargeAmount = ($charge['charge_type'] ?? '') === 'percentage'
-                    ? round($depositAmount * ($charge['amount'] ?? 0) / 100, 2)
-                    : (float) ($charge['amount'] ?? 0);
-
-                if ($chargeAmount > 0) {
-                    $savingsAccount->balance -= $chargeAmount;
-                    $chargeRef = 'CHG-'.date('Ymd').'-'.mt_rand(10000, 99999);
-                    $chargeName = $charge['name'] ?? null;
-                    $chargeNarration = 'Deposit Charge'.($chargeName ? ': '.$chargeName : '');
-
-                    $chargeTxn = Transaction::create([
-                        'reference' => $chargeRef,
-                        'receipt_number' => $receiptNumber,
-                        'member_id' => $savingsAccount->member_id,
-                        'type' => 'charge',
-                        'amount' => $chargeAmount,
-                        'payment_mode' => $validated['payment_mode'] ?? null,
-                        'deposited_by' => 'System (Charge)',
-                        'transaction_date' => $validated['deposit_date'],
-                        'account_id' => $savingsAccount->id,
-                        'account_type' => SavingsAccount::class,
-                        'narration' => $chargeNarration,
-                        'charge_name' => $chargeName,
-                        'is_reversible' => $charge['is_reversible'] ?? true,
-                        'grouped_with' => $receiptNumber,
-                        'created_by' => Auth::id(),
-                        'branch_id' => $branchId,
-                    ]);
-
-                    $this->savingsJournal->postCharge($chargeTxn, $savingsAccount);
-                }
-            }
-
-            $savingsAccount->save();
-
-            $depositTxn = Transaction::create([
-                'reference' => $transactionRef,
-                'receipt_number' => $receiptNumber,
-                'member_id' => $savingsAccount->member_id,
-                'type' => 'deposit',
-                'amount' => $validated['amount'],
-                // Gross marker: receipt and ledger derive net = gross − charge from this.
-                'deposited_amount_before_charge' => $validated['amount'],
-                'payment_mode' => $validated['payment_mode'] ?? null,
-                'deposited_by' => $validated['deposited_by'] ?? null,
-                'transaction_date' => $validated['deposit_date'],
-                'account_id' => $savingsAccount->id,
-                'account_type' => SavingsAccount::class,
-                'narration' => $validated['narration'] ?? null,
-                'created_by' => Auth::id(),
-                'branch_id' => $branchId,
-            ]);
-
-            $this->savingsJournal->postDeposit($depositTxn, $savingsAccount);
-
-            $this->chargeApplication->applyForSavingsEvent(
-                savingsAccountId: $savingsAccount->id,
-                eventType: 'deposit',
-                transactionAmount: (float) $depositTxn->amount,
-                transactionId: $depositTxn->id,
-                actorId: $depositTxn->created_by ?? auth()->id(),
-            );
-
-            // Collect any pending registration charges now that funds are available.
-            if ($member) {
-                app(MemberChargeService::class)->collectPendingCharges(
-                    $member,
-                    $savingsAccount,
-                    $this->savingsJournal,
-                );
-            }
-        });
+        $this->postingService->deposit($savingsAccount, $validated, Auth::id());
 
         return response()->json(['success' => true, 'message' => 'Deposit successful.']);
     }
@@ -470,14 +366,6 @@ class SavingsAccountController extends TenantSavingsAccountService
      */
     public function withdraw(Request $request, SavingsAccount $savingsAccount)
     {
-        $member = $savingsAccount->member;
-        if ($member && $member->status !== 'active') {
-            return response()->json([
-                'message' => 'Member account is pending approval and cannot withdraw.',
-                'errors' => ['member' => ['This member must be approved before any transactions can be made.']],
-            ], 403);
-        }
-
         $validated = $request->validate([
             'deposit_date' => 'required|date',
             'amount' => 'required|numeric|min:0.01',
@@ -486,132 +374,7 @@ class SavingsAccountController extends TenantSavingsAccountService
             'narration' => 'nullable|string',
         ]);
 
-        // Minimum balance check
-        if ($savingsAccount->consider_min_balance) {
-            $savingsAccount->load('savingsProduct');
-            $minimumBalance = (float) ($savingsAccount->savingsProduct?->minimum_balance ?? 0);
-            $withdrawable = (float) $savingsAccount->balance - $minimumBalance;
-            if ($validated['amount'] > $withdrawable) {
-                $fmt = number_format($minimumBalance, 2);
-                $fmtMax = number_format(max($withdrawable, 0), 2);
-
-                return response()->json([
-                    'message' => "Withdrawal would breach the minimum balance of UGX {$fmt}. Maximum you can withdraw is UGX {$fmtMax}.",
-                    'errors' => ['amount' => ["Maximum withdrawable amount is UGX {$fmtMax} (minimum balance: UGX {$fmt})."]],
-                ], 422);
-            }
-        }
-
-        // Sufficient balance check
-        if ($validated['amount'] > (float) $savingsAccount->balance) {
-            return response()->json([
-                'message' => 'Insufficient account balance.',
-                'errors' => ['amount' => ['Withdrawal amount exceeds account balance.']],
-            ], 422);
-        }
-
-        $receiptNumber = $this->generateReceiptNumber();
-        $transactionRef = $this->generateTransactionReference();
-        $branchId = BranchContext::actingBranchId();
-
-        DB::connection('tenant')->transaction(function () use ($savingsAccount, $validated, $receiptNumber, $transactionRef, $branchId) {
-            $savingsAccount->balance -= $validated['amount'];
-            $savingsAccount->loadMissing('savingsProduct.charges');
-
-            // Convention A: withdrawal charges are deducted from the gross withdrawal
-            // amount. The member account is debited once for the gross withdrawal.
-            $withdrawAmount = (float) $validated['amount'];
-            $withdrawalCharges = [];
-            $selectedCharges = $this->resolveSelectedCharges($savingsAccount);
-            foreach ($selectedCharges as $charge) {
-                $chargeType = $charge['type'] ?? '';
-                if ($chargeType !== 'withdraw' && $chargeType !== 'withdrawal') {
-                    continue;
-                }
-
-                // Respect amount range if defined
-                $min = (float) ($charge['minimum_amount'] ?? 0);
-                $max = (float) ($charge['maximum_amount'] ?? 0);
-                if ($max > 0 && ($withdrawAmount < $min || $withdrawAmount > $max)) {
-                    continue;
-                }
-
-                $chargeAmount = ($charge['charge_type'] ?? '') === 'percentage'
-                    ? round($withdrawAmount * ($charge['amount'] ?? 0) / 100, 2)
-                    : (float) ($charge['amount'] ?? 0);
-
-                if ($chargeAmount > 0) {
-                    $withdrawalCharges[] = [
-                        'amount' => $chargeAmount,
-                        'name' => $charge['name'] ?? null,
-                        'gl_credit_account_id' => $charge['credit_account_id'] ?? $charge['gl_credit_account_id'] ?? null,
-                        'is_reversible' => $charge['is_reversible'] ?? true,
-                    ];
-                }
-            }
-
-            $chargeTotal = collect($withdrawalCharges)->sum('amount');
-            if ($chargeTotal >= $withdrawAmount) {
-                throw ValidationException::withMessages([
-                    'amount' => ['Withdrawal charge must be less than the withdrawal amount.'],
-                ]);
-            }
-
-            $savingsAccount->save();
-
-            $withdrawalTxn = Transaction::create([
-                'reference' => $transactionRef,
-                'receipt_number' => $receiptNumber,
-                'member_id' => $savingsAccount->member_id,
-                'type' => 'withdrawal',
-                'amount' => $validated['amount'],
-                'charge_amount' => $chargeTotal,
-                'payment_mode' => $validated['payment_mode'] ?? null,
-                'deposited_by' => $validated['deposited_by'] ?? null,
-                'transaction_date' => $validated['deposit_date'],
-                'account_id' => $savingsAccount->id,
-                'account_type' => SavingsAccount::class,
-                'narration' => $validated['narration'] ?? null,
-                'created_by' => Auth::id(),
-                'branch_id' => $branchId,
-            ]);
-
-            foreach ($withdrawalCharges as $charge) {
-                $chargeRef = 'CHG-'.date('Ymd').'-'.mt_rand(10000, 99999);
-                $chargeNarration = 'Withdrawal Charge'.($charge['name'] ? ': '.$charge['name'] : '');
-
-                Transaction::create([
-                    'reference' => $chargeRef,
-                    'receipt_number' => $receiptNumber,
-                    'member_id' => $savingsAccount->member_id,
-                    'type' => 'charge',
-                    'amount' => 0,
-                    'charge_amount' => $charge['amount'],
-                    'payment_mode' => $validated['payment_mode'] ?? null,
-                    'deposited_by' => 'System (Charge)',
-                    'transaction_date' => $validated['deposit_date'],
-                    'account_id' => $savingsAccount->id,
-                    'account_type' => SavingsAccount::class,
-                    'narration' => $chargeNarration,
-                    'charge_name' => $charge['name'],
-                    'gl_credit_account_id' => $charge['gl_credit_account_id'],
-                    'is_reversible' => $charge['is_reversible'],
-                    'grouped_with' => $receiptNumber,
-                    'created_by' => Auth::id(),
-                    'branch_id' => $branchId,
-                ]);
-            }
-
-            $this->savingsJournal->postWithdrawal($withdrawalTxn, $savingsAccount);
-
-            $this->chargeApplication->applyForSavingsEvent(
-                savingsAccountId: $savingsAccount->id,
-                eventType: 'withdraw',
-                transactionAmount: (float) $withdrawalTxn->amount,
-                transactionId: $withdrawalTxn->id,
-                actorId: $withdrawalTxn->created_by ?? auth()->id(),
-            );
-        });
+        $this->postingService->withdraw($savingsAccount, $validated, Auth::id());
 
         return response()->json(['success' => true, 'message' => 'Withdrawal successful.']);
     }

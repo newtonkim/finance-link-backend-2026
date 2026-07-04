@@ -35,7 +35,6 @@ use App\Tenant\Http\Controllers\Api\V1\MemberChargeController;
 use App\Tenant\Http\Controllers\Api\V1\MemberController;
 use App\Tenant\Http\Controllers\Api\V1\MemberLoanSummaryController;
 use App\Tenant\Http\Controllers\Api\V1\MemberStatementController;
-use App\Tenant\Http\Controllers\Api\V1\SavingsAccountStatementController;
 use App\Tenant\Http\Controllers\Api\V1\MigrationController;
 use App\Tenant\Http\Controllers\Api\V1\OnboardingSettingsController;
 use App\Tenant\Http\Controllers\Api\V1\PublicHolidayController;
@@ -43,11 +42,13 @@ use App\Tenant\Http\Controllers\Api\V1\RegularSavingsInterestController;
 use App\Tenant\Http\Controllers\Api\V1\ReportsController;
 use App\Tenant\Http\Controllers\Api\V1\SaccoBrandingController;
 use App\Tenant\Http\Controllers\Api\V1\SavingsAccountController;
+use App\Tenant\Http\Controllers\Api\V1\SavingsAccountStatementController;
 use App\Tenant\Http\Controllers\Api\V1\SavingsGroupController;
 use App\Tenant\Http\Controllers\Api\V1\SavingsProductController;
 use App\Tenant\Http\Controllers\Api\V1\SavingsSharesBalancesController;
 use App\Tenant\Http\Controllers\Api\V1\SavingsTransferController;
 use App\Tenant\Http\Controllers\Api\V1\SharesController;
+use App\Tenant\Http\Controllers\Api\V1\StaffMemberTransactionRequestController;
 use App\Tenant\Http\Controllers\Api\V1\TenantSettingsController;
 use App\Tenant\Http\Controllers\Api\V1\TenantStaffController;
 use App\Tenant\Http\Controllers\Api\V1\TransactionController;
@@ -256,7 +257,7 @@ Route::prefix('expenses')->group(function () {
     Route::get('stats', [ExpenseController::class, 'stats']);
     Route::get('categories', [ExpenseCategoryController::class, 'index']);
     Route::post('categories', [ExpenseCategoryController::class, 'store']);
-    
+
     // Reports
     Route::prefix('reports')->group(function () {
         Route::get('ledger', [ExpenseReportController::class, 'ledger']);
@@ -340,6 +341,11 @@ Route::get('transaction-reversals', [TransactionReversalController::class, 'inde
 Route::post('transaction-reversals/{reversal}/approve', [TransactionReversalController::class, 'approve']);
 Route::post('transaction-reversals/{reversal}/reject', [TransactionReversalController::class, 'reject']);
 
+// Member self-service transaction requests
+Route::get('member-transaction-requests', [StaffMemberTransactionRequestController::class, 'index']);
+Route::post('member-transaction-requests/{transactionRequest}/approve', [StaffMemberTransactionRequestController::class, 'approve']);
+Route::post('member-transaction-requests/{transactionRequest}/reject', [StaffMemberTransactionRequestController::class, 'reject']);
+
 // Data Migration
 Route::prefix('migration')->group(function () {
     Route::get('opening-balances/template', [MigrationController::class, 'downloadOpeningBalancesTemplate']);
@@ -364,9 +370,7 @@ Route::group(['prefix' => '', 'middleware' => []], function () {
                     'route' => 'chart-of-accounts',
                     'method' => 'chart_of_accounts_drop_down_list',
                 ],
-             
-               
-               
+
             ]);
         });
         Route::group(['controller' => LoanProductController::class, 'middleware' => ['feature:loans']], function () {
@@ -379,11 +383,11 @@ Route::group(['prefix' => '', 'middleware' => []], function () {
         });
         Route::group(['controller' => MemberController::class, 'middleware' => []], function () {
             routeListV2([
-                 [
+                [
                     'route' => 'member-saving-accounts-dropdown-list',
                     'method' => 'member_saving_accounts_drop_down_list',
                 ],
-                 [
+                [
                     'route' => 'general-product-charges',
                     'method' => 'general_product_charges_drop_down_list',
                 ],
@@ -771,10 +775,10 @@ Route::group(['prefix' => '', 'middleware' => []], function () {
                 routeListV2(
                     [
                         [
-                        'route' => 'list',
-                        'method' => 'get_system_audit_log_list',
-                        // 'permission' => 'system-audit-log-list',
-                    ],
+                            'route' => 'list',
+                            'method' => 'get_system_audit_log_list',
+                            // 'permission' => 'system-audit-log-list',
+                        ],
                     ]
                 );
             });
@@ -1035,11 +1039,11 @@ Route::group(['prefix' => '', 'middleware' => []], function () {
             ],
             [
                 'route' => 'activate',
-                'method' => 'unarchive_members_action',///  make member domant
+                'method' => 'unarchive_members_action', // /  make member domant
             ],
             [
                 'route' => 'dormant',
-                'method' => 'members_delete',///  make member domant
+                'method' => 'members_delete', // /  make member domant
             ],
             [
                 'route' => 'details',
