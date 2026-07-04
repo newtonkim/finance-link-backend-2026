@@ -4,8 +4,10 @@ namespace App\Tenant\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Staff;
+use App\Support\BranchContext;
 use App\Tenant\Modules\Savings\Services\SavingsTransactionPostingService;
 use App\Tenant\Modules\Transactions\Models\MemberTransactionRequest;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -16,7 +18,7 @@ class StaffMemberTransactionRequestController extends Controller
 
     public function index(Request $request)
     {
-        $query = MemberTransactionRequest::query()
+        $query = $this->applyBranchScope(MemberTransactionRequest::query())
             ->with(['member', 'savingsAccount', 'reviewer'])
             ->orderByDesc('created_at');
 
@@ -49,7 +51,7 @@ class StaffMemberTransactionRequestController extends Controller
         $staff = $request->user();
 
         $approved = DB::connection('tenant')->transaction(function () use ($transactionRequest, $validated, $staff) {
-            $lockedRequest = MemberTransactionRequest::query()
+            $lockedRequest = $this->applyBranchScope(MemberTransactionRequest::query())
                 ->with(['member', 'savingsAccount'])
                 ->whereKey($transactionRequest->id)
                 ->lockForUpdate()
@@ -106,7 +108,7 @@ class StaffMemberTransactionRequestController extends Controller
         $staff = $request->user();
 
         $rejected = DB::connection('tenant')->transaction(function () use ($transactionRequest, $validated, $staff) {
-            $lockedRequest = MemberTransactionRequest::query()
+            $lockedRequest = $this->applyBranchScope(MemberTransactionRequest::query())
                 ->whereKey($transactionRequest->id)
                 ->lockForUpdate()
                 ->firstOrFail();
@@ -135,5 +137,40 @@ class StaffMemberTransactionRequestController extends Controller
             'message' => 'Transaction request rejected successfully.',
             'data' => $rejected,
         ]);
+    }
+
+    private function applyBranchScope(Builder $query): Builder
+    {
+        $staff = BranchContext::getStaff();
+
+        if (! $staff instanceof Staff) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        if (BranchContext::scopeFor($staff) === BranchContext::SCOPE_ALL) {
+            return $query;
+        }
+
+        $allowedBranchIds = BranchContext::allowedBranchIds();
+
+        if (empty($allowedBranchIds)) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->where(function (Builder $branchQuery) use ($allowedBranchIds) {
+            $branchQuery
+                ->whereHas('savingsAccount', function (Builder $accountQuery) use ($allowedBranchIds) {
+                    $accountQuery->whereIn('branch_id', $allowedBranchIds);
+                })
+                ->orWhere(function (Builder $fallbackQuery) use ($allowedBranchIds) {
+                    $fallbackQuery
+                        ->whereHas('savingsAccount', function (Builder $accountQuery) {
+                            $accountQuery->whereNull('branch_id');
+                        })
+                        ->whereHas('member', function (Builder $memberQuery) use ($allowedBranchIds) {
+                            $memberQuery->whereIn('branch_id', $allowedBranchIds);
+                        });
+                });
+        });
     }
 }

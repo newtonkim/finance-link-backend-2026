@@ -42,7 +42,8 @@ Route::prefix('v1/tenant')->middleware(['tenant.api'])->group(function () {
     Route::post('auth/login', [AuthController::class, 'login']);
 
     Route::prefix('member')->group(function () {
-        Route::post('auth/login', [MemberAuthController::class, 'login']);
+        Route::post('auth/login', [MemberAuthController::class, 'login'])
+            ->middleware('throttle:member-login');
 
         Route::middleware(['auth:sanctum', 'license.active', 'member.api'])->group(function () {
             Route::post('auth/logout', [MemberAuthController::class, 'logout']);

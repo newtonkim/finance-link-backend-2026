@@ -39,6 +39,7 @@ class SavingsTransactionPostingService
             $account->balance += $amount;
             $account->loadMissing('savingsProduct.charges');
 
+            $depositCharges = [];
             foreach ($this->resolveSelectedCharges($account) as $charge) {
                 if (($charge['type'] ?? '') !== 'deposit') {
                     continue;
@@ -53,14 +54,30 @@ class SavingsTransactionPostingService
                     continue;
                 }
 
-                $account->balance -= $chargeAmount;
-                $chargeName = $charge['name'] ?? null;
+                $depositCharges[] = [
+                    'amount' => $chargeAmount,
+                    'name' => $charge['name'] ?? null,
+                    'gl_credit_account_id' => $charge['credit_account_id'] ?? $charge['gl_credit_account_id'] ?? null,
+                    'is_reversible' => $charge['is_reversible'] ?? true,
+                ];
+            }
+
+            $chargeTotal = collect($depositCharges)->sum('amount');
+            if ($chargeTotal >= $amount) {
+                throw ValidationException::withMessages([
+                    'amount' => ['Deposit charge must be less than the deposit amount.'],
+                ]);
+            }
+
+            foreach ($depositCharges as $charge) {
+                $account->balance -= $charge['amount'];
+                $chargeName = $charge['name'];
                 $chargeTxn = Transaction::create([
                     'reference' => $this->generateChargeReference(),
                     'receipt_number' => $receiptNumber,
                     'member_id' => $account->member_id,
                     'type' => 'charge',
-                    'amount' => $chargeAmount,
+                    'amount' => $charge['amount'],
                     'payment_mode' => $data['payment_mode'] ?? null,
                     'deposited_by' => 'System (Charge)',
                     'transaction_date' => $data['deposit_date'],
@@ -68,7 +85,8 @@ class SavingsTransactionPostingService
                     'account_type' => SavingsAccount::class,
                     'narration' => 'Deposit Charge'.($chargeName ? ': '.$chargeName : ''),
                     'charge_name' => $chargeName,
-                    'is_reversible' => $charge['is_reversible'] ?? true,
+                    'gl_credit_account_id' => $charge['gl_credit_account_id'],
+                    'is_reversible' => $charge['is_reversible'],
                     'grouped_with' => $receiptNumber,
                     'created_by' => $createdBy,
                     'branch_id' => $branchId,

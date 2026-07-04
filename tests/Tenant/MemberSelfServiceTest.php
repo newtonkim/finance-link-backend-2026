@@ -48,6 +48,26 @@ it('MemberSelfService rejects inactive member login', function () {
     ])->assertStatus(403);
 });
 
+it('MemberSelfService throttles repeated member login attempts', function () {
+    Member::factory()->create([
+        'email' => 'throttled-member@example.test',
+        'password' => Hash::make('password123'),
+        'status' => 'active',
+    ]);
+
+    for ($i = 0; $i < 5; $i++) {
+        $this->postJson(memberSelfServiceUrl('auth/login'), [
+            'email' => 'throttled-member@example.test',
+            'password' => 'wrong-password',
+        ])->assertStatus(422);
+    }
+
+    $this->postJson(memberSelfServiceUrl('auth/login'), [
+        'email' => 'throttled-member@example.test',
+        'password' => 'wrong-password',
+    ])->assertStatus(429);
+});
+
 it('MemberSelfService only exposes the authenticated members accounts', function () {
     $member = Member::factory()->create(['status' => 'active']);
     $other = Member::factory()->create(['status' => 'active']);
@@ -214,6 +234,101 @@ it('MemberSelfService lets staff approve a deposit request through normal postin
         'amount' => '500.00',
         'created_by' => $staff->id,
     ], 'tenant');
+});
+
+it('MemberSelfService scopes staff transaction request list by branch', function () {
+    $staff = Staff::factory()->create(['branch_id' => 1, 'is_tenant_admin' => false]);
+    $branchMember = Member::factory()->create(['status' => 'active', 'branch_id' => 1]);
+    $otherMember = Member::factory()->create(['status' => 'active', 'branch_id' => 2]);
+    $branchAccount = SavingsAccount::factory()->create([
+        'member_id' => $branchMember->id,
+        'branch_id' => 1,
+    ]);
+    $otherAccount = SavingsAccount::factory()->create([
+        'member_id' => $otherMember->id,
+        'branch_id' => 2,
+    ]);
+
+    $visibleRequest = MemberTransactionRequest::create([
+        'member_id' => $branchMember->id,
+        'savings_account_id' => $branchAccount->id,
+        'type' => MemberTransactionRequest::TYPE_DEPOSIT,
+        'amount' => 100,
+        'payment_mode' => 'cash',
+        'requested_date' => now()->toDateString(),
+        'status' => MemberTransactionRequest::STATUS_PENDING,
+    ]);
+
+    MemberTransactionRequest::create([
+        'member_id' => $otherMember->id,
+        'savings_account_id' => $otherAccount->id,
+        'type' => MemberTransactionRequest::TYPE_DEPOSIT,
+        'amount' => 100,
+        'payment_mode' => 'cash',
+        'requested_date' => now()->toDateString(),
+        'status' => MemberTransactionRequest::STATUS_PENDING,
+    ]);
+
+    $this->actingAs($staff, 'sanctum')
+        ->getJson('http://test.mfukopro.test/api/v1/tenant/member-transaction-requests')
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.id', $visibleRequest->id);
+});
+
+it('MemberSelfService prevents branch staff approving another branch request', function () {
+    $staff = Staff::factory()->create(['branch_id' => 1, 'is_tenant_admin' => false]);
+    $member = Member::factory()->create(['status' => 'active', 'branch_id' => 2]);
+    $account = SavingsAccount::factory()->create([
+        'member_id' => $member->id,
+        'branch_id' => 2,
+        'balance' => 1000,
+    ]);
+
+    $transactionRequest = MemberTransactionRequest::create([
+        'member_id' => $member->id,
+        'savings_account_id' => $account->id,
+        'type' => MemberTransactionRequest::TYPE_DEPOSIT,
+        'amount' => 300,
+        'payment_mode' => 'cash',
+        'requested_date' => now()->toDateString(),
+        'status' => MemberTransactionRequest::STATUS_PENDING,
+    ]);
+
+    $this->actingAs($staff, 'sanctum')
+        ->postJson("http://test.mfukopro.test/api/v1/tenant/member-transaction-requests/{$transactionRequest->id}/approve")
+        ->assertNotFound();
+
+    expect($transactionRequest->fresh()->status)->toBe(MemberTransactionRequest::STATUS_PENDING);
+    expect((float) $account->fresh()->balance)->toBe(1000.00);
+});
+
+it('MemberSelfService prevents branch staff rejecting another branch request', function () {
+    $staff = Staff::factory()->create(['branch_id' => 1, 'is_tenant_admin' => false]);
+    $member = Member::factory()->create(['status' => 'active', 'branch_id' => 2]);
+    $account = SavingsAccount::factory()->create([
+        'member_id' => $member->id,
+        'branch_id' => 2,
+        'balance' => 1000,
+    ]);
+
+    $transactionRequest = MemberTransactionRequest::create([
+        'member_id' => $member->id,
+        'savings_account_id' => $account->id,
+        'type' => MemberTransactionRequest::TYPE_WITHDRAWAL,
+        'amount' => 300,
+        'payment_mode' => 'cash',
+        'requested_date' => now()->toDateString(),
+        'status' => MemberTransactionRequest::STATUS_PENDING,
+    ]);
+
+    $this->actingAs($staff, 'sanctum')
+        ->postJson("http://test.mfukopro.test/api/v1/tenant/member-transaction-requests/{$transactionRequest->id}/reject", [
+            'review_reason' => 'Not my branch.',
+        ])
+        ->assertNotFound();
+
+    expect($transactionRequest->fresh()->status)->toBe(MemberTransactionRequest::STATUS_PENDING);
 });
 
 it('MemberSelfService lets staff reject a request without changing balance', function () {

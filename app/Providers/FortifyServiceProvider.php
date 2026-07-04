@@ -86,5 +86,12 @@ class FortifyServiceProvider extends ServiceProvider
 
             return Limit::perMinute(5)->by($throttleKey);
         });
+
+        RateLimiter::for('member-login', function (Request $request) {
+            $tenant = app()->bound('currentTenant') ? app('currentTenant')->subdomain : 'none';
+            $throttleKey = Str::transliterate(Str::lower($tenant.'|'.$request->input('email')).'|'.$request->ip());
+
+            return Limit::perMinute(5)->by($throttleKey);
+        });
     }
 }
