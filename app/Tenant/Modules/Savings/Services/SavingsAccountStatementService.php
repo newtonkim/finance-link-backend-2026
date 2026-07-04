@@ -64,11 +64,11 @@ class SavingsAccountStatementService implements SavingsAccountStatementServiceIn
         $warnings = [];
         $rows = [];
 
-        $knownTypes = ['deposit', 'transfer_in', 'interest', 'withdrawal', 'withdraw', 'transfer_out', 'charge', 'general-charge', 'deposit-charge', 'withdraw-charge'];
+        $knownTypes = ['deposit', 'transfer_in', 'interest', 'withdrawal', 'withdraw', 'transfer_out', 'charge', 'general-charge', 'deposit-charge', 'withdraw-charge', 'withdrawal-charge'];
 
         foreach ($periodRows as $r) {
             [$credit, $debit] = $this->classify($r);
-            if ($credit === 0.0 && $debit === 0.0 && ! in_array($r->type, $knownTypes, true)) {
+            if ($credit === 0.0 && $debit === 0.0 && ! in_array(strtolower((string) $r->type), $knownTypes, true)) {
                 $warnings[] = "Unknown transaction type '{$r->type}' on row {$r->id} — excluded.";
 
                 continue;
@@ -120,7 +120,7 @@ class SavingsAccountStatementService implements SavingsAccountStatementServiceIn
             'withdraw-charge' => 'Withdrawal Charge',
             'interest' => 'Interest',
         ];
-        $label = $labels[$r->type] ?? ucwords(str_replace(['_', '-'], ' ', (string) $r->type));
+        $label = $labels[strtolower((string) $r->type)] ?? ucwords(str_replace(['_', '-'], ' ', (string) $r->type));
         $narration = trim((string) ($r->narration ?? ''));
 
         return $narration === '' ? $label : "{$label} — {$narration}";
@@ -170,7 +170,9 @@ class SavingsAccountStatementService implements SavingsAccountStatementServiceIn
     /** Returns [credit, debit] from a Transaction row. */
     private function classify(Transaction $r): array
     {
-        $type = (string) $r->type;
+        // Transaction types are stored with inconsistent casing (e.g. 'deposit-Charge'),
+        // so normalise before matching against the lowercase type lists.
+        $type = strtolower((string) $r->type);
         $amount = (float) $r->amount;
         $chargeAmount = (float) ($r->charge_amount ?? 0);
 
