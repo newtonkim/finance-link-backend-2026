@@ -248,3 +248,37 @@ it('includes rows whose account_type is null or a morph alias (legacy data shape
     expect($r['balances']['total_credit'])->toBe(4_000_000.0); // the NULL-typed deposit
     expect($r['balances']['total_debit'])->toBe(6_000.0);      // the alias-typed charge (charge_amount used because amount=0)
 });
+
+it('excludes group savings transactions from personal savings statements', function () {
+    $account = SavingsAccount::factory()->create();
+    $member = $account->member;
+
+    Transaction::create([
+        'reference' => 'PERSONAL-DEP',
+        'member_id' => $member->id,
+        'account_id' => $account->id,
+        'account_type' => SavingsAccount::class,
+        'type' => 'deposit',
+        'amount' => 1000,
+        'transaction_date' => Carbon::parse('2026-02-10'),
+    ]);
+
+    Transaction::create([
+        'reference' => 'GROUP-DEP',
+        'member_id' => $member->id,
+        'account_id' => $account->id,
+        'account_type' => SavingsAccount::class,
+        'group_savings_account_id' => 99,
+        'type' => 'deposit',
+        'amount' => 200000,
+        'transaction_date' => Carbon::parse('2026-02-11'),
+    ]);
+
+    $r = app(SavingsAccountStatementServiceInterface::class)
+        ->buildStatement($account->id, '2026-02-01', '2026-02-28');
+
+    expect($r['balances']['count'])->toBe(1);
+    expect($r['balances']['total_credit'])->toBe(1000.0);
+    expect($r['transactions'])->toHaveCount(1);
+    expect($r['transactions'][0]['id'])->not->toBeNull();
+});

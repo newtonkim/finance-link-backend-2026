@@ -138,6 +138,11 @@ class SavingsAccountController extends TenantSavingsAccountService
         return $this->Response(['data' => self::addMemberGroupDropDownList()]);
     }
 
+    public function active_group_member_drop_down_list()
+    {
+        return $this->Response(['data' => self::activeGroupMemberDropDownList()]);
+    }
+
     public function print_group_account_profile()
     {
         return $this->Response(['data' => self::printGroupAccountTransactions()]);

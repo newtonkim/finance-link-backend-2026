@@ -13,10 +13,10 @@ class OtherHelpers extends GlobalHelpers
         // this   is used in more places
         return $this->TryCatch(function () use ($module, $settings_names) {
             $settings = DB::table('system_settings')
-                ->when(!empty($module), function ($query) use ($module) {
+                ->when(! empty($module), function ($query) use ($module) {
                     $query->whereIn('settings_module', $module);
                 })
-                ->when(!empty($settings_names), function ($query) use ($settings_names) {
+                ->when(! empty($settings_names), function ($query) use ($settings_names) {
                     $query->orWhereIn('settings_name', $settings_names);
                 })
                 ->orderBy('id', 'DESC')
@@ -42,26 +42,85 @@ class OtherHelpers extends GlobalHelpers
      * @param id  help not distur the code  that already exists
      * not required code
      * **/
-    public function addAmemberIntoAgroup($req, $addingTothegroup = false)
+    public function addAmemberIntoAgroup($req, $addingTothegroup = false, bool $syncMembers = false)
     {
-        return $this->TryCatch(function () use ($req, $addingTothegroup) {
+        return $this->TryCatch(function () use ($req, $addingTothegroup, $syncMembers) {
             $codeSequence = new CodeSequence;
             $CrudHelders = new CrudHelders;
             if (isset($req['memberslist'])) {
-                $ArrayMember = explode(',', $req['memberslist']);
+                // memberslist may arrive as an array (multi-select) or a comma string.
+                $ArrayMember = is_array($req['memberslist'])
+                    ? array_values($req['memberslist'])
+                    : explode(',', (string) $req['memberslist']);
+                $ArrayMember = array_values(array_filter($ArrayMember, fn ($m) => $m !== null && $m !== ''));
+                if ($syncMembers) {
+                    DB::table('savings_group_members')
+                        ->where('savings_group_id', $req['group_id'])
+                        ->whereNotIn('member_id', $ArrayMember)
+                        ->update([
+                            'deleted_at' => now(),
+                            'deleted_by' => auth()->check() ? auth()->id() : null,
+                            'updated_at' => now(),
+                            'updated_by' => auth()->check() ? auth()->id() : null,
+                        ]);
+
+                    DB::table('savings_group_members')
+                        ->where('savings_group_id', $req['group_id'])
+                        ->whereIn('member_id', $ArrayMember)
+                        ->whereNotNull('deleted_at')
+                        ->update([
+                            'deleted_at' => null,
+                            'deleted_by' => null,
+                            'updated_at' => now(),
+                            'updated_by' => auth()->check() ? auth()->id() : null,
+                        ]);
+                }
                 $length = count($ArrayMember);
                 for ($i = 0; $i < $length; $i++) {
-                    if (! isset($req['id'])) {
-                        $groupMemebrCode = $codeSequence->codeSequence($req['code'] ?? null, type: 'savings-group', moduleTarget: 'savings-group', tableTaget: 'savings_group_members');
+                    $memberId = $ArrayMember[$i];
+
+                    // Skip members already in the group so re-saving (e.g. on edit)
+                    // never duplicates memberships.
+                    $alreadyIn = DB::table('savings_group_members')
+                        ->where('savings_group_id', $req['group_id'])
+                        ->where('member_id', $memberId)
+                        ->whereNull('deleted_at')
+                        ->exists();
+                    if ($alreadyIn) {
+                        continue;
                     }
-                    $this->UpdateOrCreateRecord('savings_group_members', [
+
+                    $groupMemebrCode = $codeSequence->codeSequence($req['code'] ?? null, type: 'savings-group', moduleTarget: 'savings-group', tableTaget: 'savings_group_members');
+                    $restored = DB::table('savings_group_members')
+                        ->where('savings_group_id', $req['group_id'])
+                        ->where('member_id', $memberId)
+                        ->whereNotNull('deleted_at')
+                        ->update([
+                            'group_account_id' => $req['group_account_id'] ?? null,
+                            'account_number' => $groupMemebrCode,
+                            'role' => $addingTothegroup ? $CrudHelders->groupMemberRoles[4] : $CrudHelders->groupMemberRoles[$i <= 3 ? $i + 1 : 4],
+                            'code' => $groupMemebrCode,
+                            'branch_id' => request()->branch_id,
+                            'deleted_at' => null,
+                            'deleted_by' => null,
+                            'updated_at' => now(),
+                            'updated_by' => auth()->check() ? auth()->id() : null,
+                        ]);
+                    if ($restored) {
+                        continue;
+                    }
+
+                    DB::table('savings_group_members')->insert([
                         'group_account_id' => $req['group_account_id'] ?? null,
                         'savings_group_id' => $req['group_id'],
                         'account_number' => $groupMemebrCode,
                         'role' => $addingTothegroup ? $CrudHelders->groupMemberRoles[4] : $CrudHelders->groupMemberRoles[$i <= 3 ? $i + 1 : 4],
                         'code' => $groupMemebrCode,
-                        'member_id' => $ArrayMember[$i],
+                        'member_id' => $memberId,
                         'branch_id' => request()->branch_id,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                        'created_by' => auth()->check() ? auth()->id() : null,
                     ]);
                 }
             }
