@@ -13,10 +13,10 @@ class OtherHelpers extends GlobalHelpers
         // this   is used in more places
         return $this->TryCatch(function () use ($module, $settings_names) {
             $settings = DB::table('system_settings')
-                ->when(!empty($module), function ($query) use ($module) {
+                ->when(! empty($module), function ($query) use ($module) {
                     $query->whereIn('settings_module', $module);
                 })
-                ->when(!empty($settings_names), function ($query) use ($settings_names) {
+                ->when(! empty($settings_names), function ($query) use ($settings_names) {
                     $query->orWhereIn('settings_name', $settings_names);
                 })
                 ->orderBy('id', 'DESC')
@@ -48,7 +48,11 @@ class OtherHelpers extends GlobalHelpers
             $codeSequence = new CodeSequence;
             $CrudHelders = new CrudHelders;
             if (isset($req['memberslist'])) {
-                $ArrayMember = explode(',', $req['memberslist']);
+                // memberslist may arrive as an array (multi-select) or a comma string.
+                $ArrayMember = is_array($req['memberslist'])
+                    ? array_values($req['memberslist'])
+                    : explode(',', (string) $req['memberslist']);
+                $ArrayMember = array_values(array_filter($ArrayMember, fn ($m) => $m !== null && $m !== ''));
                 $length = count($ArrayMember);
                 for ($i = 0; $i < $length; $i++) {
                     if (! isset($req['id'])) {
