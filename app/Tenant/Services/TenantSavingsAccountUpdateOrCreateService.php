@@ -267,27 +267,60 @@ class TenantSavingsAccountUpdateOrCreateService extends CrudHelders
                     }
 
 
-                    $getMemberGroup = DB::table('savings_group_members')->where('member_id', $req['member_id'])->first(['balance', 'id']);
+                    $getMemberGroup = DB::table('savings_group_members')
+                        ->where('savings_group_id', $currentBalance->savings_group_id)
+                        ->where('member_id', $req['member_id'])
+                        ->whereNull('deleted_at')
+                        ->first(['balance', 'id']);
+                    if (! $getMemberGroup) {
+                        return throw new \Exception('Selected member does not belong to this group.');
+                    }
                     $collection = $this->groupDepositeMethod($currentBalance, $amount, $chargedAmount, $req, $getMemberGroup);
 
                     $newBalance = $collection['balance'];
                     $transactionList = $collection['transaction-list'];
-                    if (! $getMemberGroup) {
-                        return throw new \Exception('Group savings account not found.');
-                    }
                     // $transactionList['group_member_account_balance_before_transaction'] = $getMemberGroup->balance;
-                    $this->UpdateOrCreateRecord("savings_group_members", ['balance' => $getMemberGroup->balance + ($amount - $chargedAmount)], ['id' => $currentBalance->savings_group_id]);
+                    $newMemberBalance = (float) ($getMemberGroup->balance ?? 0) + ($amount - $chargedAmount);
+                    $memberBalanceUpdated = DB::table('savings_group_members')
+                        ->where('id', $getMemberGroup->id)
+                        ->whereNull('deleted_at')
+                        ->update([
+                            'balance' => $newMemberBalance,
+                            'updated_at' => now(),
+                            'updated_by' => auth()->check() ? auth()->id() : null,
+                        ]);
+                    if ($memberBalanceUpdated !== 1) {
+                        throw new \Exception('Failed to update group member deposited amount.');
+                    }
                 } else {
 
-                    $getMemberGroup = DB::table('savings_group_members')->where('member_id', $req['member_id'])->first(['balance', 'id']);
+                    $getMemberGroup = DB::table('savings_group_members')
+                        ->where('savings_group_id', $currentBalance->savings_group_id)
+                        ->where('member_id', $req['member_id'])
+                        ->whereNull('deleted_at')
+                        ->first(['balance', 'id']);
+                    if (! $getMemberGroup) {
+                        return throw new \Exception('Selected member does not belong to this group.');
+                    }
                     $collection = $this->groupWithdrawalMethod($currentBalance, $amount, $chargedAmount, $req, $getMemberGroup);
                     $newBalance = $collection['balance'];
                     $transactionList = $collection['transaction-list'];
                     // $transactionList['group_member_account_balance_before_transaction'] = $getMemberGroup->balance;
-                    if (! $getMemberGroup) {
-                        return throw new \Exception('Group savings account not found.');
+                    $newMemberBalance = (float) ($getMemberGroup->balance ?? 0) - ($amount + $chargedAmount);
+                    if ($newMemberBalance < 0) {
+                        return throw new \Exception('Insufficient member group balance.');
                     }
-                    $this->UpdateOrCreateRecord("savings_group_members", ['balance' => $getMemberGroup->balance + ($amount - $chargedAmount)], ['id' => $currentBalance->savings_group_id]);
+                    $memberBalanceUpdated = DB::table('savings_group_members')
+                        ->where('id', $getMemberGroup->id)
+                        ->whereNull('deleted_at')
+                        ->update([
+                            'balance' => $newMemberBalance,
+                            'updated_at' => now(),
+                            'updated_by' => auth()->check() ? auth()->id() : null,
+                        ]);
+                    if ($memberBalanceUpdated !== 1) {
+                        throw new \Exception('Failed to update group member deposited amount.');
+                    }
                 }
                 if ($newBalance < 0) {
                     return throw new \Exception('Insufficient balance.');
@@ -568,24 +601,27 @@ class TenantSavingsAccountUpdateOrCreateService extends CrudHelders
                 $settings = new FindsettingsAction(['savings-group']);
 
                 if (isset($req['add_existing_members_ogroup']) && $req['add_existing_members_ogroup'] == true) {
+                    $memberIds = $this->normalizeMemberIds($req['memberslist'] ?? []);
+                    $memberList = implode(',', $memberIds);
 
                     $canBeInMultipleGroups = $settings->canMemberExisitsInMultipleGroups();
                     if (in_array($canBeInMultipleGroups, ['false', '', null])) {
-                        $memberList = $req['memberslist'];
-
                         $checkIfMemberExistsInGroup = DB::table('savings_group_members')
                             ->leftJoin('members', 'members.id', '=', 'savings_group_members.member_id')
-                            ->whereIn('member_id', explode(',', $req['memberslist']))->get('members.name', 'id');
+                            ->whereNull('savings_group_members.deleted_at')
+                            ->where('savings_group_members.savings_group_id', '!=', $getGroupId)
+                            ->whereIn('member_id', $memberIds)
+                            ->get(['members.name', 'members.id']);
                         if (isset($checkIfMemberExistsInGroup) && count($checkIfMemberExistsInGroup) > 0) {
                             $membernameString[] = implode(',', $checkIfMemberExistsInGroup->pluck('name')->toArray());
 
-                            $fileterMembers = array_filter(explode(',', $memberList), function ($member) use ($checkIfMemberExistsInGroup) {
-                                if (in_array($member, array_column($checkIfMemberExistsInGroup->toArray(), 'id'))) {
-                                    return $member;
-                                }
-                            });
+                            $existingMemberIds = $checkIfMemberExistsInGroup->pluck('id')->map(fn ($id) => (string) $id)->toArray();
+                            $fileterMembers = array_filter($memberIds, fn ($member) => ! in_array((string) $member, $existingMemberIds, true));
                             $memberList = implode(',', $fileterMembers);
                         }
+                    }
+                    if (empty($memberList) && count($membernameString)) {
+                        throw new \Exception('These members already belong to another group: ' . implode(',', $membernameString), 400);
                     }
                 } else {
                     // / create first member the flow
@@ -606,13 +642,23 @@ class TenantSavingsAccountUpdateOrCreateService extends CrudHelders
                 }
                 $OtherHelpers->addAmemberIntoAgroup(['memberslist' => $memberList, 'group_id' => $getGroupId, 'group_account_id' => $req['account_code'] ?? null], true);
                 $List = app(TenantSavingsAccountService::class);
+                $response = $List->groupAccountList();
                 if (count($membernameString)) {
-                    throw new \Exception('Group can only have one member Likes: ' . implode(',', $membernameString) . ' are skipped ', 400);
+                    $response['warning'] = 'These members already belong to another group: ' . implode(',', $membernameString);
                 }
 
-                return $List->groupAccountList();
+                return $response;
             });
         });
+    }
+
+    private function normalizeMemberIds($members): array
+    {
+        if (is_array($members)) {
+            return array_values(array_filter($members, fn ($member) => $member !== null && $member !== ''));
+        }
+
+        return array_values(array_filter(explode(',', (string) $members), fn ($member) => $member !== null && $member !== ''));
     }
 
     public function transferAmountApprove()
@@ -738,10 +784,13 @@ class TenantSavingsAccountUpdateOrCreateService extends CrudHelders
                 if (! isset($req['id'])) {
                     $gAcountData['code'] = $codeSequence->codeSequence($req['code'] ?? null, type: 'savings-group', moduleTarget: 'savings-group', tableTaget: 'savings_groups');
                 }
-                $gAcountData['image_path'] = $this->saveFile('group_logo', 'savings-group');
+                $groupLogoPath = $this->saveFile('group_logo', 'savings-group');
+                if (! empty($groupLogoPath)) {
+                    $gAcountData['image_path'] = $groupLogoPath;
+                }
 
                 $saveAccountDetails = $this->UpdateOrCreateRecord('savings_groups', $gAcountData);
-                $OtherHelpers->addAmemberIntoAgroup([...$req, 'group_id' => $saveAccountDetails->id]);
+                $OtherHelpers->addAmemberIntoAgroup([...$req, 'group_id' => $saveAccountDetails->id], false, isset($req['id']));
 
                 // $details = $this->UpdateOrCreateRecord('group_savings_accounts', $this->groupSavingsAccountUorCFields([ // just if ok just create group savings account too
                 //     "savings_group_id" => $saveAccountDetails->id,

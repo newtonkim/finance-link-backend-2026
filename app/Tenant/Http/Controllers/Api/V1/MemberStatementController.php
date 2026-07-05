@@ -35,6 +35,7 @@ class MemberStatementController extends Controller
             ->table('transactions')
             ->join('savings_accounts', 'transactions.savings_account_id', '=', 'savings_accounts.id')
             ->where('savings_accounts.member_id', $memberId)
+            ->whereNull('transactions.group_savings_account_id')
             ->whereNull('transactions.deleted_at');
 
         if ($dateTo) {
@@ -56,6 +57,7 @@ class MemberStatementController extends Controller
             ->table('transactions')
             ->where('member_id', $memberId)
             ->whereIn('type', ['share_purchase']) // Adjust based on actual type
+            ->whereNull('group_savings_account_id')
             ->whereNull('deleted_at');
 
         if ($dateTo) {
@@ -97,6 +99,7 @@ class MemberStatementController extends Controller
                     ->orWhere('savings_accounts.member_id', $memberId)
                     ->orWhere('loans.member_id', $memberId);
             })
+            ->whereNull('transactions.group_savings_account_id')
             ->whereNull('transactions.deleted_at')
             ->select(
                 'transactions.id',

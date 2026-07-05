@@ -42,9 +42,9 @@ class OtherHelpers extends GlobalHelpers
      * @param id  help not distur the code  that already exists
      * not required code
      * **/
-    public function addAmemberIntoAgroup($req, $addingTothegroup = false)
+    public function addAmemberIntoAgroup($req, $addingTothegroup = false, bool $syncMembers = false)
     {
-        return $this->TryCatch(function () use ($req, $addingTothegroup) {
+        return $this->TryCatch(function () use ($req, $addingTothegroup, $syncMembers) {
             $codeSequence = new CodeSequence;
             $CrudHelders = new CrudHelders;
             if (isset($req['memberslist'])) {
@@ -53,6 +53,28 @@ class OtherHelpers extends GlobalHelpers
                     ? array_values($req['memberslist'])
                     : explode(',', (string) $req['memberslist']);
                 $ArrayMember = array_values(array_filter($ArrayMember, fn ($m) => $m !== null && $m !== ''));
+                if ($syncMembers) {
+                    DB::table('savings_group_members')
+                        ->where('savings_group_id', $req['group_id'])
+                        ->whereNotIn('member_id', $ArrayMember)
+                        ->update([
+                            'deleted_at' => now(),
+                            'deleted_by' => auth()->check() ? auth()->id() : null,
+                            'updated_at' => now(),
+                            'updated_by' => auth()->check() ? auth()->id() : null,
+                        ]);
+
+                    DB::table('savings_group_members')
+                        ->where('savings_group_id', $req['group_id'])
+                        ->whereIn('member_id', $ArrayMember)
+                        ->whereNotNull('deleted_at')
+                        ->update([
+                            'deleted_at' => null,
+                            'deleted_by' => null,
+                            'updated_at' => now(),
+                            'updated_by' => auth()->check() ? auth()->id() : null,
+                        ]);
+                }
                 $length = count($ArrayMember);
                 for ($i = 0; $i < $length; $i++) {
                     $memberId = $ArrayMember[$i];
@@ -62,17 +84,33 @@ class OtherHelpers extends GlobalHelpers
                     $alreadyIn = DB::table('savings_group_members')
                         ->where('savings_group_id', $req['group_id'])
                         ->where('member_id', $memberId)
+                        ->whereNull('deleted_at')
                         ->exists();
                     if ($alreadyIn) {
                         continue;
                     }
 
                     $groupMemebrCode = $codeSequence->codeSequence($req['code'] ?? null, type: 'savings-group', moduleTarget: 'savings-group', tableTaget: 'savings_group_members');
+                    $restored = DB::table('savings_group_members')
+                        ->where('savings_group_id', $req['group_id'])
+                        ->where('member_id', $memberId)
+                        ->whereNotNull('deleted_at')
+                        ->update([
+                            'group_account_id' => $req['group_account_id'] ?? null,
+                            'account_number' => $groupMemebrCode,
+                            'role' => $addingTothegroup ? $CrudHelders->groupMemberRoles[4] : $CrudHelders->groupMemberRoles[$i <= 3 ? $i + 1 : 4],
+                            'code' => $groupMemebrCode,
+                            'branch_id' => request()->branch_id,
+                            'deleted_at' => null,
+                            'deleted_by' => null,
+                            'updated_at' => now(),
+                            'updated_by' => auth()->check() ? auth()->id() : null,
+                        ]);
+                    if ($restored) {
+                        continue;
+                    }
 
-                    // Explicit condition keeps this an insert for the new membership
-                    // and stops UpdateOrCreateRecord from matching the request `id`
-                    // (which is the group id on edit).
-                    $this->UpdateOrCreateRecord('savings_group_members', [
+                    DB::table('savings_group_members')->insert([
                         'group_account_id' => $req['group_account_id'] ?? null,
                         'savings_group_id' => $req['group_id'],
                         'account_number' => $groupMemebrCode,
@@ -80,7 +118,10 @@ class OtherHelpers extends GlobalHelpers
                         'code' => $groupMemebrCode,
                         'member_id' => $memberId,
                         'branch_id' => request()->branch_id,
-                    ], ['savings_group_id' => $req['group_id'], 'member_id' => $memberId]);
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                        'created_by' => auth()->check() ? auth()->id() : null,
+                    ]);
                 }
             }
         });

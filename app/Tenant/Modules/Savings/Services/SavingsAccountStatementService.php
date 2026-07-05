@@ -148,6 +148,7 @@ class SavingsAccountStatementService implements SavingsAccountStatementServiceIn
                 $q->whereNull('account_type')
                   ->orWhereNotIn('account_type', ['loan', 'loan_transaction']);
             })
+            ->whereNull('group_savings_account_id')
             ->where('is_reversed', 0)
             ->whereNull('deleted_at');
     }

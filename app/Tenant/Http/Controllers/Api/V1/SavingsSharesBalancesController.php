@@ -20,6 +20,7 @@ class SavingsSharesBalancesController extends Controller
             ->table('transactions')
             ->join('savings_accounts', 'transactions.savings_account_id', '=', 'savings_accounts.id')
             ->whereNull('transactions.deleted_at')
+            ->whereNull('transactions.group_savings_account_id')
             ->whereDate('transactions.transaction_date', '<=', $asOfDate)
             ->select('savings_accounts.member_id')
             ->selectRaw("
@@ -32,6 +33,7 @@ class SavingsSharesBalancesController extends Controller
         $sharesSubquery = DB::connection('tenant')
             ->table('transactions')
             ->whereNull('transactions.deleted_at')
+            ->whereNull('transactions.group_savings_account_id')
             ->whereDate('transactions.transaction_date', '<=', $asOfDate)
             ->whereIn('transactions.type', ['share_purchase'])
             ->select('member_id')

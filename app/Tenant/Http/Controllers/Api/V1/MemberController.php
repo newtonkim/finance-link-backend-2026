@@ -460,6 +460,7 @@ class MemberController extends MemberService
                     });
                 }
             })
+            ->whereNull('group_savings_account_id')
             ->orderBy('created_at', 'desc')
             ->get();
         $member->setRelation('transactions', $transactions);

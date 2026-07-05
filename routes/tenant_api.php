@@ -555,6 +555,11 @@ Route::group(['prefix' => '', 'middleware' => []], function () {
                     'method' => 'add_member_group_drop_down_list',
                     // 'permission' => 'group-account-savings-create',
                 ],
+                [
+                    'route' => 'active-group-member-dropdown-list',
+                    'method' => 'active_group_member_drop_down_list',
+                    // 'permission' => 'group-account-savings-create',
+                ],
 
                 [
                     'route' => 'group-saving-account-deposit-withdrawal',
@@ -600,6 +605,11 @@ Route::group(['prefix' => '', 'middleware' => []], function () {
                     'route' => 'details',
                     'method' => 'get_group_account_details',
                     'permission' => 'group-saving-details',
+                ],
+                [
+                    'route' => 'edit-details',
+                    'method' => 'get_group_account_details',
+                    'permission' => 'group-saving-update',
                 ],
                 [
                     'route' => 'create',

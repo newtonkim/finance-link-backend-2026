@@ -93,53 +93,57 @@ class MemberResource extends JsonResource
                     ->get(['id', 'account_no', 'code', 'account_type'])
                     ->keyBy('id');
 
-                return $this->transactions->map(function ($txn) use ($savingsAccounts) {
-                    return [
-                        'id' => $txn->id,
-                        'reference' => $txn->reference,
-                        'receipt_number' => $txn->receipt_number,
-                        'amount_before_charge' => $txn->deposited_amount_before_charge,
-                        'charge_amount' => $txn->charge_amount,
-                        'group_savings_account_id' => $txn->group_savings_account_id,
-                        'running_balance' => $txn->group_savings_account_id > 0 ? $txn->group_member_account_balance_before_transaction : $txn->amount_before_transactions,
-                        'amount' => $txn->amount,
-                        'umbrella_code' => $txn->umbrella_code,
-                        'amount_after_charge' => DB::table('transactions')->where('umbrella_code', $txn->umbrella_code)->select(
+                return $this->transactions
+                    ->whereNull('group_savings_account_id')
+                    ->values()
+                    ->map(function ($txn) use ($savingsAccounts) {
+                        return [
+                            'id' => $txn->id,
+                            'reference' => $txn->reference,
+                            'receipt_number' => $txn->receipt_number,
+                            'amount_before_charge' => $txn->deposited_amount_before_charge,
+                            'charge_amount' => $txn->charge_amount,
+                            'group_savings_account_id' => $txn->group_savings_account_id,
+                            'running_balance' => $txn->group_savings_account_id > 0 ? $txn->group_member_account_balance_before_transaction : $txn->amount_before_transactions,
+                            'amount' => $txn->amount,
+                            'umbrella_code' => $txn->umbrella_code,
+                            'amount_after_charge' => DB::table('transactions')
+                                ->where('umbrella_code', $txn->umbrella_code)
+                                ->whereNull('group_savings_account_id')
+                                ->select(
+                                    $txn->type == 'deposit' ? DB::raw('sum(amount) as amount') : DB::raw('sum(amount+charge_amount) as amount')
+                                )->first()->amount,
+                            // ->sum('amount+charge_amount'),
+                            'amount_formatted' => TenantMoney::format($txn->amount),
+                            'type' => $txn->type,
+                            'narration' => $txn->narration,
+                            'transaction_date' => $txn->transaction_date ? $txn->transaction_date->format('Y-m-d') : null,
+                            'created_at' => $txn->created_at ? $txn->created_at->format('Y-m-d H:i:s') : null,
+                            'deposited_by' => $txn->deposited_by,
+                            'payment_mode' => $txn->payment_mode,
+                            'is_reversed' => (bool) $txn->is_reversed,
+                            'is_reversible' => (bool) $txn->is_reversible,
+                            'charge_name' => $txn->charge_name,
+                            'reversal_of' => $txn->reversal_of,
+                            'grouped_with' => $txn->grouped_with,
+                            'account' => (function () use ($txn, $savingsAccounts) {
+                                $acct = $txn->account_id ? ($savingsAccounts[$txn->account_id] ?? null) : null;
+                                if ($acct) {
+                                    return [
+                                        'id' => (int) $txn->account_id,
+                                        'account_no' => $acct->account_no ?: $acct->code,
+                                        'account_type' => $acct->account_type,
+                                    ];
+                                }
 
-                            $txn->type == 'deposit' ? DB::raw('sum(amount) as amount') : DB::raw('sum(amount+charge_amount) as amount')
-
-                        )->first()->amount,
-                        // ->sum('amount+charge_amount'),
-                        'amount_formatted' => TenantMoney::format($txn->amount),
-                        'type' => $txn->type,
-                        'narration' => $txn->narration,
-                        'transaction_date' => $txn->transaction_date ? $txn->transaction_date->format('Y-m-d') : null,
-                        'created_at' => $txn->created_at ? $txn->created_at->format('Y-m-d H:i:s') : null,
-                        'deposited_by' => $txn->deposited_by,
-                        'payment_mode' => $txn->payment_mode,
-                        'is_reversed' => (bool) $txn->is_reversed,
-                        'is_reversible' => (bool) $txn->is_reversible,
-                        'charge_name' => $txn->charge_name,
-                        'reversal_of' => $txn->reversal_of,
-                        'grouped_with' => $txn->grouped_with,
-                        'account' => (function () use ($txn, $savingsAccounts) {
-                            $acct = $txn->account_id ? ($savingsAccounts[$txn->account_id] ?? null) : null;
-                            if ($acct) {
-                                return [
-                                    'id' => (int) $txn->account_id,
-                                    'account_no' => $acct->account_no ?: $acct->code,
-                                    'account_type' => $acct->account_type,
-                                ];
-                            }
-
-                            return $txn->account ? [
-                                'id' => $txn->account->id,
-                                'account_no' => $txn->account->account_no,
-                                'account_type' => $txn->account->account_type,
-                            ] : null;
-                        })(),
-                    ];
-                });
+                                return $txn->account ? [
+                                    'id' => $txn->account->id,
+                                    'account_no' => $txn->account->account_no,
+                                    'account_type' => $txn->account->account_type,
+                                ] : null;
+                            })(),
+                        ];
+                    });
             }),
             'Loans' => DB::table('loan_applications')->where('member_id', $this->id)->get(),
             'loans' => LoanResource::collection($this->whenLoaded('loans')),

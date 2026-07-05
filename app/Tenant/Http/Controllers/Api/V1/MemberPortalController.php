@@ -83,6 +83,7 @@ class MemberPortalController extends Controller
                 $q->where('member_id', $member->id)
                     ->orWhereIn('account_id', $accountIds);
             })
+            ->whereNull('group_savings_account_id')
             ->whereNull('deleted_at');
 
         if (! empty($validated['date_from'])) {

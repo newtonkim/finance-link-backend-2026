@@ -5,6 +5,7 @@ namespace App\Tenant\Services;
 use App\Exports\GroupMemberSavingsExport;
 use App\Exports\GroupSavingsExport;
 use App\Tenant\Modules\Settings\Models\SaccoBranding;
+use App\Tenant\Services\MemebersSettingSevices\FindsettingsAction;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Query\Expression;
 use Illuminate\Support\Facades\DB;
@@ -53,6 +54,26 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
         return ($status !== null && $status != 'all') ? [$status] : null;
     }
 
+    private function groupTransactionStatusFilter(?array $statuses): ?array
+    {
+        if ($statuses === null) {
+            return null;
+        }
+
+        $expanded = [];
+        foreach ($statuses as $status) {
+            $expanded[] = $status;
+            if ($status === 'withdrawal') {
+                $expanded[] = 'withdraw';
+            }
+            if ($status === 'withdraw') {
+                $expanded[] = 'withdrawal';
+            }
+        }
+
+        return array_values(array_unique($expanded));
+    }
+
     /**
      * SQL expression for a member's full name: salutation + name.
      */
@@ -75,17 +96,64 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
                     END AS $as");
     }
 
+    /**
+     * SQL expression normalising a savings group's stored image path into a
+     * web-servable `/storage/...` URL (or NULL when not set).
+     */
+    private function groupImageExpr(string $alias = 'gac', string $as = 'group_image'): Expression
+    {
+        return DB::raw("CASE
+                        WHEN $alias.image_path IS NULL OR $alias.image_path = '' THEN NULL
+                        WHEN $alias.image_path LIKE '/storage/%' THEN $alias.image_path
+                        WHEN $alias.image_path LIKE 'storage/%' THEN CONCAT('/', $alias.image_path)
+                        WHEN $alias.image_path LIKE '/public/%' THEN CONCAT('/storage/', SUBSTRING($alias.image_path, 10))
+                        WHEN $alias.image_path LIKE 'public/%' THEN CONCAT('/storage/', SUBSTRING($alias.image_path, 8))
+                        ELSE CONCAT('/storage/', $alias.image_path)
+                    END AS $as");
+    }
+
+    private function groupMemberOptions(array $groupIds): array
+    {
+        $groupIds = array_values(array_filter($groupIds));
+        if (empty($groupIds)) {
+            return [];
+        }
+
+        return DB::table('savings_group_members as sgm')
+            ->join('members AS mb', 'sgm.member_id', '=', 'mb.id')
+            ->whereIn('sgm.savings_group_id', $groupIds)
+            ->whereNull('sgm.deleted_at')
+            ->orderBy('sgm.id')
+            ->get([
+                'sgm.savings_group_id',
+                'mb.id',
+                'mb.name',
+                'mb.code',
+            ])
+            ->groupBy('savings_group_id')
+            ->map(function ($rows) {
+                return $rows->map(function ($row) {
+                    return [
+                        'id' => $row->id,
+                        'name' => trim(($row->name ?? '').(! empty($row->code) ? " ({$row->code})" : '')),
+                    ];
+                })->values()->all();
+            })
+            ->all();
+    }
+
     public function groupAccountTransactions()
     {
         return $this->TryCatch(function () {
             $req = request();
             $groupId = $req['group_id'] ?? null;
             $staus = $this->statusFilter();
+            $transactionStatuses = $this->groupTransactionStatusFilter($staus);
 
             return DB::table('group_savings_accounts as sgac')
                 ->join('savings_products AS sp', 'sp.id', '=', 'sgac.savings_product_id')
                 ->join('transactions AS tr', 'tr.group_savings_account_id', '=', 'sgac.id')
-                ->join('members AS mb', 'mb.id', '=', 'tr.member_id')
+                ->leftJoin('members AS mb', 'mb.id', '=', 'tr.member_id')
                 ->select([
                     'sgac.id AS id',
                     'tr.reference AS code',
@@ -95,8 +163,8 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
                     $this->memberNameExpr(),
                     'sp.name AS product',
                     'sgac.balance AS blc',
-                    'sgac.status AS status',
-                    'sgac.created_at AS created_at',
+                    'tr.type AS status',
+                    'tr.created_at AS created_at',
                     'tr.id AS tr_id',
                     'tr.narration AS narration',
                     'tr.charge_amount AS charge',
@@ -104,8 +172,8 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
                     'tr.transaction_date AS transaction_date',
                 ])
                 ->where('sgac.savings_group_id', $groupId)
-                ->when($staus != null, function ($query) use ($staus) {
-                    $query->whereIn('tr.type', $staus);
+                ->when($transactionStatuses != null, function ($query) use ($transactionStatuses) {
+                    $query->whereIn('tr.type', $transactionStatuses);
                 })
                 ->orderBy('tr.id', 'DESC')
                     // ->orderBy('sgac.id', 'DESC')
@@ -121,11 +189,12 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
     {
         $req = request();
         $staus = $this->statusFilter();
+        $transactionStatuses = $this->groupTransactionStatusFilter($staus);
 
         return DB::table('group_savings_accounts as sgac')
             ->join('savings_products AS sp', 'sp.id', '=', 'sgac.savings_product_id')
             ->join('transactions AS tr', 'tr.group_savings_account_id', '=', 'sgac.id')
-            ->join('members AS mb', 'mb.id', '=', 'tr.member_id')
+            ->leftJoin('members AS mb', 'mb.id', '=', 'tr.member_id')
             ->select([
                 'sgac.id AS id',
                 'tr.reference AS code',
@@ -134,16 +203,16 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
                 $this->memberNameExpr(),
                 'sp.name AS product',
                 'sgac.balance AS blc',
-                'sgac.status AS status',
-                'sgac.created_at AS created_at',
+                'tr.type AS status',
+                'tr.created_at AS created_at',
                 'tr.narration AS narration',
                 'tr.charge_amount AS charge',
                 'tr.amount AS amount',
                 'tr.transaction_date AS transaction_date',
             ])
             ->where('sgac.savings_group_id', $req['group_id'])
-            ->when($staus != null, function ($query) use ($staus) {
-                $query->whereIn('tr.type', $staus);
+            ->when($transactionStatuses != null, function ($query) use ($transactionStatuses) {
+                $query->whereIn('tr.type', $transactionStatuses);
             })
             ->orderBy('sgac.id')
             ->whereNull('tr.deleted_at')
@@ -190,6 +259,7 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
 
             $query = DB::table('savings_group_members as sgm')
                 ->whereRaw('sgm.savings_group_id=?', [$groupId])
+                ->whereNull('sgm.deleted_at')
                 ->join('members AS mb', 'sgm.member_id', '=', 'mb.id')
                 ->select([
                     'mb.id',
@@ -660,6 +730,7 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
         // Total members across all (matching) groups.
         $memberQuery = DB::table('savings_group_members as sgm')
             ->join('savings_groups as sg', 'sg.id', '=', 'sgm.savings_group_id')
+            ->whereNull('sgm.deleted_at')
             ->whereNull('sg.deleted_at');
 
         if ($branchId) {
@@ -681,20 +752,16 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
             $staus = $this->statusFilter();
             $query = DB::table('savings_groups as gac')
                 ->Join('staff AS sf', 'sf.id', '=', 'gac.created_by')
-                ->LeftJoin('savings_group_members AS sgm', 'sgm.savings_group_id', '=', 'gac.id')
+                ->LeftJoin('savings_group_members AS sgm', function ($join) {
+                    $join->on('sgm.savings_group_id', '=', 'gac.id')
+                        ->whereNull('sgm.deleted_at');
+                })
                 ->LeftJoin('members AS mb', 'mb.id', '=', 'sgm.member_id')
                 ->select([
                     ...$this->grSavingsAccountDbFields,
                     'sf.name As created_by',
                     DB::raw('COUNT(sgm.id) AS total_in_group'),
-                    DB::raw("CASE
-                        WHEN gac.image_path IS NULL OR gac.image_path = '' THEN NULL
-                        WHEN gac.image_path LIKE '/storage/%' THEN gac.image_path
-                        WHEN gac.image_path LIKE 'storage/%' THEN CONCAT('/', gac.image_path)
-                        WHEN gac.image_path LIKE '/public/%' THEN CONCAT('/storage/', SUBSTRING(gac.image_path, 10))
-                        WHEN gac.image_path LIKE 'public/%' THEN CONCAT('/storage/', SUBSTRING(gac.image_path, 8))
-                        ELSE CONCAT('/storage/', gac.image_path)
-                    END AS group_image"),
+                    $this->groupImageExpr(),
                 ]);
             if ($staus != null) {
                 $query->whereIn('gac.status', $staus);
@@ -709,6 +776,14 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
             $query = $query->groupBy('gac.id', 'sf.id')
                 ->whereRaw('gac.branch_id=?', $brach)
                 ->whereNull('gac.deleted_at')->orderBy('id', 'DESC')->paginate($this->perpage());
+            $groupMembers = $this->groupMemberOptions($query->getCollection()->pluck('id')->all());
+            $query->getCollection()->transform(function ($row) use ($groupMembers) {
+                $members = $groupMembers[$row->id] ?? [];
+                $row->group_members = $members;
+                $row->memberslist = array_map(fn ($member) => $member['id'], $members);
+
+                return $row;
+            });
 
             return [
                 ...$query->toArray(),
@@ -731,6 +806,7 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
                     'gac.description as desc',
                     'gac.total_balance as blc',
                     'gac.other_contact_phone as phone2',
+                    $this->groupImageExpr(),
                 ]);
 
             $query = $query->whereRaw('gac.id=?', [$groupId])->first();
@@ -738,7 +814,10 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
             // / dont do what you  thinking
             DB::table('savings_group_members as sgm')
                 ->join('members AS mb', 'sgm.member_id', '=', 'mb.id')
+                ->whereNull('sgm.deleted_at')
                 ->select([
+                    'mb.id',
+                    'mb.name',
                     'mb.phone as phone',
                     'mb.code as member_code',
                     'sgm.code as member_group_code',
@@ -754,6 +833,14 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
                     }
                 });
             $query->memebers = $getMembers;
+            $query->members = $getMembers;
+            $query->group_members = array_map(function ($member) {
+                return [
+                    'id' => $member->id,
+                    'name' => trim(($member->name ?? $member->member_name ?? '').(! empty($member->member_code) ? " ({$member->member_code})" : '')),
+                ];
+            }, $getMembers);
+            $query->memberslist = array_map(fn ($member) => $member['id'], $query->group_members);
             $query->total_members = count($getMembers);
 
             return $query;
@@ -811,6 +898,7 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
                 // ->join('loan_applications as la', 'la.id', '=', 'ln.loan_application_id')
                 ->join('members as mb', 'mb.id', '=', 'la.member_id')
                 ->join('savings_group_members as sgm', 'sgm.member_id', '=', 'mb.id')
+                ->whereNull('sgm.deleted_at')
                 ->join('savings_accounts as sact', 'sact.member_id', '=', 'mb.id')
                 ->when(! empty($req['search_keyword']), function ($query) use ($req) {
                     $this->dynamic_search_db_query(
@@ -860,11 +948,14 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
                 ->select([
                     ...$this->grSavingsAccountDbFields,
                     'gac.description as desc',
-                    DB::raw("CONCAT('".htmlspecialchars(config('app.url'))."','/', gac.image_path) AS group_image"),
+                    $this->groupImageExpr(),
 
                     // 'gac.total_balance as blc',
                     DB::raw('(SELECT SUM(sgac.balance) FROM group_savings_accounts AS sgac 
                         where sgac.savings_group_id=gac.id) as available_balance'),
+                    DB::raw('(SELECT COUNT(tr.id) FROM group_savings_accounts AS sgac
+                        JOIN transactions AS tr ON tr.group_savings_account_id = sgac.id
+                        WHERE sgac.savings_group_id = gac.id AND tr.deleted_at IS NULL) as total_transactions'),
                     'gac.other_contact_phone as phone2',
                 ]);
             $query = $query->where('gac.id', $groupId)->first();
@@ -887,6 +978,7 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
 
             $query = DB::table('savings_group_members as sgm')
                 ->whereRaw('sgm.savings_group_id=?', [$groupId])
+                ->whereNull('sgm.deleted_at')
                 ->join('members AS mb', 'sgm.member_id', '=', 'mb.id')
                 ->leftJoinSub($loanSummary, 'ls', function ($join) {
                     $join->on('mb.id', '=', 'ls.member_id');
@@ -983,7 +1075,14 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
 
         return $this->TryCatch(function () use ($req) {
             // dont do what you  thinking here
-            $getThemebersInTheGroupIds = DB::table('savings_group_members as sgm')->where('sgm.savings_group_id', $req['group_id'])->pluck('sgm.member_id');
+            $settings = new FindsettingsAction(['savings-group']);
+            $canBeInMultipleGroups = $settings->canMemberExisitsInMultipleGroups();
+            $getThemebersInTheGroupIds = DB::table('savings_group_members as sgm')
+                ->when(! in_array($canBeInMultipleGroups, ['false', '', null]), function ($query) use ($req) {
+                    $query->where('sgm.savings_group_id', $req['group_id']);
+                })
+                ->whereNull('sgm.deleted_at')
+                ->pluck('sgm.member_id');
 
             $query = DB::table('members as mb')
                 ->whereNotIn('mb.id', $getThemebersInTheGroupIds)
@@ -995,6 +1094,33 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
             }
 
             return $query->orderBy('mb.id', 'DESC')->paginate($this->perpage());
+        });
+    }
+
+    public function activeGroupMemberDropDownList()
+    {
+        $req = request();
+        request()->validate([
+            'search_keyword' => ['nullable', 'string', 'max:20'],
+            'group_id' => ['required', 'exists:savings_groups,id'],
+        ]);
+
+        return $this->TryCatch(function () use ($req) {
+            $query = DB::table('savings_group_members as sgm')
+                ->join('members as mb', 'mb.id', '=', 'sgm.member_id')
+                ->where('sgm.savings_group_id', $req['group_id'])
+                ->whereNull('sgm.deleted_at')
+                ->whereNull('mb.deleted_at')
+                ->select([
+                    'mb.id',
+                    DB::raw("CONCAT(IFNULL(mb.salutation,''), ' ', IFNULL(mb.name,'')) as name"),
+                ]);
+
+            if ($req->has('search_keyword')) {
+                $query = $this->dynamic_search_db_query($query, $req['search_keyword'], ['mb.name', 'mb.code']);
+            }
+
+            return $query->orderBy('mb.name')->paginate($this->perpage());
         });
     }
 
