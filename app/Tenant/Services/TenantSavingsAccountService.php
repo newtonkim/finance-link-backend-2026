@@ -687,6 +687,14 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
                     ...$this->grSavingsAccountDbFields,
                     'sf.name As created_by',
                     DB::raw('COUNT(sgm.id) AS total_in_group'),
+                    DB::raw("CASE
+                        WHEN gac.image_path IS NULL OR gac.image_path = '' THEN NULL
+                        WHEN gac.image_path LIKE '/storage/%' THEN gac.image_path
+                        WHEN gac.image_path LIKE 'storage/%' THEN CONCAT('/', gac.image_path)
+                        WHEN gac.image_path LIKE '/public/%' THEN CONCAT('/storage/', SUBSTRING(gac.image_path, 10))
+                        WHEN gac.image_path LIKE 'public/%' THEN CONCAT('/storage/', SUBSTRING(gac.image_path, 8))
+                        ELSE CONCAT('/storage/', gac.image_path)
+                    END AS group_image"),
                 ]);
             if ($staus != null) {
                 $query->whereIn('gac.status', $staus);
