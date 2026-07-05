@@ -1003,6 +1003,7 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
                     'mb.status as member_status',
                     'sgm.code as member_group_code',
                     'sgm.balance as total_amount_deposited',
+                    'sgm.role as member_role',
                     'sgm.is_approver as is_approver',
                     'sgm.approver_role as approver_role',
                     $this->memberNameExpr(),

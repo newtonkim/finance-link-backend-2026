@@ -44,7 +44,7 @@ class OtherHelpers extends GlobalHelpers
      * **/
     public function addAmemberIntoAgroup($req, $addingTothegroup = false, bool $syncMembers = false)
     {
-        return $this->TryCatch(function () use ($req, $addingTothegroup, $syncMembers) {
+        return $this->TryCatch(function () use ($req, $syncMembers) {
             $codeSequence = new CodeSequence;
             $CrudHelders = new CrudHelders;
             if (isset($req['memberslist'])) {
@@ -75,6 +75,13 @@ class OtherHelpers extends GlobalHelpers
                             'updated_by' => auth()->check() ? auth()->id() : null,
                         ]);
                 }
+                // Explicit role chosen when adding members. Officer roles
+                // (chairman/treasurer/secretary) also become withdrawal approvers.
+                $allowedRoles = ['chairman', 'treasurer', 'secretary', 'member'];
+                $requestedRole = strtolower((string) ($req['member_role'] ?? 'member'));
+                $memberRole = in_array($requestedRole, $allowedRoles, true) ? $requestedRole : 'member';
+                $isOfficer = $memberRole !== 'member';
+
                 $length = count($ArrayMember);
                 for ($i = 0; $i < $length; $i++) {
                     $memberId = $ArrayMember[$i];
@@ -98,7 +105,9 @@ class OtherHelpers extends GlobalHelpers
                         ->update([
                             'group_account_id' => $req['group_account_id'] ?? null,
                             'account_number' => $groupMemebrCode,
-                            'role' => $addingTothegroup ? $CrudHelders->groupMemberRoles[4] : $CrudHelders->groupMemberRoles[$i <= 3 ? $i + 1 : 4],
+                            'role' => $memberRole,
+                            'is_approver' => $isOfficer,
+                            'approver_role' => $isOfficer ? $memberRole : null,
                             'code' => $groupMemebrCode,
                             'branch_id' => request()->branch_id,
                             'deleted_at' => null,
@@ -114,7 +123,9 @@ class OtherHelpers extends GlobalHelpers
                         'group_account_id' => $req['group_account_id'] ?? null,
                         'savings_group_id' => $req['group_id'],
                         'account_number' => $groupMemebrCode,
-                        'role' => $addingTothegroup ? $CrudHelders->groupMemberRoles[4] : $CrudHelders->groupMemberRoles[$i <= 3 ? $i + 1 : 4],
+                        'role' => $memberRole,
+                        'is_approver' => $isOfficer,
+                        'approver_role' => $isOfficer ? $memberRole : null,
                         'code' => $groupMemebrCode,
                         'member_id' => $memberId,
                         'branch_id' => request()->branch_id,

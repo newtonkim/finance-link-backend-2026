@@ -13,8 +13,8 @@ use Illuminate\Support\Facades\DB;
 class CrudHelders extends GlobalHelpers
 {
     public $groupMemberRoles = [
-        '1' => 'Admin',
-        '2' => 'chairman',
+        '1' => 'chairman',
+        '2' => 'treasurer',
         '3' => 'secretary',
         '4' => 'member',
     ];

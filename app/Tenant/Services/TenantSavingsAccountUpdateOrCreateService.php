@@ -939,7 +939,7 @@ class TenantSavingsAccountUpdateOrCreateService extends CrudHelders
                     }
                     $memberList = $checker['member']->id;
                 }
-                $OtherHelpers->addAmemberIntoAgroup(['memberslist' => $memberList, 'group_id' => $getGroupId, 'group_account_id' => $req['account_code'] ?? null], true);
+                $OtherHelpers->addAmemberIntoAgroup(['memberslist' => $memberList, 'group_id' => $getGroupId, 'group_account_id' => $req['account_code'] ?? null, 'member_role' => $req['member_role'] ?? null], true);
                 $List = app(TenantSavingsAccountService::class);
                 $response = $List->groupAccountList();
                 if (count($membernameString)) {
