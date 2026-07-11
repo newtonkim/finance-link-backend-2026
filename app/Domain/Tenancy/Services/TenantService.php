@@ -19,7 +19,18 @@ class TenantService
      */
     public function createTenantRecord(string $name, string $subdomain): Tenant
     {
-        $dbName = 'sacco_'.Str::slug($subdomain, '_');
+        $slug = Str::slug($subdomain, '_');
+        $dbName = 'sacco_'.$slug;
+
+        // Guard: never let a tenant database collide with the central/master DB,
+        // and never create an empty/degenerate name (e.g. blank subdomain).
+        $centralDb = config('database.connections.master.database');
+        if ($slug === '' || $dbName === $centralDb) {
+            throw new \InvalidArgumentException(
+                "Invalid tenant subdomain [{$subdomain}]: resolved database [{$dbName}] "
+                ."is empty or collides with the central database [{$centralDb}]."
+            );
+        }
 
         return Tenant::create([
             'id' => (string) Str::uuid(),
