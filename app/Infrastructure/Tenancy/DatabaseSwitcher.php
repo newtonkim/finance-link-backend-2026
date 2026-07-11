@@ -13,12 +13,23 @@ class DatabaseSwitcher
      */
     public function switch(Tenant $tenant): void
     {
+        // Guard: a tenant must never resolve to the central/master database.
+        // Otherwise tenant writes (and migrations) leak into the central DB.
+        $centralDb = Config::get('database.connections.master.database');
+        if (empty($tenant->database_name) || $tenant->database_name === $centralDb) {
+            throw new \RuntimeException(
+                "Refusing to switch: tenant [{$tenant->id}] database_name [{$tenant->database_name}] "
+                ."is empty or collides with the central database [{$centralDb}]."
+            );
+        }
+
         $currentDb = Config::get('database.connections.tenant.database');
-        
+
         // If we are already on this database, don't purge.
         // This is critical for testing where we share a single transaction-wrapped PDO.
-        if ($currentDb === $tenant->database_name && !empty($currentDb)) {
+        if ($currentDb === $tenant->database_name && ! empty($currentDb)) {
             DB::setDefaultConnection('tenant');
+
             return;
         }
 
