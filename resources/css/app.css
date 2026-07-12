@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Instrument+Sans:ital,wght@0,400..700;1,400..700&display=swap');
+@import '@fontsource-variable/inter';
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
@@ -9,7 +9,7 @@
 
 @theme inline {
     --font-sans:
-        Instrument Sans, ui-sans-serif, system-ui, sans-serif,
+        'Inter Variable', ui-sans-serif, system-ui, sans-serif,
         'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
         'Noto Color Emoji';
 
@@ -78,6 +78,39 @@
     ::file-selector-button {
         border-color: var(--color-gray-200, currentColor);
     }
+
+    /*
+     * System type scale (matches frontend docs/typography.md)
+     * h1 — page heading:    24px / semibold
+     * h2 — subheading:      18px / semibold
+     * h3 — sub-subheading:  16px / medium
+     * body:                 14px
+     */
+    body {
+        font-size: 0.875rem;
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+
+    h1 {
+        font-size: 1.5rem;
+        line-height: 2rem;
+        font-weight: 600;
+        letter-spacing: -0.025em;
+    }
+
+    h2 {
+        font-size: 1.125rem;
+        line-height: 1.75rem;
+        font-weight: 600;
+    }
+
+    h3 {
+        font-size: 1rem;
+        line-height: 1.5rem;
+        font-weight: 500;
+    }
 }
 
 @layer utilities {
@@ -85,7 +118,7 @@
     body,
     html {
         --font-sans:
-            'Instrument Sans', ui-sans-serif, system-ui, sans-serif,
+            'Inter Variable', ui-sans-serif, system-ui, sans-serif,
             'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
             'Noto Color Emoji';
     }
