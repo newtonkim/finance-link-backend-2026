@@ -164,6 +164,26 @@ class SavingsAccountController extends TenantSavingsAccountService
         return $this->Response(['data' => self::groupSavingAccountDepositWithdrawal()]);
     }
 
+    public function act_on_group_withdrawal_request()
+    {
+        return $this->Response(['data' => self::actOnGroupWithdrawalRequest()]);
+    }
+
+    public function cancel_group_withdrawal_request()
+    {
+        return $this->Response(['data' => self::cancelGroupWithdrawalRequest()]);
+    }
+
+    public function list_group_withdrawal_requests()
+    {
+        return $this->Response(['data' => self::listGroupWithdrawalRequests()]);
+    }
+
+    public function toggle_group_withdrawal_approver()
+    {
+        return $this->Response(['data' => self::toggleGroupWithdrawalApprover()]);
+    }
+
     public function create_group_saving_account()
     {
         return $this->Response(['data' => self::createGroupSavingAccount()]);

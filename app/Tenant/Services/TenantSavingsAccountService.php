@@ -957,6 +957,7 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
                         JOIN transactions AS tr ON tr.group_savings_account_id = sgac.id
                         WHERE sgac.savings_group_id = gac.id AND tr.deleted_at IS NULL) as total_transactions'),
                     'gac.other_contact_phone as phone2',
+                    'gac.withdrawal_required_approvals as withdrawal_required_approvals',
                 ]);
             $query = $query->where('gac.id', $groupId)->first();
 
@@ -976,12 +977,24 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
     ')
                 ->groupBy('la.member_id');
 
+            // Per-member total withdrawn from this group's savings accounts.
+            $withdrawSummary = DB::table('transactions as t')
+                ->join('group_savings_accounts as g', 'g.id', '=', 't.group_savings_account_id')
+                ->where('g.savings_group_id', $groupId)
+                ->where('t.type', 'withdraw')
+                ->whereNull('t.deleted_at')
+                ->selectRaw('t.member_id, SUM(t.amount) as total_amount_withdrawn')
+                ->groupBy('t.member_id');
+
             $query = DB::table('savings_group_members as sgm')
                 ->whereRaw('sgm.savings_group_id=?', [$groupId])
                 ->whereNull('sgm.deleted_at')
                 ->join('members AS mb', 'sgm.member_id', '=', 'mb.id')
                 ->leftJoinSub($loanSummary, 'ls', function ($join) {
                     $join->on('mb.id', '=', 'ls.member_id');
+                })
+                ->leftJoinSub($withdrawSummary, 'ws', function ($join) {
+                    $join->on('mb.id', '=', 'ws.member_id');
                 })
                 ->select([
                     'mb.id',
@@ -990,9 +1003,13 @@ class TenantSavingsAccountService extends TenantSavingsAccountUpdateOrCreateServ
                     'mb.status as member_status',
                     'sgm.code as member_group_code',
                     'sgm.balance as total_amount_deposited',
+                    'sgm.role as member_role',
+                    'sgm.is_approver as is_approver',
+                    'sgm.approver_role as approver_role',
                     $this->memberNameExpr(),
                     'sgm.created_at AS created_at',
                     DB::raw('COALESCE(ls.total_loan_balance, 0) as total_loan_balance'),
+                    DB::raw('COALESCE(ws.total_amount_withdrawn, 0) as total_amount_withdrawn'),
                     'ls.loan_id',
                 ])
                 ->whereRaw('sgm.savings_group_id=?', [$groupId])

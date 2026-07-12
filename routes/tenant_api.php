@@ -567,6 +567,22 @@ Route::group(['prefix' => '', 'middleware' => []], function () {
                     // 'permission' => 'group-account-savings-create',
                 ],
                 [
+                    'route' => 'withdrawal-requests-list',
+                    'method' => 'list_group_withdrawal_requests',
+                ],
+                [
+                    'route' => 'withdrawal-request-act',
+                    'method' => 'act_on_group_withdrawal_request',
+                ],
+                [
+                    'route' => 'withdrawal-request-cancel',
+                    'method' => 'cancel_group_withdrawal_request',
+                ],
+                [
+                    'route' => 'toggle-withdrawal-approver',
+                    'method' => 'toggle_group_withdrawal_approver',
+                ],
+                [
                     'route' => 'create-group-saving-account',
                     'method' => 'create_group_saving_account',
                     // 'permission' => 'group-account-savings-create',
