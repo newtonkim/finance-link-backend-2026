@@ -186,7 +186,10 @@ class CrudHelders extends GlobalHelpers
             }
             $deposit = $deposit - ($chargedAmount);
             if ($chargedAmount > 0) {
-                $listCharges['deposit_charges'] = ['charge_amount' => $chargedAmount, 'narration' => 'Initial deposit charge: '.$chargedAmount.' blc :'.$deposit, 'transaction_type' => 'charge', 'type' => 'charge'];
+                // Key doubles as the stored transaction type — use the canonical
+                // 'deposit-charge' spelling the statement engine and modern
+                // deposit path use (legacy rows may still carry 'deposit_charges').
+                $listCharges['deposit-charge'] = ['charge_amount' => $chargedAmount, 'narration' => 'Initial deposit charge: '.$chargedAmount.' blc :'.$deposit, 'transaction_type' => 'charge', 'type' => 'charge'];
             }
 
             if (($createTransactionAlso) && $deposit < $NeededMinAmount) {
