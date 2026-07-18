@@ -17,6 +17,7 @@ use App\Tenant\Http\Controllers\Api\V1\FinancialYearController;
 use App\Tenant\Http\Controllers\Api\V1\FixedDepositController;
 use App\Tenant\Http\Controllers\Api\V1\GeneralChargeController;
 use App\Tenant\Http\Controllers\Api\V1\JournalEntryController;
+use App\Tenant\Http\Controllers\Api\V1\LicenseStatusController;
 use App\Tenant\Http\Controllers\Api\V1\LoanApplicationController;
 use App\Tenant\Http\Controllers\Api\V1\LoanAppraisalController;
 use App\Tenant\Http\Controllers\Api\V1\LoanApprovalController;
@@ -73,6 +74,10 @@ if (! function_exists('routeListV2')) {
         return $fun->routeListV2($routes);
     }
 }
+
+// Proactive license state for the tenant UI. EnsureLicenseActive calculates
+// and attaches the payload before this controller runs.
+Route::get('license-status', [LicenseStatusController::class, 'show']);
 
 // Branches
 Route::get('branches', [BranchController::class, 'index']);
