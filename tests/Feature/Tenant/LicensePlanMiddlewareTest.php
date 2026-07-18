@@ -23,11 +23,20 @@ class LicensePlanMiddlewareTest extends TestCase
         app()->instance('currentTenant', $tenant);
 
         $middleware = new EnsureLicenseActive;
-        $read = $middleware->handle(Request::create('/api/v1/tenant/loan-products', 'GET'), fn () => response()->json(['ok' => true]));
+        $readRequest = Request::create('/api/v1/tenant/loan-products', 'GET');
+        $read = $middleware->handle($readRequest, fn () => response()->json(['ok' => true]));
         $write = $middleware->handle(Request::create('/api/v1/tenant/loan-products', 'POST'), fn () => response()->json(['ok' => true]));
 
         $this->assertSame(200, $read->getStatusCode());
         $this->assertSame(403, $write->getStatusCode());
+        $this->assertSame([
+            'status' => 'expired',
+            'is_expired' => true,
+            'read_only' => true,
+        ], array_intersect_key(
+            $readRequest->attributes->get('license_status'),
+            array_flip(['status', 'is_expired', 'read_only']),
+        ));
     }
 
     public function test_expired_license_allows_post_read_endpoints_but_blocks_mutations(): void

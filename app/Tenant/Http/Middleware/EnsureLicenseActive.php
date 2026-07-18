@@ -43,10 +43,23 @@ class EnsureLicenseActive
         $isExpired = $license->status === 'expired'
             || ($license->expires_at && Carbon::parse($license->expires_at)->isPast());
 
+        $expiredMessage = 'Your license has expired. You can still view your data, but creating, '
+            .'updating and deleting are disabled until you renew.';
+
+        // Make the status available to downstream controllers. The dedicated
+        // status endpoint uses this exact result so its proactive UI flag can
+        // never drift from the middleware that actually enforces writes.
+        $request->attributes->set('license_status', [
+            'status' => $isExpired ? 'expired' : $license->status,
+            'is_expired' => $isExpired,
+            'read_only' => $isExpired,
+            'expires_at' => $license->expires_at?->toIso8601String(),
+            'message' => $isExpired ? $expiredMessage : null,
+        ]);
+
         if ($isExpired && ! LicenseRequestGuard::isReadRequest($request)) {
             return response()->json([
-                'message' => 'Your license has expired. You can still view your data, but creating, '
-                    .'updating and deleting are disabled until you renew.',
+                'message' => $expiredMessage,
                 'license_expired' => true,
                 'read_only' => true,
             ], 403);
