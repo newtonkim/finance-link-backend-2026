@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\LicenseRequestGuard;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -28,10 +29,13 @@ class EnforceLicense
         }
 
         if ($license->isExpired()) {
-            // Block all mutative operations if license is expired
-            if (in_array($request->method(), ['POST', 'PUT', 'DELETE', 'PATCH'])) {
+            // Read-only mode: reads are served over POST in this app, so block by
+            // read/write intent rather than by HTTP verb — otherwise viewing breaks.
+            if (! LicenseRequestGuard::isReadRequest($request)) {
                 return response()->json([
                     'message' => 'License expired. Renewal required for write access.',
+                    'license_expired' => true,
+                    'read_only' => true,
                 ], 403);
             }
         }

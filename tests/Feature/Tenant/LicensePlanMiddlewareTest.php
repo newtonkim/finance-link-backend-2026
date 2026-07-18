@@ -8,6 +8,7 @@ use App\Domain\Tenancy\Entities\Tenant;
 use App\Tenant\Http\Middleware\EnsureLicenseActive;
 use App\Tenant\Http\Middleware\EnsurePlanFeatureEnabled;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\Concerns\RefreshTenantDatabase;
 use Tests\TestCase;
 
@@ -27,6 +28,57 @@ class LicensePlanMiddlewareTest extends TestCase
 
         $this->assertSame(200, $read->getStatusCode());
         $this->assertSame(403, $write->getStatusCode());
+    }
+
+    public function test_expired_license_allows_post_read_endpoints_but_blocks_mutations(): void
+    {
+        [$tenant] = $this->licensedTenantFixture(['savings' => true], 'expired');
+
+        app()->instance('currentTenant', $tenant);
+
+        $middleware = new EnsureLicenseActive;
+        $next = fn () => response()->json(['ok' => true]);
+
+        // Reads are served over POST in this app — they must still work when expired.
+        $list = $middleware->handle(Request::create('/api/v1/tenant/members/list', 'POST'), $next);
+        $dropdown = $middleware->handle(Request::create('/api/v1/tenant/settings/branches/branches-dropdown-list', 'POST'), $next);
+
+        // Mutations are blocked.
+        $create = $middleware->handle(Request::create('/api/v1/tenant/members/create', 'POST'), $next);
+        $delete = $middleware->handle(Request::create('/api/v1/tenant/members/1', 'DELETE'), $next);
+
+        $this->assertSame(200, $list->getStatusCode());
+        $this->assertSame(200, $dropdown->getStatusCode());
+        $this->assertSame(403, $create->getStatusCode());
+        $this->assertTrue($create->getData(true)['license_expired']);
+        $this->assertSame(403, $delete->getStatusCode());
+    }
+
+    public function test_active_license_allows_mutations(): void
+    {
+        [$tenant] = $this->licensedTenantFixture(['savings' => true], 'active');
+
+        app()->instance('currentTenant', $tenant);
+
+        $result = (new EnsureLicenseActive)->handle(
+            Request::create('/api/v1/tenant/members/create', 'POST'),
+            fn () => response()->json(['ok' => true]),
+        );
+
+        $this->assertSame(200, $result->getStatusCode());
+    }
+
+    public function test_suspended_license_blocks_all_access(): void
+    {
+        [$tenant] = $this->licensedTenantFixture(['savings' => true], 'suspended');
+
+        app()->instance('currentTenant', $tenant);
+
+        $this->expectException(HttpException::class);
+        (new EnsureLicenseActive)->handle(
+            Request::create('/api/v1/tenant/members/list', 'POST'),
+            fn () => response()->json(['ok' => true]),
+        );
     }
 
     public function test_plan_feature_middleware_blocks_disabled_feature(): void
