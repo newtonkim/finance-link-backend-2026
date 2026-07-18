@@ -74,16 +74,37 @@ class TenantsService extends TenantsUpdateOrCreateService
         $req = request();
 
         return $this->TryCatch(function () use ($req) {
-            $staus = $req['status'] != 'all' ? [$req['status']] : ['active', 'suspended', 'deleted'];
-            $query = DB::table('tenants as ts')->select([
-                ...$this->tenantDbFields,
-                DB::raw("(SELECT expires_at FROM licenses WHERE tenant_id = ts.id AND status = 'active' ORDER BY expires_at DESC LIMIT 1) AS license_expires_at"),
-                DB::raw('(SELECT id FROM licenses WHERE tenant_id = ts.id ORDER BY expires_at DESC LIMIT 1) AS license_id'),
-            ]);
+            $statuses = $req['status'] != 'all' ? [$req['status']] : ['active', 'suspended', 'deleted'];
+            $latestLicenseId = <<<'SQL'
+                (SELECT current_license.id
+                 FROM licenses AS current_license
+                 WHERE current_license.tenant_id = ts.id
+                 ORDER BY CASE WHEN current_license.status = 'active' THEN 0 ELSE 1 END,
+                          current_license.expires_at DESC,
+                          current_license.created_at DESC
+                 LIMIT 1)
+                SQL;
+
+            $query = DB::table('tenants as ts')
+                ->leftJoin('licenses as ls', 'ls.id', '=', DB::raw($latestLicenseId))
+                ->leftJoin('plans as pl', 'pl.id', '=', 'ls.plan_id')
+                ->select([
+                    ...$this->tenantDbFields,
+                    'ls.expires_at AS license_expires_at',
+                    'ls.id AS license_id',
+                    'pl.id AS plan_id',
+                    'pl.slug AS plan_slug',
+                    'pl.price AS cost',
+                    'pl.billing_cycle AS billing_type',
+                    DB::raw('COALESCE(ls.max_members, pl.max_members) AS mx_mbrs'),
+                    DB::raw('COALESCE(ls.max_users, pl.max_users) AS mxusrs'),
+                    DB::raw('COALESCE(ls.features, pl.features) AS features'),
+                    DB::raw('COALESCE(pl.name, ls.plan) AS plan_name'),
+                ]);
             if ($req->has('search_keyword')) {
                 $query = $this->dynamic_search_db_query($query, $req['search_keyword'], $this->tenantDbFields, $this->searchFields);
             }
-            $dataCollection = $query->whereNull('deleted_at')->whereIn('status', $staus)->orderBy('created_at', 'DESC')->paginate($this->perpage());
+            $dataCollection = $query->whereNull('ts.deleted_at')->whereIn('ts.status', $statuses)->orderBy('ts.created_at', 'DESC')->paginate($this->perpage());
 
             // Dynamically determine the frontend base URL based on the request origin or host
             $baseUrl = request()->header('Origin') ?? request()->header('Referer') ?? env('FRONTEND_URL', 'http://localhost:3000');
@@ -100,6 +121,7 @@ class TenantsService extends TenantsUpdateOrCreateService
             $dataCollection->getCollection()->transform(function ($value) use ($scheme, $host, $port) {
                 $value->url = "{$scheme}://{$value->sacco_domain}.{$host}{$port}/tenant/login";
                 $value->cogs = json_decode($value->cogs);
+                $value->features = $value->features ? json_decode($value->features, true) : null;
 
                 return $value;
             });
