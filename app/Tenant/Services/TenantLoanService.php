@@ -2,6 +2,7 @@
 
 namespace App\Tenant\Services;
 
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class TenantLoanService extends TenantLoanUpdateOrCreateService
@@ -42,7 +43,7 @@ class TenantLoanService extends TenantLoanUpdateOrCreateService
                     if ($req->has('search_keyword')) {
                         $query = $this->dynamic_search_db_query($query, $req->search_keyword, $fields);
                     }
-                    $branchId = $req->branch_id ?? request()->header('X-Acting-Branch-Id') ?? (auth()->user()->branch_id ?? null);
+                    $branchId = $req->branch_id ?? request()->header('X-Acting-Branch-Id') ?? Auth::user()?->branch_id;
                     if ($branchId && !is_numeric($branchId)) $branchId = null;
                     else if ($branchId) $branchId = (int) $branchId;
 
@@ -94,7 +95,7 @@ class TenantLoanService extends TenantLoanUpdateOrCreateService
                     if ($req->has('search_keyword')) {
                         $query = $this->dynamic_search_db_query($query, $req->search_keyword, $fields);
                     }
-                    $branchId = $req->branch_id ?? request()->header('X-Acting-Branch-Id') ?? (auth()->user()->branch_id ?? null);
+                    $branchId = $req->branch_id ?? request()->header('X-Acting-Branch-Id') ?? Auth::user()?->branch_id;
                     if ($branchId && !is_numeric($branchId)) $branchId = null;
                     else if ($branchId) $branchId = (int) $branchId;
 
@@ -161,7 +162,7 @@ class TenantLoanService extends TenantLoanUpdateOrCreateService
                         $query = $this->dynamic_search_db_query($query, $req->search_keyword, $fields);
                     }
 
-                    $branchId = $req->branch_id ?? request()->header('X-Acting-Branch-Id') ?? (auth()->user()->branch_id ?? null);
+                    $branchId = $req->branch_id ?? request()->header('X-Acting-Branch-Id') ?? Auth::user()?->branch_id;
                     if ($branchId && !is_numeric($branchId)) $branchId = null;
                     else if ($branchId) $branchId = (int) $branchId;
 
@@ -184,7 +185,7 @@ class TenantLoanService extends TenantLoanUpdateOrCreateService
         return $this->TryCatch(function () {
             return $this->transaction(function () {
                 $req = request()->all();
-                $branchId = $req['branch_id'] ?? request()->header('X-Acting-Branch-Id') ?? (auth()->user()->branch_id ?? null);
+                $branchId = $req['branch_id'] ?? request()->header('X-Acting-Branch-Id') ?? Auth::user()?->branch_id;
                 if ($branchId && !is_numeric($branchId)) $branchId = null;
                 else if ($branchId) $branchId = (int) $branchId;
 
@@ -254,7 +255,7 @@ class TenantLoanService extends TenantLoanUpdateOrCreateService
                     ? ($statusMap[$rawStatus] ?? [$rawStatus])
                     : null;
                 
-                $user = auth()->user();
+                $user = Auth::user();
                 $isAdmin = $user && ($user->is_tenant_admin ?? false);
                 
                 $branchId = $req['branch_id'] ?? request()->header('X-Acting-Branch-Id') ?? ($isAdmin ? null : ($user->branch_id ?? null));
