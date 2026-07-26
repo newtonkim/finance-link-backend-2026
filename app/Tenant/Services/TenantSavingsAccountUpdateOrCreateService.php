@@ -10,6 +10,7 @@ use App\Tenant\Services\MemebersSettingSevices\ProductChargesservice;
 use App\Tenant\Services\TenantSavingsAcountServices\CrudHelders;
 use App\Tenant\Services\TenantSavingsAcountServices\OtherHelpers;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class TenantSavingsAccountUpdateOrCreateService extends CrudHelders
@@ -94,6 +95,7 @@ class TenantSavingsAccountUpdateOrCreateService extends CrudHelders
     {
         $req = request()->all();
         $failed = [];
+        $workedOnIds = [];
         $CrudHelders = new CrudHelders;
         $codeSequence = new CodeSequence;
         $chunks = 300; // chunk size
@@ -158,6 +160,7 @@ class TenantSavingsAccountUpdateOrCreateService extends CrudHelders
     {
         $req = request()->all();
         $failed = [];
+        $workedOnIds = [];
         $CrudHelders = new CrudHelders;
         $codeSequence = new CodeSequence;
         $chunks = 300; // chunk size
@@ -292,7 +295,7 @@ class TenantSavingsAccountUpdateOrCreateService extends CrudHelders
                         ->update([
                             'balance' => $newMemberBalance,
                             'updated_at' => now(),
-                            'updated_by' => auth()->check() ? auth()->id() : null,
+                            'updated_by' => Auth::check() ? Auth::id() : null,
                         ]);
                     if ($memberBalanceUpdated !== 1) {
                         throw new \Exception('Failed to update group member deposited amount.');
@@ -337,7 +340,7 @@ class TenantSavingsAccountUpdateOrCreateService extends CrudHelders
                         ->update([
                             'balance' => $newMemberBalance,
                             'updated_at' => now(),
-                            'updated_by' => auth()->check() ? auth()->id() : null,
+                            'updated_by' => Auth::check() ? Auth::id() : null,
                         ]);
                     if ($memberBalanceUpdated !== 1) {
                         throw new \Exception('Failed to update group member deposited amount.');
@@ -415,7 +418,7 @@ class TenantSavingsAccountUpdateOrCreateService extends CrudHelders
             'payment_mode_id' => $req['payment_mode_id'] ?? null,
             'status' => 'pending',
             'required_approvals' => $required,
-            'requested_by' => auth()->check() ? auth()->id() : null,
+            'requested_by' => Auth::check() ? Auth::id() : null,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -715,12 +718,12 @@ class TenantSavingsAccountUpdateOrCreateService extends CrudHelders
     {
         $req = request()->all();
         $failed = [];
+        $workedOnIds = [];
         $chunks = 300; // chunk size
         $collection = $this->isJSONToArray($req['collection']);
         $idChunks = array_chunk($collection->rows, $chunks);
         foreach ($idChunks as $chunkIndex => &$chunkIds) { // pass chunk by reference
             $ids = array_column($chunkIds, 'account_number');
-            $workedOnIds = [];
             $getTheCollected = DB::table('savings_accounts as Acc')
                 ->whereIn('Acc.code', $ids)
                 ->where(function ($q) {
