@@ -1094,17 +1094,7 @@ class TenantSavingsAccountUpdateOrCreateService extends CrudHelders
                 $saveAccountDetails = $this->UpdateOrCreateRecord('savings_groups', $gAcountData);
                 $OtherHelpers->addAmemberIntoAgroup([...$req, 'group_id' => $saveAccountDetails->id], false, isset($req['id']));
 
-                // $details = $this->UpdateOrCreateRecord('group_savings_accounts', $this->groupSavingsAccountUorCFields([ // just if ok just create group savings account too
-                //     "savings_group_id" => $saveAccountDetails->id,
-                //     "savings_product_id" => DB::table('savings_products')->whereRaw('name', 'General Savings Account')->first(['id'])->id,
-                //     "branch_id" => $req['branch_id'] ?? null,
-                //     "opening_balance"=>"0.00",
-                //     "initial_deposit"=>"0.00",
-                //     "balance"=>"0.00",
-                //     "is_new_account"=>"0.00",
-                //     "status"=>"0.00",
-
-                // ]));
+           
 
                 $List = app(TenantSavingsAccountService::class);
 
