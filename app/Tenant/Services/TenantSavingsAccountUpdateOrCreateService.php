@@ -218,7 +218,7 @@ class TenantSavingsAccountUpdateOrCreateService extends CrudHelders
                 ->where('guarantor_type', 'group')
                 ->sum('guarantee_amount');
             if ($sumOfTheMoney > 0 && $sumOfTheMoney <= $amount) {
-                return throw new \Exception('You cannot withdraw beyond the guaranteed amount. '.$sumOfTheMoney);
+                throw new \Exception('You cannot withdraw beyond the guaranteed amount. '.$sumOfTheMoney);
             }
         }
 
@@ -259,7 +259,7 @@ class TenantSavingsAccountUpdateOrCreateService extends CrudHelders
                 $table = 'group_savings_accounts';
                 $currentBalance = DB::table($table)->where('id', $groupId)->first(['balance', 'savings_product_id', 'id', 'savings_group_id']);
                 if (! $currentBalance) {
-                    return throw new \Exception('Group savings account not found.');
+                    throw new \Exception('Group savings account not found.');
                 }
                 $amount = (float) $req['amount'];
                 request()->merge(['type' => $req['type'] === 'deposit' ? 'deposit' : 'withdraw', 'amount' => $amount, 'product_id' => $currentBalance->savings_product_id]);
@@ -278,7 +278,7 @@ class TenantSavingsAccountUpdateOrCreateService extends CrudHelders
                         ->whereNull('deleted_at')
                         ->first(['balance', 'id']);
                     if (! $getMemberGroup) {
-                        return throw new \Exception('Selected member does not belong to this group.');
+                        throw new \Exception('Selected member does not belong to this group.');
                     }
                     $collection = $this->groupDepositeMethod($currentBalance, $amount, $chargedAmount, $req, $getMemberGroup);
 
@@ -305,7 +305,7 @@ class TenantSavingsAccountUpdateOrCreateService extends CrudHelders
                         ->whereNull('deleted_at')
                         ->first(['balance', 'id']);
                     if (! $getMemberGroup) {
-                        return throw new \Exception('Selected member does not belong to this group.');
+                        throw new \Exception('Selected member does not belong to this group.');
                     }
 
                     // Approval gate: unless this is the execution of an already
@@ -329,7 +329,7 @@ class TenantSavingsAccountUpdateOrCreateService extends CrudHelders
                     // $transactionList['group_member_account_balance_before_transaction'] = $getMemberGroup->balance;
                     $newMemberBalance = (float) ($getMemberGroup->balance ?? 0) - ($amount + $chargedAmount);
                     if ($newMemberBalance < 0) {
-                        return throw new \Exception('Insufficient member group balance.');
+                        throw new \Exception('Insufficient member group balance.');
                     }
                     $memberBalanceUpdated = DB::table('savings_group_members')
                         ->where('id', $getMemberGroup->id)
@@ -344,7 +344,7 @@ class TenantSavingsAccountUpdateOrCreateService extends CrudHelders
                     }
                 }
                 if ($newBalance < 0) {
-                    return throw new \Exception('Insufficient balance.');
+                    throw new \Exception('Insufficient balance.');
                 }
 
                 $details = $this->UpdateOrCreateRecord($table, ['balance' => $newBalance], ['id' => $groupId]);
@@ -402,7 +402,7 @@ class TenantSavingsAccountUpdateOrCreateService extends CrudHelders
         // impossible withdrawal.
         $projected = (float) ($getMemberGroup->balance ?? 0) - ($amount + (float) $chargedAmount);
         if ($projected < 0) {
-            return throw new \Exception('Insufficient member group balance.');
+            throw new \Exception('Insufficient member group balance.');
         }
 
         $id = DB::table('group_withdrawal_requests')->insertGetId([
