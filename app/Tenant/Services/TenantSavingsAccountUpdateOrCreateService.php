@@ -677,8 +677,8 @@ class TenantSavingsAccountUpdateOrCreateService extends CrudHelders
                 $req = request()->all();
                 $new_account = $req['new_account'] == 1 ? true : false;
                 $fields = $this->groupSavingsAccountUorCFields($req);
+                $codeSequence = new CodeSequence;
                 if (! isset($req['id'])) {
-                    $codeSequence = new CodeSequence;
                     $fields['code'] = $codeSequence->codeSequence($req['code'] ?? null, type: 'savings-group', moduleTarget: 'savings-group', tableTaget: 'savings_groups');
                 }
                 // set balance to opening_balance or initial_balance or amount, or 0 if none of them is provided
