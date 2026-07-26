@@ -308,11 +308,15 @@ class TenantLoanService extends TenantLoanUpdateOrCreateService
                     })
                     ->join('members as mb', 'mb.id', '=', 'la.member_id')
                     ->join('loan_products as lp', 'lp.id', '=', 'la.loan_product_id')
+                    // Once an application is disbursed its status stays "disbursed",
+                    // but the resulting loan moves on (active, arrears, closed, ...).
+                    // Surface the live loan status for disbursed applications.
+                    ->leftJoin('loans as l', 'l.id', '=', 'la.disbursed_loan_id')
                     ->select([
                         'requested_amount as amount',
                         'application_no as application_code',
                         'mb.code as member_code',
-                        'la.status as status',
+                        DB::raw("CASE WHEN la.status = 'disbursed' AND l.status IS NOT NULL THEN l.status ELSE la.status END AS status"),
                         DB::raw("CONCAT(IFNULL(mb.salutation,''), ' ', mb.name) AS member_name"),
                         DB::raw('DATEDIFF(Now(), la.submitted_at) AS submitted_date '),
                         'la.created_at as created_at',
