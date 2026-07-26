@@ -44,8 +44,11 @@ class TenantLoanService extends TenantLoanUpdateOrCreateService
                         $query = $this->dynamic_search_db_query($query, $req->search_keyword, $fields);
                     }
                     $branchId = $req->branch_id ?? request()->header('X-Acting-Branch-Id') ?? Auth::user()?->branch_id;
-                    if ($branchId && !is_numeric($branchId)) $branchId = null;
-                    else if ($branchId) $branchId = (int) $branchId;
+                    if ($branchId && ! is_numeric($branchId)) {
+                        $branchId = null;
+                    } elseif ($branchId) {
+                        $branchId = (int) $branchId;
+                    }
 
                     if ($branchId) {
                         $query->where('mbs.branch_id', $branchId);
@@ -96,8 +99,11 @@ class TenantLoanService extends TenantLoanUpdateOrCreateService
                         $query = $this->dynamic_search_db_query($query, $req->search_keyword, $fields);
                     }
                     $branchId = $req->branch_id ?? request()->header('X-Acting-Branch-Id') ?? Auth::user()?->branch_id;
-                    if ($branchId && !is_numeric($branchId)) $branchId = null;
-                    else if ($branchId) $branchId = (int) $branchId;
+                    if ($branchId && ! is_numeric($branchId)) {
+                        $branchId = null;
+                    } elseif ($branchId) {
+                        $branchId = (int) $branchId;
+                    }
 
                     if ($branchId) {
                         $query->where('mbs.branch_id', $branchId);
@@ -163,8 +169,11 @@ class TenantLoanService extends TenantLoanUpdateOrCreateService
                     }
 
                     $branchId = $req->branch_id ?? request()->header('X-Acting-Branch-Id') ?? Auth::user()?->branch_id;
-                    if ($branchId && !is_numeric($branchId)) $branchId = null;
-                    else if ($branchId) $branchId = (int) $branchId;
+                    if ($branchId && ! is_numeric($branchId)) {
+                        $branchId = null;
+                    } elseif ($branchId) {
+                        $branchId = (int) $branchId;
+                    }
 
                     if ($branchId) {
                         $query->where('mbs.branch_id', $branchId);
@@ -186,8 +195,11 @@ class TenantLoanService extends TenantLoanUpdateOrCreateService
             return $this->transaction(function () {
                 $req = request()->all();
                 $branchId = $req['branch_id'] ?? request()->header('X-Acting-Branch-Id') ?? Auth::user()?->branch_id;
-                if ($branchId && !is_numeric($branchId)) $branchId = null;
-                else if ($branchId) $branchId = (int) $branchId;
+                if ($branchId && ! is_numeric($branchId)) {
+                    $branchId = null;
+                } elseif ($branchId) {
+                    $branchId = (int) $branchId;
+                }
 
                 $status = isset($req['status']) && $req['status'] !== 'all' ? [$req['status']] : null;
                 $data = DB::table('loan_transactions As lt')
@@ -245,7 +257,7 @@ class TenantLoanService extends TenantLoanUpdateOrCreateService
         return $this->TryCatch(function () {
             return $this->transaction(function () {
                 $req = request()->all();
-                
+
                 $rawStatus = strtolower($req['status'] ?? 'all');
                 // "Submitted" tab groups all in-review stages together
                 $statusMap = [
@@ -254,13 +266,15 @@ class TenantLoanService extends TenantLoanUpdateOrCreateService
                 $status = ($rawStatus !== 'all' && $rawStatus !== '')
                     ? ($statusMap[$rawStatus] ?? [$rawStatus])
                     : null;
-                
                 $user = Auth::user();
                 $isAdmin = $user && ($user->is_tenant_admin ?? false);
-                
+
                 $branchId = $req['branch_id'] ?? request()->header('X-Acting-Branch-Id') ?? ($isAdmin ? null : ($user->branch_id ?? null));
-                if ($branchId && !is_numeric($branchId)) $branchId = null;
-                else if ($branchId) $branchId = (int) $branchId;
+                if ($branchId && ! is_numeric($branchId)) {
+                    $branchId = null;
+                } elseif ($branchId) {
+                    $branchId = (int) $branchId;
+                }
 
                 $data = DB::table('loan_applications As la')
                     ->whereNull('la.deleted_at')
@@ -303,13 +317,25 @@ class TenantLoanService extends TenantLoanUpdateOrCreateService
                         DB::raw('DATEDIFF(Now(), la.submitted_at) AS submitted_date '),
                         'la.created_at as created_at',
                         'la.id as id',
+                        // Enriched loan detail so the list can surface the decision-critical
+                        // data (product, amount trail, term, rate, purpose, aging) without a
+                        // per-row detail fetch.
+                        'lp.name as product_name',
+                        'lp.code as product_code',
+                        'lp.interest_rate as interest_rate',
+                        'la.requested_term as requested_term',
+                        'la.recommended_amount as recommended_amount',
+                        'la.approved_amount as approved_amount',
+                        'la.approved_term as approved_term',
+                        'la.purpose as purpose',
+                        'la.submitted_at as submitted_at',
                     ])
                     ->orderBy('la.id', 'DESC')
                     ->paginate($this->perpage());
 
                 $countStatus = DB::table('loan_applications As la')
                     ->whereNull('la.deleted_at')
-                    ->select('la.status', DB::raw('count(*) as total'))
+                    ->select('la.status', DB::raw('count(*) as total'), DB::raw('COALESCE(SUM(la.requested_amount), 0) as total_amount'))
                     ->groupBy('la.status')
                     ->when($branchId, function ($query) use ($branchId) {
                         $query->where(function ($q) use ($branchId) {
