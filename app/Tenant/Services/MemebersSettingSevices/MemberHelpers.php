@@ -4,7 +4,6 @@ namespace App\Tenant\Services\MemebersSettingSevices;
 
 use App\Http\Globals\GlobalHelpers;
 use Illuminate\Support\Facades\DB;
-use App\Tenant\Services\MemebersSettingSevices\CodeSequence;
 
 class MemberHelpers extends GlobalHelpers
 { // / this is shared helpers/methods
@@ -59,8 +58,8 @@ class MemberHelpers extends GlobalHelpers
 
             $dataField['password'] = $this->memberDefaultPassword($dataField['code']);
             $memberTableDetails = $this->UpdateOrCreateRecord('members', $dataField);
-            $checkIfCreated =  $memberTableDetails?->id ?? $memberTableDetails['id'] ?? null;
-            if (!$checkIfCreated) {
+            $checkIfCreated = $memberTableDetails?->id ?? $memberTableDetails['id'] ?? null;
+            if (! $checkIfCreated) {
 
                 return (array) $memberTableDetails;
                 // throw new \Exception($, 500);
@@ -72,7 +71,6 @@ class MemberHelpers extends GlobalHelpers
             $accountDetails = [];
             $deposit = (float) $memberTableDetails->initial_deposit;
             $umbrella_code = $this->umbrella_code();
-
 
             if ($saveTwoAccounts && isset($req['product_id'])) { // / create  a savings account for the member
                 $saccoAcountData = [ // / values for the savings account for both
@@ -107,13 +105,13 @@ class MemberHelpers extends GlobalHelpers
                         if ($getGeneralCharges->isNotEmpty()) {
                             foreach ($getGeneralCharges as $generalCharge) {
                                 $generalTotalCharges += is_numeric($generalCharge->amount) ? (float) $generalCharge->amount : 0;
-                                $listCharges['general_charge_' . $generalCharge->id] = [
-                                    "payment_mode_id" => $generalCharge->credit_account_id ?? null,
+                                $listCharges['general_charge_'.$generalCharge->id] = [
+                                    'payment_mode_id' => $generalCharge->credit_account_id ?? null,
                                     'narration' => 'general charge deducted on registration ',
                                     'type' => 'general-charge',
                                     'transaction_type' => 'general-charge',
                                     'account_type' => 'general-charge',
-                                    'charge_amount' => $generalCharge->amount
+                                    'charge_amount' => $generalCharge->amount,
                                 ];
                             }
                         }
@@ -126,22 +124,28 @@ class MemberHelpers extends GlobalHelpers
                         $deposit = $deposit - $chargedAmount;
                         $listCharges['deposit'] = [
                             'payment_mode_id' => $req['payment_mode_id'],
-                            'narration' => 'Initial deposit: ' . $chargedAmount . ' blc :' . $deposit,
+                            'narration' => 'Initial deposit: '.$chargedAmount.' blc :'.$deposit,
                             'type' => 'deposit',
-                            'amount' => $deposit,
-                            'amount_before_charges' => $memberTableDetails->initial_deposit
+                            // Record the GROSS deposit; the charge is a separate debit
+                            // entry below. Storing the net here double-counts the
+                            // charge and leaves the ledger short of the account
+                            // balance by the charge amount.
+                            'amount' => $memberTableDetails->initial_deposit,
+                            'amount_before_charges' => $memberTableDetails->initial_deposit,
                         ];
-                        if ($chargedAmount > 0)
+                        if ($chargedAmount > 0) {
                             $listCharges['deposit_charge'] = [
                                 'payment_mode_id' => $req['payment_mode_id'],
 
                                 'narration' => 'charge for initial deposit',
                                 'transaction_type' => 'deposit-charge',
                                 'type' => 'deposit-charge',
-                                'charge_amount' =>  $getTheProductCharges->cost
+                                'charge_amount' => $getTheProductCharges->cost,
                             ];
+                        }
                         if ($createTransactionAlso && $deposit < 0) {
                             DB::rollBack();
+
                             return $this->amountError($deposit);
                         }
                     }
@@ -167,12 +171,12 @@ class MemberHelpers extends GlobalHelpers
                         'branch_id' => $req['branch_id'],
                     ];
 
-                    if (!isset($req['id'])) {
+                    if (! isset($req['id'])) {
                         $shareTableDetails = $this->UpdateOrCreateRecord('shares', $shareAccount);
 
                         if ($shareTableDetails) {
 
-                            $shareCharge =    $caller->shareTransactionCharges([
+                            $shareCharge = $caller->shareTransactionCharges([
                                 'shares' => $shareQty,
                                 'type' => 'deposit',
                             ]);
@@ -184,15 +188,15 @@ class MemberHelpers extends GlobalHelpers
                                     'narration' => 'charge for share purchase',
                                     'account_type' => 'share-transaction-selling-charge',
                                     'type' => 'share-transaction',
-                                    'charge_amount' => $shareCharge->cost
+                                    'charge_amount' => $shareCharge->cost,
                                 ];
                                 $listCharges['share'] = [
                                     'payment_mode_id' => $req['payment_mode_id'],
 
                                     'narration' => 'share purchase on member creation',
-                                    'account_type' => "share purchase",
+                                    'account_type' => 'share purchase',
                                     'type' => 'share-transaction',
-                                    'amount' => ((int) $shareQty * $sharePrice)
+                                    'amount' => ((int) $shareQty * $sharePrice),
                                 ];
                             }
                         }
@@ -203,37 +207,44 @@ class MemberHelpers extends GlobalHelpers
                     }
                 } else {
                     DB::rollBack();
-                    return ['error' => 'share quantity must be greater than or equal to ' . $saccoMemberOnMemberCreationCreateShareMinimumValue];
+
+                    return ['error' => 'share quantity must be greater than or equal to '.$saccoMemberOnMemberCreationCreateShareMinimumValue];
                     // throw new \Exception('share quantity must be greater than or equal to ' . $saccoMemberOnMemberCreationCreateShareMinimumValue);
                 }
                 // /////
-                if (isset($listCharges) && count($listCharges) > 0) { // check it first  befor the next level save the RAM
-                    foreach ($listCharges as $chargeType => $information) {
-                        $TransactionData = $this->transactionUorCFields([
-                            'umbrella_code' => $umbrella_code ?? null,
-                            'reference' => $codeSequence->codeSequence(type: 'transactions', tableTaget: 'transactions'),
-                            'code' => $codeSequence->codeSequence(type: 'transactions', tableTaget: 'transactions'),
-                            'member' => $memberTableDetails->id,
-                            'amount' => $information['amount'] ?? 0,
-                            'charge_amount' => $information['charge_amount'] ?? 0,
-                            "deposited_amount_before_charge" => $information['amount_before_charges'] ?? 0,
-                            // "deposited_amount_before_charge" => $memberTableDetails->initial_deposit,
-                            'payment_method' => $req['payment_mode'] ?? $req['payment_mode_id'] ?? 'cash',
-                            'payment_mode_id' => $information['payment_mode_id']??null,
-                            'deposited_by' => $memberTableDetails->name,
-                            'transaction_date' => now()->toDateString(),
-                            'accid' => $accountDetails->id,
-                            'transaction_type' => $information['type'],
-                            'account_type' => $information['account_type'] ?? null,
-                            'narration' => $information['narration'],
-                            'branch_id' => $req['branch_id'],
-                        ]);
-                        $cheker = $this->UpdateOrCreateRecord('transactions', $TransactionData);
-                        if ((isset($checker) && ! isset($checker['error']))) {
-                            throw new \Exception($cheker, 500);
-                        }
+            }
+
+            // Journal the opening deposit, its charge, and any share charges as
+            // ledger entries. This must run whenever there are charges to post — it
+            // is NOT conditional on a share account being auto-created. Previously
+            // this loop was nested inside the "create a share account on member
+            // creation" block, so when that setting is off (the common case) the
+            // savings deposit was never recorded: the balance moved but the member
+            // transactions ledger stayed empty ("No transactions found").
+            if (isset($listCharges) && count($listCharges) > 0) {
+                foreach ($listCharges as $chargeType => $information) {
+                    $TransactionData = $this->transactionUorCFields([
+                        'umbrella_code' => $umbrella_code ?? null,
+                        'reference' => $codeSequence->codeSequence(type: 'transactions', tableTaget: 'transactions'),
+                        'code' => $codeSequence->codeSequence(type: 'transactions', tableTaget: 'transactions'),
+                        'member' => $memberTableDetails->id,
+                        'amount' => $information['amount'] ?? 0,
+                        'charge_amount' => $information['charge_amount'] ?? 0,
+                        'deposited_amount_before_charge' => $information['amount_before_charges'] ?? 0,
+                        'payment_method' => $req['payment_mode'] ?? $req['payment_mode_id'] ?? 'cash',
+                        'payment_mode_id' => $information['payment_mode_id'] ?? null,
+                        'deposited_by' => $memberTableDetails->name,
+                        'transaction_date' => now()->toDateString(),
+                        'accid' => is_object($accountDetails) ? $accountDetails->id : null,
+                        'transaction_type' => $information['type'],
+                        'account_type' => $information['account_type'] ?? null,
+                        'narration' => $information['narration'],
+                        'branch_id' => $req['branch_id'],
+                    ]);
+                    $cheker = $this->UpdateOrCreateRecord('transactions', $TransactionData);
+                    if ((isset($checker) && ! isset($checker['error']))) {
+                        throw new \Exception($cheker, 500);
                     }
-                    // }
                 }
             }
 
