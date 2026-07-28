@@ -46,28 +46,21 @@ class MemberHelpers extends GlobalHelpers
             $isExisting = $fields['member_type'] === 'existing_member';
             $codeSequence = new CodeSequence;
             $settings = new FindsettingsAction(null);
-            $dataField = $fields; // $this->mememberUOrCFields($req);
+            $dataField = $fields;
             $saveTwoAccounts = $settings->saccoMemberSaveAndSavingAccountAtOnce();
-            // return $codeSequence->codeSequence(type: 'transactions', tableTaget: 'transactions');
             $code = $codeSequence->codeSequence($req['code'] ?? null, 'members', 'members-onboarding', 'members');
             $dataField['member_number'] = $code;
             $dataField['code'] = $code;
             $dataField['status'] = $settings->saccoMemberRequireApprovalBeforeMemberBecomesActive();
-            $createTransactionAlso = $settings->saccoAccountOnAccountCreationShowInitialDeposit();
-            // retur÷n $dataField;
-
             $dataField['password'] = $this->memberDefaultPassword($dataField['code']);
             $memberTableDetails = $this->UpdateOrCreateRecord('members', $dataField);
             $checkIfCreated = $memberTableDetails?->id ?? $memberTableDetails['id'] ?? null;
             if (! $checkIfCreated) {
-
                 return (array) $memberTableDetails;
-                // throw new \Exception($, 500);
             }
-            //  return ;
+
             $shareTableDetails = [];
             $chargedAmount = 0;
-            $transactionDetails = [];
             $accountDetails = [];
             $deposit = (float) $memberTableDetails->initial_deposit;
             $umbrella_code = $this->umbrella_code();
@@ -76,7 +69,6 @@ class MemberHelpers extends GlobalHelpers
                 $saccoAcountData = [ // / values for the savings account for both
                     'member_id' => $memberTableDetails->id,
                     'savings_product_id' => $req['product_id'] ?? null,
-                    // 'account_type' => 'voluntary',
                     'is_new_account' => true,
                     'consider_min_balance' => true,
                     'payment_mod_account_id' => $req['payment_mode_id'] ?? null,
@@ -89,16 +81,7 @@ class MemberHelpers extends GlobalHelpers
 
                 $listCharges = [];
 
-                if ($isExisting) {
-                    // if ($isExisting && ! empty($req['product_id'])) {
-                } else {
-
-                    // $geTheGenericProductAcount =$req['product_id'];
-                    // $geTheGenericProductAcount = (object) ["id" => $req['product_id']] ?? DB::table('savings_products')->where('name', 'General Savings Account')->first(['id']);
-                    // $saccoAcountData = [
-                    //     ...$saccoAcountData,
-                    //     // 'savings_product_id' => $geTheGenericProductAcount,
-                    // ];
+                if (! $isExisting) {
                     if ($deposit > 0) {
                         $generalTotalCharges = 0;
                         $getGeneralCharges = $caller->GeneralProductCharges($saccoAcountData['savings_product_id'], 'on_registration');
@@ -143,7 +126,7 @@ class MemberHelpers extends GlobalHelpers
                                 'charge_amount' => $getTheProductCharges->cost,
                             ];
                         }
-                        if ($createTransactionAlso && $deposit < 0) {
+                        if ($deposit < 0) {
                             DB::rollBack();
 
                             return $this->amountError($deposit);
@@ -153,7 +136,7 @@ class MemberHelpers extends GlobalHelpers
                 $saccoAcountData['balance'] = $isExisting ? $req['opening_balance'] : $deposit;
                 $accountDetails = $this->UpdateOrCreateRecord('savings_accounts', $saccoAcountData);
             }
-            // ///// share account for the member
+            // Share account for the member
             $checkIfShareAccountShouldBeCreated = $settings->saccoMemberOnMemberCreationCreateShareAccountAtTheSameTime();
             $shareQty = (float) $memberTableDetails->shares_quantity;
             if ($checkIfShareAccountShouldBeCreated && (isset($req['product_id']) || isset($req['id']))) { // / lets  check 1st then we do the rest  t save memmorry
@@ -209,9 +192,7 @@ class MemberHelpers extends GlobalHelpers
                     DB::rollBack();
 
                     return ['error' => 'share quantity must be greater than or equal to '.$saccoMemberOnMemberCreationCreateShareMinimumValue];
-                    // throw new \Exception('share quantity must be greater than or equal to ' . $saccoMemberOnMemberCreationCreateShareMinimumValue);
                 }
-                // /////
             }
 
             // Journal the opening deposit, its charge, and any share charges as
@@ -241,17 +222,13 @@ class MemberHelpers extends GlobalHelpers
                         'narration' => $information['narration'],
                         'branch_id' => $req['branch_id'],
                     ]);
-                    $cheker = $this->UpdateOrCreateRecord('transactions', $TransactionData);
-                    if ((isset($checker) && ! isset($checker['error']))) {
-                        throw new \Exception($cheker, 500);
-                    }
+                    $this->UpdateOrCreateRecord('transactions', $TransactionData);
                 }
             }
 
             return [
                 'member' => $memberTableDetails,
                 'share' => $shareTableDetails,
-                'transaction' => $transactionDetails,
                 'account' => $accountDetails,
             ];
         });
