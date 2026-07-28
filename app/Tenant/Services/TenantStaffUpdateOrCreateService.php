@@ -20,7 +20,7 @@ class TenantStaffUpdateOrCreateService extends GlobalHelpers
                 ->value('id') ?? 1;
         }
 
-        $roleId = $req['system_role'] ?? null;
+        $roleId = $req['role_id'] ?? $req['system_role'] ?? null;
         if (is_array($roleId) && isset($roleId['id'])) {
             $roleId = $roleId['id'];
         }
@@ -33,6 +33,11 @@ class TenantStaffUpdateOrCreateService extends GlobalHelpers
                 'role_id' => $roleId,
                 'branch_id' => $branchId,
                 'status' => $req['status'] ?? null,
+                'is_tenant_admin' => $req['is_tenant_admin'] ?? null,
+                'is_loan_officer' => $req['is_loan_officer'] ?? null,
+                'can_vote_on_loans' => $req['can_vote_on_loans'] ?? null,
+                'can_manage_branch' => $req['can_manage_branch'] ?? null,
+                'can_finalise_loan' => $req['can_finalise_loan'] ?? null,
             ]
         );
     }
@@ -57,7 +62,7 @@ class TenantStaffUpdateOrCreateService extends GlobalHelpers
             $dataField['password'] = Hash::make($req['password']);
             $dataField['created_at'] = now();
             $userDetails = $this->UpdateOrCreateRecord('staff', $dataField);
-            $roleId = $req['system_role'] ?? null;
+            $roleId = $req['role_id'] ?? $req['system_role'] ?? null;
             if (is_array($roleId) && isset($roleId['id'])) {
                 $roleId = $roleId['id'];
             }
