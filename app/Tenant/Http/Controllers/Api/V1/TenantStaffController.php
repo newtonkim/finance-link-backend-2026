@@ -8,6 +8,7 @@ use App\Tenant\Http\Resources\MemberResource;
 use App\Tenant\Http\Resources\StaffResource;
 use App\Tenant\Services\TenantStaffService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -74,16 +75,39 @@ class TenantStaffController extends TenantStaffService
             'password' => 'required|string|min:8',
             'branch_id' => 'nullable|integer|exists:tenant.branches,id',
             'role' => 'sometimes|string',
-            'role_id' => 'sometimes|integer|exists:tenant.roles,id',
-            'status' => 'sometimes|string',
+            'role_id' => 'required|integer|exists:tenant.roles,id',
+            'status' => ['sometimes', Rule::in(['active', 'inactive'])],
+            'is_tenant_admin' => 'sometimes|boolean',
+            'is_loan_officer' => 'sometimes|boolean',
             'can_vote_on_loans' => 'sometimes|boolean',
             'can_manage_branch' => 'sometimes|boolean',
             'can_finalise_loan' => 'sometimes|boolean',
         ]);
 
+        $role = DB::connection('tenant')
+            ->table('roles')
+            ->where('id', $validated['role_id'])
+            ->first(['name', 'default_permissions']);
+        $validated['role'] = $role->name;
         $validated['password'] = Hash::make($validated['password']);
 
-        $staff = Staff::create($validated);
+        $staff = DB::connection('tenant')->transaction(function () use ($validated, $role) {
+            $staff = Staff::create($validated);
+            $defaultPermissions = json_decode($role->default_permissions ?? '[]', true);
+
+            if (is_array($defaultPermissions) && $defaultPermissions !== []) {
+                DB::connection('tenant')->table('permissions_users')->updateOrInsert(
+                    ['user_id' => $staff->id],
+                    [
+                        'permission_ids' => json_encode(array_values($defaultPermissions)),
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]
+                );
+            }
+
+            return $staff;
+        });
 
         return new StaffResource($staff);
     }
@@ -107,11 +131,20 @@ class TenantStaffController extends TenantStaffService
             'branch_id' => 'nullable|integer|exists:tenant.branches,id',
             'role' => 'sometimes|string',
             'role_id' => 'sometimes|integer|exists:tenant.roles,id',
-            'status' => 'sometimes|string',
+            'status' => ['sometimes', Rule::in(['active', 'inactive'])],
+            'is_tenant_admin' => 'sometimes|boolean',
+            'is_loan_officer' => 'sometimes|boolean',
             'can_vote_on_loans' => 'sometimes|boolean',
             'can_manage_branch' => 'sometimes|boolean',
             'can_finalise_loan' => 'sometimes|boolean',
         ]);
+
+        if (isset($validated['role_id'])) {
+            $validated['role'] = DB::connection('tenant')
+                ->table('roles')
+                ->where('id', $validated['role_id'])
+                ->value('name');
+        }
 
         if (isset($validated['password']) && $validated['password']) {
             $validated['password'] = Hash::make($validated['password']);

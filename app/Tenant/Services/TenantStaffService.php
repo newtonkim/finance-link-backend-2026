@@ -13,8 +13,12 @@ class TenantStaffService extends TenantStaffUpdateOrCreateService
         'stf.name AS staff_fall_name',
         'stf.email AS staff_email',
         'stf.email_verified_at AS email_verified_time',
+        'stf.role_id AS system_role_id',
         'rl.name AS system_role',
+        'stf.branch_id AS branch_id',
+        'stf.is_tenant_admin AS is_tenant_admin',
         'stf.status AS status',
+        'stf.is_loan_officer AS is_loan_officer',
         'stf.can_vote_on_loans AS can_vote_on_loans',
         'stf.can_manage_branch AS can_manage_branch',
         'stf.can_finalise_loan AS can_finalise_loan',
@@ -82,7 +86,37 @@ class TenantStaffService extends TenantStaffUpdateOrCreateService
     {
         $req = request();
 
-        return $this->dropDownList('staff');
+        return $this->TryCatch(function () use ($req) {
+            $query = DB::table('staff as stf')
+                ->select(['stf.id AS id', 'stf.name AS name'])
+                ->where('stf.status', 'active')
+                ->where('stf.is_loan_officer', true)
+                ->whereNull('stf.deleted_at');
+
+            if ($req->has('search_keyword')) {
+                $query = $this->dynamic_search_db_query(
+                    $query,
+                    $req->search_keyword,
+                    ['stf.id AS id', 'stf.name AS name']
+                );
+            }
+
+            $user = BranchContext::getStaff();
+            if ($user && BranchContext::scopeFor($user) !== BranchContext::SCOPE_ALL) {
+                $allowedIds = BranchContext::allowedBranchIds();
+                if (empty($allowedIds)) {
+                    $query->whereRaw('1 = 0');
+                } else {
+                    $query->whereIn('stf.branch_id', $allowedIds);
+                }
+            } elseif (! empty($req->branch_id)) {
+                $query->where('stf.branch_id', $req->branch_id);
+            }
+
+            return $query
+                ->orderBy('stf.name')
+                ->paginate($this->perpage());
+        });
     }
 
     public function rolesDropdown()

@@ -23,6 +23,7 @@ class StaffResource extends JsonResource
             'branch_id' => $this->branch_id,
             'status' => $this->status,
             'is_tenant_admin' => (bool) $this->is_tenant_admin,
+            'is_loan_officer' => (bool) $this->is_loan_officer,
             'can_vote_on_loans' => (bool) $this->can_vote_on_loans,
             'can_manage_branch' => (bool) $this->can_manage_branch,
             'can_finalise_loan' => (bool) $this->can_finalise_loan,
