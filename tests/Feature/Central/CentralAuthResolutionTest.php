@@ -85,4 +85,30 @@ class CentralAuthResolutionTest extends TestCase
         $response->assertOk();
         $response->assertJsonPath('data.user.id', $user->id);
     }
+
+    public function test_me_exposes_a_resolvable_avatar_url(): void
+    {
+        // The top-bar avatar hydrates from /me. Without an appended avatar_url the
+        // client only sees the bare storage path and renders a broken image.
+        $user = $this->centralUser();
+        $user->avatar = 'avatars/example.jpg';
+        $user->save();
+
+        $response = $this->withHeaders($this->headers($user))
+            ->getJson('/api/v1/central/me');
+
+        $response->assertOk();
+        $response->assertJsonPath('data.user.avatar_url', config('app.url').'/storage/avatars/example.jpg');
+    }
+
+    public function test_me_avatar_url_is_null_without_an_avatar(): void
+    {
+        $user = $this->centralUser();
+
+        $response = $this->withHeaders($this->headers($user))
+            ->getJson('/api/v1/central/me');
+
+        $response->assertOk();
+        $response->assertJsonPath('data.user.avatar_url', null);
+    }
 }
