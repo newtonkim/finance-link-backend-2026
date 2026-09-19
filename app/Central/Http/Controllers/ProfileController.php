@@ -25,13 +25,12 @@ class ProfileController extends BaseController
 {
     public function show(Request $request)
     {
-        return $this->Response(['data' => $this->present($request->user())]);
+        return $this->Response(['data' => $this->present($this->currentUser($request))]);
     }
 
     public function update(Request $request)
     {
-        /** @var PlatformUser $user */
-        $user = $request->user();
+        $user = $this->currentUser($request);
 
         $validated = $request->validate([
             'staff_fall_name' => ['sometimes', 'string', 'max:255'],
@@ -87,8 +86,7 @@ class ProfileController extends BaseController
 
     public function destroy(Request $request)
     {
-        /** @var PlatformUser $user */
-        $user = $request->user();
+        $user = $this->currentUser($request);
 
         // Refuse to remove the last account that can still administer the platform.
         $remaining = PlatformUser::on('master')
@@ -117,13 +115,25 @@ class ProfileController extends BaseController
         ]);
     }
 
-    /** Map a platform user onto the shape the central frontend expects. */
-    private function present(?PlatformUser $user): ?array
+    /**
+     * The central middleware binds the authenticated platform user to the request.
+     * If that ever stops happening, fail with a clear 401 rather than a null
+     * property access deeper in the method.
+     */
+    private function currentUser(Request $request): PlatformUser
     {
-        if (! $user) {
-            return null;
+        $user = $request->user();
+
+        if (! $user instanceof PlatformUser) {
+            abort(401, 'Unauthenticated.');
         }
 
+        return $user;
+    }
+
+    /** Map a platform user onto the shape the central frontend expects. */
+    private function present(PlatformUser $user): array
+    {
         return [
             'id' => $user->id,
             'staff_fall_name' => $user->name,
