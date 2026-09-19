@@ -2,6 +2,7 @@
 
 use App\Central\Http\Controllers\DashboardController;
 use App\Central\Http\Controllers\LicenseController;
+use App\Central\Http\Controllers\ProfileController;
 use App\Central\Http\Controllers\SettingsController;
 use App\Central\Http\Controllers\StaffController;
 use App\Central\Http\Controllers\TenantController;
@@ -14,6 +15,14 @@ Route::middleware(['api', 'central.domain', 'central.auth'])
     ->group(function () {
         Route::get('/me', [AuthController::class, 'user'])->name('me');
         Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+        // Self-service profile for the signed-in platform user. Not permission-gated:
+        // every authenticated central user may read and edit their own record.
+        Route::prefix('profile')->name('profile.')->group(function () {
+            Route::get('/', [ProfileController::class, 'show'])->name('show');
+            Route::post('/update', [ProfileController::class, 'update'])->name('update');
+            Route::post('/delete', [ProfileController::class, 'destroy'])->name('delete');
+        });
 
         Route::get('/dashboard/summary', [DashboardController::class, 'summary'])
             ->middleware('permission:dashboard-module-link-view')

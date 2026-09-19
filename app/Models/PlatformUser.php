@@ -29,6 +29,7 @@ class PlatformUser extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        'avatar',
         'password',
     ];
 
