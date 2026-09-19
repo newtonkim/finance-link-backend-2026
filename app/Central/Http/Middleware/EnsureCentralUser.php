@@ -25,6 +25,12 @@ class EnsureCentralUser
             return response()->json(['message' => 'Forbidden. Central access is required.'], 403);
         }
 
+        // Bind the resolved user to the request. The default guard is the
+        // session-backed 'web' guard, so without this $request->user() returns null
+        // for token-authenticated API calls and controllers reading it blow up with
+        // "Attempt to read property on null".
+        $request->setUserResolver(fn () => $user);
+
         return $next($request);
     }
 }
