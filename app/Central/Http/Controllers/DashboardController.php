@@ -16,15 +16,26 @@ class DashboardController extends DashboardService
         return $this->Response(['data' => $this->DashbordsAnalysis()]);
     }
 
+    /**
+     * Flat headline figures for callers that want the numbers without the series,
+     * feeds and per-plan breakdown the full analytics payload carries.
+     */
     public function summary()
     {
         $metrics = $this->DashbordsAnalysis();
 
         return response()->json([
-            'total_tenants' => $metrics['tenants']->tatal_tenants,
-            'active_tenants' => $metrics['tenants']->active_tenants,
-            'expired_licenses' => $metrics['licenses']->expired_licenses,
-            'expiring_soon_3_days' => $metrics['licenses']->expiring_soon_3_days,
+            'currency' => $metrics['currency'],
+            'total_tenants' => $metrics['tenants']['total'],
+            'active_tenants' => $metrics['tenants']['active'],
+            'expired_licenses' => $metrics['licenses']['expired'],
+            'expiring_soon_3_days' => $metrics['licenses']['expiring_3_days'],
+            'expiring_soon_7_days' => $metrics['licenses']['expiring_7_days'],
+            'expiring_soon_30_days' => $metrics['licenses']['expiring_30_days'],
+            'mrr' => $metrics['revenue']['mrr'],
+            'arr' => $metrics['revenue']['arr'],
+            // Long-standing key. It now carries the normalised figures alongside the
+            // per-cycle breakdown rather than raw per-cycle sums.
             'revenue_metrics' => $metrics['revenue'],
         ]);
     }
