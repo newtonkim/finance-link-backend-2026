@@ -189,19 +189,16 @@ class TenantSettingUpdateOrCreateService extends GlobalHelpers
         return $List->capitalizeList();
     }
 
+    /** The setting whose value is the share price; only it drives capitalisation. */
+    private const SHARE_PRICE_SETTING = 'sacco-share-price-value';
+
     public function saveChangedSettingsShare()
     {
         // this   is used in more places
         $req = request()->all();
-        $checkIfsharePriceExist = DB::table('system_settings')->where('settings_name', 'sacco-share-price-value')->first(['settings_action', 'id']);
-        if (isset($checkIfsharePriceExist->id)) {
-            $sharePrice = $req['settings_action']['action'];
-            $getcapital = DB::table('share_capitalization')->orderBy('id', 'desc')->first(['id', 'open_capital']);
-            DB::table('share_capitalization')->where('id', $getcapital->id)->update([
-                'open_capital_points_walth_amount' => $getcapital->open_capital * $sharePrice,
-                'share_price' => $sharePrice,
-            ]);
-        }
+
+        $this->recalculateCapitalisationIfSharePriceChanged($req);
+
         $this->UpdateOrCreateRecord('system_settings', [
             'id' => $req['id'],
             'settings_action' => $req['settings_action'],
@@ -212,6 +209,45 @@ class TenantSettingUpdateOrCreateService extends GlobalHelpers
         }
 
         return $membersList->onboardingSettingsList();
+    }
+
+    /**
+     * Keep share capitalisation in step with the share price.
+     *
+     * Two things used to go wrong here. The guard asked whether the share-price
+     * setting *existed* rather than whether *this request* was saving it, so every
+     * share setting entered this branch — saving the hide-shareholder switch fed its
+     * own 1 or 0 in as the share price. And the latest capitalisation row was
+     * dereferenced without checking one was returned, so on any tenant with no
+     * capitalisation rows — which is every newly provisioned tenant — the save threw
+     * and the setting was never written at all.
+     */
+    private function recalculateCapitalisationIfSharePriceChanged(array $req): void
+    {
+        $setting = DB::table('system_settings')
+            ->where('id', $req['id'] ?? null)
+            ->first(['settings_name']);
+
+        if (! $setting || $setting->settings_name !== self::SHARE_PRICE_SETTING) {
+            return;
+        }
+
+        $sharePrice = (float) ($req['settings_action']['action'] ?? 0);
+
+        $capital = DB::table('share_capitalization')
+            ->orderBy('id', 'desc')
+            ->first(['id', 'open_capital']);
+
+        // No capitalisation opened yet; the price is still recorded on the setting
+        // and will be picked up when one is created.
+        if (! $capital) {
+            return;
+        }
+
+        DB::table('share_capitalization')->where('id', $capital->id)->update([
+            'open_capital_points_walth_amount' => $capital->open_capital * $sharePrice,
+            'share_price' => $sharePrice,
+        ]);
     }
 
     public function saveChangedSettings()
@@ -228,7 +264,7 @@ class TenantSettingUpdateOrCreateService extends GlobalHelpers
         // }
 
         // return $membersList->onboardingSettingsList();
-          $otherHelpers=new OtherHelpers();
+        $otherHelpers = new OtherHelpers;
 
         return $otherHelpers->SettingsListPreparation([], []);
     }
