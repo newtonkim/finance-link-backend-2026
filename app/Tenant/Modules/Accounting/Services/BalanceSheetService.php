@@ -202,6 +202,8 @@ class BalanceSheetService implements BalanceSheetServiceInterface
                 array_push($top, ...($children[$root['key']] ?? []));
                 // Keep any stray balance posted directly to the header.
                 if (round($root['own'], 2) != 0 || round($root['own_compare'], 2) != 0) {
+                    // Children were promoted above; do not count them again with this header.
+                    $root['key'] = 'header-own:'.$root['key'];
                     $top[] = $root;
                 }
             } else {

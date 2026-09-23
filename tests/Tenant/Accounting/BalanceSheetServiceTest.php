@@ -162,3 +162,12 @@ it('prunes zero lines but always keeps computed lines', function () {
     expect($empty['totals']['current']['is_balanced'])->toBeTrue();
     expect($empty['financial_year'])->toBeNull();
 });
+
+it('does not count promoted children twice when a level-one header has a direct posting', function () {
+    $header = ChartOfAccount::where('gl_code', '10000')->firstOrFail();
+    bsPost('2026-06-01', [[$header, 1000, 0], [$this->savings, 0, 1000]]);
+    $result = $this->service->generate(Carbon::parse('2026-09-30'));
+    expect($result['totals']['current']['total_assets'])->toEqual(166000.0);
+    expect($result['totals']['current']['is_balanced'])->toBeTrue();
+    expect(bsFind(bsSection($result, 'assets')['lines'], '10000')['children'])->toBe([]);
+});

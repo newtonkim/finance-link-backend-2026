@@ -10,6 +10,26 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-23-balance-sheet-design.md`
 
+## Continuation status (2026-09-23)
+
+Tasks 1–3 were implemented in the existing branch. Tasks 4–7 are now implemented:
+shared accessible ledger drawer, statement rows and KPIs, CSV/Excel/PDF exports,
+and the balance-sheet route/page. Drawer retries do not skip failed pages, and
+out-of-order requests cannot overwrite newer report or drawer results.
+
+The backend also fixes double-counting promoted children when a level-one header
+has a direct posting. A regression test covers this case.
+
+Validation: 11 backend Pest tests passed (54 assertions) against mfukopro_test;
+19 frontend report tests passed, including real workbook/PDF generation and CSV
+content checks. Production build, Vue TypeScript checking, targeted ESLint, Pint,
+and whitespace checks passed. The lint/test configs now exclude the local pnpm
+store; Vue lint discovery is limited to src to avoid recursive cache links.
+
+Authenticated browser review, downloaded-file visual inspection, and production
+deployment have not been performed. The detailed original checklist below is
+retained as the implementation recipe, not a completion tracker.
+
 ## Global Constraints
 
 - Two repos. Backend: `/Users/mcash-venom/Mcash/finance-link-backend-2026` (branch `feature/balance-sheet`, already created from `main`). Frontend: `/Users/mcash-venom/Mcash/finance-link-frontend-2026` (create branch `feature/balance-sheet` from `main` in Task 3).
