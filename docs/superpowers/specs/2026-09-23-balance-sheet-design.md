@@ -169,10 +169,12 @@ at `@/tenant/modules/reports/pages/BalanceSheet.vue` (replaces `ComingSoon.vue`)
 | File | Responsibility |
 |---|---|
 | `src/tenant/apis/reports/balanceSheetApi.ts` | `getBalanceSheet(params)` + TS types (`BalanceSheetResponse`, `BalanceSheetLine`, `BalanceSheetSection`, `BalanceSheetTotals`) |
-| `src/tenant/modules/reports/composables/useBalanceSheet.ts` | `asAt`, `compareTo`, `hideZero`, `loading`, `error`, `result`; `expanded` set, `toggle(id)`, `expandAll()`, `collapseAll()`; `generate()` on mount; KPI computeds (totals + % change) |
-| `src/tenant/modules/reports/composables/useBalanceSheetExport.ts` | CSV / Excel (`xlsx`) / PDF (`jspdf` + `jspdf-autotable`) using the rows currently visible |
-| `src/tenant/modules/reports/components/BalanceSheetSection.vue` | Section heading, lines, section total with rules |
-| `src/tenant/modules/reports/components/BalanceSheetLine.vue` | Recursive row: indent by depth, chevron when it has children, amount / compare / change cells, `computed` badge, click postable amount → emit `drill` |
+| `src/tenant/modules/reports/utils/accountingFormat.ts` | `formatAccounting` (parentheses for negatives, `—` for zero), `percentChange`, `formatLongDate`, `formatShortDate` |
+| `src/tenant/modules/reports/utils/balanceSheetRows.ts` | Pure function that flattens the response tree into `StatementRow[]` (section / line / subtotal / section-total / grand-total) based on expansion. Screen and all exports use it |
+| `src/tenant/modules/reports/composables/useBalanceSheet.ts` | `asAt`, `compareTo`, `hideZero`, `loading`, `error`, `result`; `expanded` set, `toggle(key)`, `expandAll()`, `collapseAll()`; `rows`; `generate()` on mount; KPI computeds (totals + % change) |
+| `src/tenant/modules/reports/composables/useBalanceSheetExport.ts` | CSV / Excel (`xlsx`) / PDF (`jspdf` + `jspdf-autotable`) from `rows` |
+| `src/tenant/modules/reports/components/BalanceSheetRow.vue` | Renders one `StatementRow`: indent by depth, chevron when expandable, amount / compare / change cells, `computed` badge, rules on totals, click postable amount → emit `drill` |
+| `src/tenant/modules/reports/components/BalanceSheetKpis.vue` | KPI cards + balance check card |
 | `src/tenant/modules/reports/components/LedgerDrillDownDrawer.vue` | Ledger drawer moved out of `TrialBalance.vue` (props: `open`, `account`, `from`, `to`; uses `trialBalanceApi.getLedgerLines`). `TrialBalance.vue` switches to it with identical behaviour |
 | `src/tenant/modules/reports/pages/BalanceSheet.vue` | Page composition |
 
@@ -220,9 +222,11 @@ at `@/tenant/modules/reports/pages/BalanceSheet.vue` (replaces `ComingSoon.vue`)
 
 ### Frontend tests (Vitest)
 
-- `useBalanceSheet`: toggle / expandAll / collapseAll, % change handles a zero base
-  (returns `null`, renders `—`), error state set on API failure.
-- `BalanceSheetLine`: negative renders in parentheses, computed badge shown, drill
+- `accountingFormat`: parentheses, zero dash, % change with a zero base → `null`.
+- `balanceSheetRows`: collapsed vs expanded output, subtotal rows, grand totals.
+- `useBalanceSheet`: toggle / expandAll / collapseAll, default expansion, error state
+  set on API failure.
+- `BalanceSheetRow`: negative renders in parentheses, computed badge shown, drill
   emitted only for postable non-computed rows.
 
 ## Out of scope
