@@ -2,6 +2,7 @@
 
 namespace App\Central\Services;
 
+use App\Support\TenantFrontendUrl;
 use Illuminate\Support\Facades\DB;
 
 class TenantsService extends TenantsUpdateOrCreateService
@@ -50,6 +51,8 @@ class TenantsService extends TenantsUpdateOrCreateService
 
                 ]);
             $tenant->features = $this->isJSONToArray(json_decode($tenant->features, true));
+            $baseUrl = request()->header('Origin') ?? request()->header('Referer') ?? env('FRONTEND_URL', 'http://localhost:3000');
+            $tenant->url = TenantFrontendUrl::base($tenant->sacco_domain, $baseUrl, $tenant->host_domain).'/tenant/login';
 
             return $tenant;
         });
@@ -87,18 +90,8 @@ class TenantsService extends TenantsUpdateOrCreateService
 
             // Dynamically determine the frontend base URL based on the request origin or host
             $baseUrl = request()->header('Origin') ?? request()->header('Referer') ?? env('FRONTEND_URL', 'http://localhost:3000');
-            $parsed = parse_url(rtrim($baseUrl, '/'));
-            $scheme = $parsed['scheme'] ?? 'http';
-            $host = $parsed['host'] ?? 'localhost';
-            $port = isset($parsed['port']) ? ':'.$parsed['port'] : '';
-
-            // If the host is an API domain, strip the 'api.' prefix for the tenant link
-            if (str_starts_with($host, 'api.')) {
-                $host = substr($host, 4);
-            }
-
-            $dataCollection->getCollection()->transform(function ($value) use ($scheme, $host, $port) {
-                $value->url = "{$scheme}://{$value->sacco_domain}.{$host}{$port}/tenant/login";
+            $dataCollection->getCollection()->transform(function ($value) use ($baseUrl) {
+                $value->url = TenantFrontendUrl::base($value->sacco_domain, $baseUrl, $value->host_domain).'/tenant/login';
                 $value->cogs = json_decode($value->cogs);
 
                 return $value;

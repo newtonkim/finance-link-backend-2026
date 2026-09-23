@@ -26,6 +26,7 @@ return [
             // Explicit deployment origins; do not trust unrelated vercel.app projects.
             'https://finance-link-frontend-2026.vercel.app',
             'https://mfukodemo.vercel.app',
+            'https://buwatesacco.vercel.app',
             'https://finance-link-frontend-2026-git-main-newtonyamu22-2109s-projects.vercel.app',
         ],
     )))),
