@@ -3,10 +3,24 @@
 namespace App\Providers;
 
 use App\Models\Member;
+use App\Tenant\Modules\Accounting\Contracts\BalanceSheetServiceInterface;
 use App\Tenant\Modules\Accounting\Contracts\SavingsCoaResolverInterface;
+use App\Tenant\Modules\Accounting\Contracts\TrialBalanceServiceInterface;
 use App\Tenant\Modules\Accounting\Repositories\ChartOfAccountRepository;
 use App\Tenant\Modules\Accounting\Repositories\ChartOfAccountRepositoryInterface;
+use App\Tenant\Modules\Accounting\Services\BalanceSheetService;
 use App\Tenant\Modules\Accounting\Services\SavingsCoaResolver;
+use App\Tenant\Modules\Accounting\Services\TrialBalanceService;
+use App\Tenant\Modules\Charges\Contracts\ChargeApplicationServiceInterface;
+use App\Tenant\Modules\Charges\Contracts\ChargeCalculatorServiceInterface;
+use App\Tenant\Modules\Charges\Contracts\ChargeJournalServiceInterface;
+use App\Tenant\Modules\Charges\Services\ChargeApplicationService;
+use App\Tenant\Modules\Charges\Services\ChargeCalculatorService;
+use App\Tenant\Modules\Charges\Services\ChargeJournalService;
+use App\Tenant\Modules\Expenses\Contracts\ExpenseBudgetServiceInterface;
+use App\Tenant\Modules\Expenses\Contracts\ExpenseThresholdServiceInterface;
+use App\Tenant\Modules\Expenses\Services\ExpenseBudgetService;
+use App\Tenant\Modules\Expenses\Services\ExpenseThresholdService;
 use App\Tenant\Modules\Loans\Contracts\LoanActivityServiceInterface;
 use App\Tenant\Modules\Loans\Contracts\LoanAgingReportServiceInterface;
 use App\Tenant\Modules\Loans\Contracts\LoanApplicationServiceInterface;
@@ -39,7 +53,11 @@ use App\Tenant\Modules\Loans\Services\LoanTimelineService;
 use App\Tenant\Modules\Loans\Services\LoanWriteOffService;
 use App\Tenant\Modules\Loans\Services\MemberLoanSummaryService;
 use App\Tenant\Modules\Loans\Services\ScheduleGeneratorService;
+use App\Tenant\Modules\Savings\Contracts\FdMaturityAccountingServiceInterface;
+use App\Tenant\Modules\Savings\Contracts\SavingsAccountStatementServiceInterface;
 use App\Tenant\Modules\Savings\Models\SavingsAccount;
+use App\Tenant\Modules\Savings\Services\FdMaturityAccountingService;
+use App\Tenant\Modules\Savings\Services\SavingsAccountStatementService;
 use App\Tenant\Modules\Shares\Contracts\ShareAccountingServiceInterface;
 use App\Tenant\Modules\Shares\Models\Share;
 use App\Tenant\Modules\Shares\Services\ShareAccountingService;
@@ -150,43 +168,48 @@ class AppServiceProvider extends ServiceProvider
         );
 
         $this->app->bind(
-            \App\Tenant\Modules\Expenses\Contracts\ExpenseThresholdServiceInterface::class,
-            \App\Tenant\Modules\Expenses\Services\ExpenseThresholdService::class
+            ExpenseThresholdServiceInterface::class,
+            ExpenseThresholdService::class
         );
 
         $this->app->bind(
-            \App\Tenant\Modules\Expenses\Contracts\ExpenseBudgetServiceInterface::class,
-            \App\Tenant\Modules\Expenses\Services\ExpenseBudgetService::class
+            ExpenseBudgetServiceInterface::class,
+            ExpenseBudgetService::class
         );
 
         $this->app->bind(
-            \App\Tenant\Modules\Charges\Contracts\ChargeJournalServiceInterface::class,
-            \App\Tenant\Modules\Charges\Services\ChargeJournalService::class
+            ChargeJournalServiceInterface::class,
+            ChargeJournalService::class
         );
 
         $this->app->bind(
-            \App\Tenant\Modules\Charges\Contracts\ChargeCalculatorServiceInterface::class,
-            \App\Tenant\Modules\Charges\Services\ChargeCalculatorService::class
+            ChargeCalculatorServiceInterface::class,
+            ChargeCalculatorService::class
         );
 
         $this->app->bind(
-            \App\Tenant\Modules\Charges\Contracts\ChargeApplicationServiceInterface::class,
-            \App\Tenant\Modules\Charges\Services\ChargeApplicationService::class
+            ChargeApplicationServiceInterface::class,
+            ChargeApplicationService::class
         );
 
         $this->app->bind(
-            \App\Tenant\Modules\Savings\Contracts\FdMaturityAccountingServiceInterface::class,
-            \App\Tenant\Modules\Savings\Services\FdMaturityAccountingService::class
+            FdMaturityAccountingServiceInterface::class,
+            FdMaturityAccountingService::class
         );
 
         $this->app->bind(
-            \App\Tenant\Modules\Accounting\Contracts\TrialBalanceServiceInterface::class,
-            \App\Tenant\Modules\Accounting\Services\TrialBalanceService::class
+            TrialBalanceServiceInterface::class,
+            TrialBalanceService::class
         );
 
         $this->app->bind(
-            \App\Tenant\Modules\Savings\Contracts\SavingsAccountStatementServiceInterface::class,
-            \App\Tenant\Modules\Savings\Services\SavingsAccountStatementService::class
+            BalanceSheetServiceInterface::class,
+            BalanceSheetService::class
+        );
+
+        $this->app->bind(
+            SavingsAccountStatementServiceInterface::class,
+            SavingsAccountStatementService::class
         );
     }
 
