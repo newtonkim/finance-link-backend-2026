@@ -2,7 +2,7 @@
 
 namespace App\Http\Middleware;
 
-use App\Support\LicenseRequestGuard;
+use App\Tenant\Http\Middleware\EnsureLicenseActive;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -22,24 +22,8 @@ class EnforceLicense
             return $next($request);
         }
 
-        $license = $tenant->license;
-
-        if (! $license) {
-            abort(403, 'No license found.');
-        }
-
-        if ($license->isExpired()) {
-            // Read-only mode: reads are served over POST in this app, so block by
-            // read/write intent rather than by HTTP verb — otherwise viewing breaks.
-            if (! LicenseRequestGuard::isReadRequest($request)) {
-                return response()->json([
-                    'message' => 'License expired. Renewal required for write access.',
-                    'license_expired' => true,
-                    'read_only' => true,
-                ], 403);
-            }
-        }
-
-        return $next($request);
+        // Use the same master-database lookup and policy as tenant API routes.
+        // Tenant has licenses(), not a singular license relationship.
+        return app(EnsureLicenseActive::class)->handle($request, $next);
     }
 }
