@@ -125,6 +125,11 @@ return [
 
     'central_domain' => env('CENTRAL_DOMAIN', 'admin.mfukopro.test'),
 
-    'central_domains' => array_map('trim', explode(',', env('CENTRAL_DOMAINS', env('CENTRAL_DOMAIN', 'admin.mfukopro.test')))),
+    // The shared API host serves central requests without a tenant header.
+    // Tenant requests on the same host still resolve via X-Tenant-Subdomain.
+    'central_domains' => array_values(array_unique(array_filter(array_merge(
+        array_map('trim', explode(',', env('CENTRAL_DOMAINS', env('CENTRAL_DOMAIN', 'admin.mfukopro.test')))),
+        ['finance-link-backend-2026-production-n5gk0u.laravel.cloud'],
+    )))),
 
 ];
