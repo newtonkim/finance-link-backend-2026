@@ -21,7 +21,7 @@ class LandlordSeeder extends Seeder
             'billing_cycle' => 'monthly',
             'max_members' => 100,
             'max_users' => 5,
-            'features' => json_encode(['reports' => false, 'loans' => true, 'savings' => true, 'shares' => false]),
+            'features' => ['reports' => false, 'loans' => true, 'savings' => true, 'shares' => false],
         ]);
 
         Plan::updateOrCreate(['slug' => 'standard'], [
@@ -30,7 +30,7 @@ class LandlordSeeder extends Seeder
             'billing_cycle' => 'monthly',
             'max_members' => 500,
             'max_users' => 20,
-            'features' => json_encode(['reports' => true, 'loans' => true, 'savings' => true, 'shares' => true]),
+            'features' => ['reports' => true, 'loans' => true, 'savings' => true, 'shares' => true],
         ]);
 
         Plan::updateOrCreate(['slug' => 'premium'], [
@@ -39,7 +39,7 @@ class LandlordSeeder extends Seeder
             'billing_cycle' => 'monthly',
             'max_members' => -1, // unlimited
             'max_users' => -1,  // unlimited
-            'features' => json_encode(['reports' => true, 'loans' => true, 'savings' => true, 'shares' => true, 'api_access' => true]),
+            'features' => ['reports' => true, 'loans' => true, 'savings' => true, 'shares' => true, 'api_access' => true],
         ]);
 
         // 2. Create Initial Platform User (Super Admin)
