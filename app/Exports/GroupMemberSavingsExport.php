@@ -2,6 +2,7 @@
 
 namespace App\Exports;
 
+use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
@@ -15,7 +16,7 @@ class GroupMemberSavingsExport implements FromCollection, WithHeadings, WithMapp
         $this->data = collect($data);
     }
 
-    public function collection()
+    public function collection(): Collection
     {
         return $this->data;
     }

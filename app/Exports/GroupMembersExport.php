@@ -3,6 +3,7 @@
 namespace App\Exports;
 
 use App\Tenant\Modules\Groups\Models\SavingsGroup;
+use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithCustomStartCell;
 use Maatwebsite\Excel\Concerns\WithEvents;
@@ -28,7 +29,7 @@ class GroupMembersExport implements FromCollection, WithCustomStartCell, WithEve
         $this->saccoName = $tenant ? strtoupper($tenant->name) : 'SACCO';
     }
 
-    public function collection()
+    public function collection(): Collection
     {
         return $this->savingsGroup->members;
     }
@@ -72,7 +73,7 @@ class GroupMembersExport implements FromCollection, WithCustomStartCell, WithEve
         ];
     }
 
-    public function styles(Worksheet $sheet)
+    public function styles(Worksheet $sheet): array
     {
         return [
             // Row 3 (Headings) styling

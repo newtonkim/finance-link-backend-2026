@@ -2,6 +2,7 @@
 
 namespace App\Exports;
 
+use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithStyles;
@@ -19,7 +20,7 @@ class LoanBalancesExport implements FromCollection, WithHeadings, WithStyles
         $this->asOfDate = $asOfDate;
     }
 
-    public function collection()
+    public function collection(): Collection
     {
         $rows = collect($this->data)->map(function ($loan) {
             return [
@@ -65,7 +66,7 @@ class LoanBalancesExport implements FromCollection, WithHeadings, WithStyles
         ];
     }
 
-    public function styles(Worksheet $sheet)
+    public function styles(Worksheet $sheet): array
     {
         return [
             1 => ['font' => ['bold' => true], 'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'E5E7EB']]],

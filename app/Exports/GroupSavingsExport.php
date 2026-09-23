@@ -2,6 +2,7 @@
 
 namespace App\Exports;
 
+use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
 
 class GroupSavingsExport implements FromCollection
@@ -13,7 +14,7 @@ class GroupSavingsExport implements FromCollection
         $this->data = $data;
     }
 
-    public function collection()
+    public function collection(): Collection
     {
         return collect($this->data)->map(function ($row, $index) {
             return [

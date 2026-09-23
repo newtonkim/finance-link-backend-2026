@@ -16,7 +16,7 @@
         "laravel/sanctum": "^4.3",
         "laravel/tinker": "^2.10.1",
         "laravel/wayfinder": "^0.1.9",
-        "maatwebsite/excel": "^3.1",
+        "maatwebsite/excel": "^4.0",
         "nugsoft/signalbridge-laravel-sdk": "^1.0",
         "williamug/money-formatter": "^3.0"
     },
