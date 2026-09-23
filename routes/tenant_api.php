@@ -4,6 +4,7 @@
 
 use App\Http\Globals\GlobalHelpers;
 use App\Tenant\Http\Controllers\Api\V1\AccountingPeriodController;
+use App\Tenant\Http\Controllers\Api\V1\BalanceSheetController;
 use App\Tenant\Http\Controllers\Api\V1\BranchController;
 use App\Tenant\Http\Controllers\Api\V1\ChartOfAccountController;
 use App\Tenant\Http\Controllers\Api\V1\CurrencySettingsController;
@@ -122,6 +123,9 @@ Route::middleware('feature:reports')->group(function () {
     // ── Trial Balance Report ────────────────────────────────────────────────────
     Route::get('reports/trial-balance', [TrialBalanceController::class, 'index']);
     Route::get('reports/trial-balance/ledger', [TrialBalanceController::class, 'ledger']);
+
+    // ── Balance Sheet (Statement of Financial Position) ─────────────────────────
+    Route::get('reports/balance-sheet', [BalanceSheetController::class, 'index']);
 });
 
 // Members
