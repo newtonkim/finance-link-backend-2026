@@ -28,7 +28,7 @@ class MembersImport implements SkipsEmptyRows, ToCollection, WithStartRow
         return 3;
     }
 
-    public function collection(Collection $rows)
+    public function collection(Collection $rows): void
     {
         $onboarding = OnboardingSettings::current();
         $defaultStatus = $onboarding->require_member_approval ? 'pending' : 'active';

@@ -2,6 +2,7 @@
 
 namespace App\Exports;
 
+use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithStyles;
@@ -19,7 +20,7 @@ class LoanArrearsExport implements FromCollection, WithHeadings, WithStyles
         $this->asOfDate = $asOfDate;
     }
 
-    public function collection()
+    public function collection(): Collection
     {
         return collect($this->data)->map(fn ($r) => [
             $r['member_number'],
