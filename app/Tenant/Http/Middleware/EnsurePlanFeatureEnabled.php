@@ -30,12 +30,13 @@ class EnsurePlanFeatureEnabled
             abort(403, 'No active license plan is available for this tenant.');
         }
 
-        $features = $plan->features ?: [];
-        $enabled = (bool) ($features[$feature] ?? false);
+        $enabled = $plan->hasFeature($feature);
 
         if (! $enabled) {
             return response()->json([
-                'message' => 'This feature is not enabled for the tenant plan.',
+                'message' => $feature === 'reports'
+                    ? 'Reports are disabled for this tenant plan. Ask your central administrator to enable Reports (Monthly statements) in the plan settings.'
+                    : 'This feature is not enabled for the tenant plan.',
                 'feature' => $feature,
             ], 403);
         }
