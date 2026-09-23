@@ -17,6 +17,7 @@ class CorsPreflightTest extends TestCase
         return [
             ['https://finance-link-frontend-2026.vercel.app', true],
             ['https://mfukodemo.vercel.app', true],
+            ['https://buwatesacco.vercel.app', true],
             ['https://finance-link-frontend-2026-git-main-newtonyamu22-2109s-projects.vercel.app', true],
             ['https://unrelated.vercel.app', false],
             ['https://mfukodemo.vercel.app.attacker.example', false],

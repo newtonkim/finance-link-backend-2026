@@ -4,6 +4,7 @@ namespace App\Domain\Tenancy\Entities;
 
 use App\Concerns\HasDynamicConnection;
 use App\Domain\Licensing\Entities\License;
+use App\Support\TenantFrontendUrl;
 use Database\Factories\TenantFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -77,6 +78,12 @@ class Tenant extends Model
     public function getFullUrlAttribute(): string
     {
         $request = request();
+        $frontendUrl = $request->header('Origin') ?? $request->header('Referer') ?? env('FRONTEND_URL', '');
+        $frontendHost = strtolower(parse_url($frontendUrl, PHP_URL_HOST) ?? '');
+        if (str_ends_with($frontendHost, '.vercel.app')) {
+            return TenantFrontendUrl::base($this->subdomain, $frontendUrl, $this->domain);
+        }
+
         $scheme = $request->getScheme();
         $port = $request->getPort();
         $host = $request->getHost();
