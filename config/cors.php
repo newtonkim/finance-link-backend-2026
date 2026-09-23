@@ -27,6 +27,7 @@ return [
             'https://finance-link-frontend-2026.vercel.app',
             'https://mfukodemo.vercel.app',
             'https://buwatesacco.vercel.app',
+            'https://testsacco.vercel.app',
             'https://finance-link-frontend-2026-git-main-newtonyamu22-2109s-projects.vercel.app',
         ],
     )))),
