@@ -13,11 +13,16 @@ class SaccoCoaSeeder extends Seeder
      */
     public function run(): void
     {
+        DB::connection('master')->transaction(fn () => $this->seedTemplate());
+    }
+
+    private function seedTemplate(): void
+    {
         // 1. Create Template (insert only if not exists — never update the PK/id)
         $existing = DB::connection('master')->table('coa_templates')->where('template_type', 'SACCO_UGANDA')->first();
 
         if (! $existing) {
-            DB::connection('master')->table('coa_templates')->insert([
+            DB::connection('master')->table('coa_templates')->insertOrIgnore([
                 'id' => Str::uuid()->toString(),
                 'template_type' => 'SACCO_UGANDA',
                 'name' => 'Standard SACCO Uganda Chart of Accounts',
@@ -32,14 +37,13 @@ class SaccoCoaSeeder extends Seeder
 
         $accounts = $this->getSaccoUgandaAccounts();
 
-        // 2. Clear existing template accounts to avoid conflicts during development
-        DB::connection('master')->table('coa_template_accounts')->where('template_id', $templateId)->delete();
+        // Preserve existing template IDs, customizations and parent references on reruns.
 
         // 3. Seed Accounts (ordered by level to handle parent-child relationships if needed)
 
         $insertedCount = 0;
         foreach ($accounts as $account) {
-            DB::connection('master')->table('coa_template_accounts')->insert([
+            $insertedCount += DB::connection('master')->table('coa_template_accounts')->insertOrIgnore([
                 'id' => Str::uuid()->toString(),
                 'template_id' => $templateId,
                 'gl_code' => $account['gl_code'],
@@ -55,7 +59,6 @@ class SaccoCoaSeeder extends Seeder
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
-            $insertedCount++;
         }
 
         echo "Seeded {$insertedCount} accounts into SACCO_UGANDA template.\n";

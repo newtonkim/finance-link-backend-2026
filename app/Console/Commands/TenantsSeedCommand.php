@@ -58,11 +58,15 @@ class TenantsSeedCommand extends Command
                 $switcher->switch($tenant);
 
                 // 2. Run the seeder
-                Artisan::call('db:seed', [
+                $seedExitCode = Artisan::call('db:seed', [
                     '--database' => 'tenant',
                     '--class' => $seederClass,
                     '--force' => $this->option('force'),
                 ]);
+
+                if ($seedExitCode !== 0) {
+                    throw new \RuntimeException('Tenant seeding failed: '.Artisan::output());
+                }
 
                 $this->line(Artisan::output());
                 $this->info("✓ Completed seeding for: {$tenant->name}");

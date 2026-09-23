@@ -61,11 +61,15 @@ class TenantProvisioningService
             $this->tenantService->runMigrations($tenant);
 
             // b. Run Seeders first to ensure roles, permissions and settings exist
-            Artisan::call('db:seed', [
+            $seedExitCode = Artisan::call('db:seed', [
                 '--database' => 'tenant',
                 '--class' => TenantSeeder::class,
                 '--force' => true,
             ]);
+
+            if ($seedExitCode !== 0) {
+                throw new \RuntimeException('Tenant seeding failed: '.Artisan::output());
+            }
 
             // c. Create initial admin staff — assign to the default (Head Office) branch
             $defaultBranchId = $this->ensureDefaultBranch();
