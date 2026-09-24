@@ -17,12 +17,12 @@ class BalanceSheetController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        // before_or_equal:as_at needs as_at present to compare against.
+        // Default standalone requests to today; comparison periods may be in either order.
         $request->mergeIfMissing(['as_at' => Carbon::today()->toDateString()]);
 
         $validated = $request->validate([
             'as_at' => ['required', 'date'],
-            'compare_to' => ['nullable', 'date', 'before_or_equal:as_at'],
+            'compare_to' => ['nullable', 'date'],
             'hide_zero' => ['nullable', 'boolean'],
         ]);
 

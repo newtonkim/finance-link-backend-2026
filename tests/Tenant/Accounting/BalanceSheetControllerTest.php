@@ -13,9 +13,11 @@ function bsCall(array $query): array
     return $response->getData(true);
 }
 
-it('rejects a comparison date after the as-at date', function () {
-    bsCall(['as_at' => '2026-01-31', 'compare_to' => '2026-02-01']);
-})->throws(ValidationException::class);
+it('accepts independent comparison dates in either order', function () {
+    $data = bsCall(['as_at' => '2026-01-31', 'compare_to' => '2026-02-01']);
+    expect($data['as_at'])->toBe('2026-01-31')
+        ->and($data['compare_to'])->toBe('2026-02-01');
+});
 
 it('rejects an invalid date', function () {
     bsCall(['as_at' => 'not-a-date']);
