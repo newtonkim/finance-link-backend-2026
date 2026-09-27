@@ -57,6 +57,12 @@ class GuarantorSettings
                 'settings_action_description' => 'Maximum exposure (%)',
                 'settings_setting_description' => 'The largest share of a guarantor\'s own savings that may be committed across every loan they guarantee, as a percentage. 100 allows a guarantor to pledge their full savings balance.',
             ],
+            [
+                'settings_name' => 'sacco-guarantor-required-coverage-percentage',
+                'settings_action' => ['action' => 0, 'attr' => 'number'],
+                'settings_action_description' => 'Required coverage (%)',
+                'settings_setting_description' => 'The share of the loan amount that guarantees must cover before an application can be submitted. The borrower\'s own free savings count toward it. Only applies while guarantors are required; 0 turns the coverage check off, leaving only the number of guarantors.',
+            ],
         ];
     }
 }

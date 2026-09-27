@@ -29,6 +29,7 @@ use App\Tenant\Modules\Loans\Contracts\LoanApprovalServiceInterface;
 use App\Tenant\Modules\Loans\Contracts\LoanDisbursementServiceInterface;
 use App\Tenant\Modules\Loans\Contracts\LoanDocumentServiceInterface;
 use App\Tenant\Modules\Loans\Contracts\LoanEligibilityServiceInterface;
+use App\Tenant\Modules\Loans\Contracts\LoanGuarantorServiceInterface;
 use App\Tenant\Modules\Loans\Contracts\LoanPenaltyCalculatorServiceInterface;
 use App\Tenant\Modules\Loans\Contracts\LoanProductServiceInterface;
 use App\Tenant\Modules\Loans\Contracts\LoanRepaymentServiceInterface;
@@ -46,6 +47,7 @@ use App\Tenant\Modules\Loans\Services\LoanApprovalService;
 use App\Tenant\Modules\Loans\Services\LoanDisbursementService;
 use App\Tenant\Modules\Loans\Services\LoanDocumentService;
 use App\Tenant\Modules\Loans\Services\LoanEligibilityService;
+use App\Tenant\Modules\Loans\Services\LoanGuarantorService;
 use App\Tenant\Modules\Loans\Services\LoanPenaltyCalculatorService;
 use App\Tenant\Modules\Loans\Services\LoanProductService;
 use App\Tenant\Modules\Loans\Services\LoanRepaymentService;
@@ -105,6 +107,11 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(
             LoanDocumentServiceInterface::class,
             LoanDocumentService::class
+        );
+
+        $this->app->bind(
+            LoanGuarantorServiceInterface::class,
+            LoanGuarantorService::class
         );
 
         $this->app->bind(

@@ -12,18 +12,17 @@ class LoanApplicationGuarantorResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'member_id' => $this->member_id,
-            'member' => $this->whenLoaded('member', fn () => [
-                'id' => $this->member->id,
-                'name' => $this->member->name,
-                'member_no' => $this->member->code,
-                'savings_balance' => (float) $this->member->savingsAccounts()->sum('balance'),
-                'savings_balance_formatted' => TenantMoney::format(
-                    $this->member->savingsAccounts()->sum('balance')
-                ),
-            ]),
-            'guarantee_amount' => $this->guarantee_amount,
+            'code' => $this->code,
+            'loan_application_id' => $this->loan_application_id,
+            'guarantor_type' => $this->guarantor_type,
+            'guarantor_id' => $this->guarantor_id,
+            'guarantor_account_id' => $this->guarantor_account_id,
+            'name' => $this->guarantorName(),
+            'guarantor_code' => $this->guarantor_type === 'group' ? $this->group?->code : $this->member?->code,
+            'guarantee_amount' => (float) $this->guarantee_amount,
             'guarantee_amount_formatted' => TenantMoney::format($this->guarantee_amount),
+            'status' => $this->status,
+            'note' => $this->note,
             'created_at' => $this->created_at,
         ];
     }

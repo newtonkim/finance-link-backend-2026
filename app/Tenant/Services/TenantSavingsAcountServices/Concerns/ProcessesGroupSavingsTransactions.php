@@ -20,6 +20,8 @@ trait ProcessesGroupSavingsTransactions
             $sumOfTheMoney = DB::table('loan_application_guarantors')
                 ->whereRaw('guarantor_id=?', [$currentBalance->savings_group_id])
                 ->where('guarantor_type', 'group')
+                ->whereNull('deleted_at')
+                ->whereIn('status', ['proposed', 'accepted'])
                 ->sum('guarantee_amount');
             if ($sumOfTheMoney > 0 && $sumOfTheMoney <= $amount) {
                 throw new \Exception('You cannot withdraw beyond the guaranteed amount. '.$sumOfTheMoney);

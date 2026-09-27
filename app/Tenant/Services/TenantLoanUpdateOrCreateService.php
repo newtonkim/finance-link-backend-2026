@@ -3,12 +3,15 @@
 namespace App\Tenant\Services;
 
 use App\Http\Globals\GlobalHelpers;
-use App\Jobs\SendQueuedNotificationsAndMessages;
+use App\Tenant\Modules\Loans\Contracts\LoanGuarantorServiceInterface;
+use App\Tenant\Modules\Loans\Models\LoanApplication;
+use App\Tenant\Modules\Loans\Models\LoanApplicationGuarantor;
 use App\Tenant\Services\MemebersSettingSevices\CodeSequence;
 use App\Tenant\Services\MemebersSettingSevices\FindsettingsAction;
 use App\Tenant\Services\MemebersSettingSevices\ProductChargesservice;
 use App\Tenant\Services\TenantSavingsAcountServices\CrudHelders;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class TenantLoanUpdateOrCreateService extends GlobalHelpers
 {
@@ -241,15 +244,27 @@ class TenantLoanUpdateOrCreateService extends GlobalHelpers
         ]));
     }
 
+    /**
+     * Registers someone who is not yet a member, opens their savings account, and
+     * records them as a guarantor. Only allowed while the "members only" guarantor
+     * setting is off. The pledge goes through LoanGuarantorService like any other,
+     * so capacity and the other guarantor rules still apply.
+     */
     public function saveGuarantorsNoneMember()
     {
-
         $req = request()->all();
+        $application = $this->guarantorApplication($req['application_id'] ?? null);
+        $service = app(LoanGuarantorServiceInterface::class);
 
-        return $this->transaction(function () use ($req) {
+        if ($service->rules($application)->membersOnly) {
+            throw ValidationException::withMessages([
+                'guarantor' => ['Only active members may guarantee loans. Turn off "Members only" in the guarantor settings to record a non-member.'],
+            ]);
+        }
+
+        $result = DB::connection('tenant')->transaction(function () use ($req, $application, $service) {
             $MemberUpdateOrCreateService = new MemberUpdateOrCreateService;
             $codeSequence = new CodeSequence;
-            $isExisting = false;
             $settings = new FindsettingsAction(null);
             $dataField = $MemberUpdateOrCreateService->mememberUOrCFields($req);
             $saveTwoAccounts = $settings->saccoMemberSaveAndSavingAccountAtOnce();
@@ -260,16 +275,24 @@ class TenantLoanUpdateOrCreateService extends GlobalHelpers
             $dataField['status'] = $settings->saccoMemberRequireApprovalBeforeMemberBecomesActive();
             $createTransactionAlso = $settings->saccoAccountOnAccountCreationShowInitialDeposit();
             $dataField['password'] = $this->memberDefaultPassword($dataField['code']);
-            $guarantor = $this->UpdateOrCreateRecord('members', $dataField);
+            $member = $this->UpdateOrCreateRecord('members', $dataField);
+
+            if (empty($member->id)) {
+                throw ValidationException::withMessages([
+                    'guarantor' => [$member->log_failure_reason ?? 'The guarantor could not be registered.'],
+                ]);
+            }
 
             $chargedAmount = 0;
-            $transactionDetails = [];
-            $accountDetails = [];
-            $deposit = (float) $guarantor->initial_deposit;
-            if ($saveTwoAccounts) { // / create  a savings account for the member
-                $saccoAcountData = [ // / values for the savings account for both
-                    'member_id' => $guarantor->id,
-                    'savings_product_id' => $req['product_id'] ?? null,
+            $getTheProductCharges = null;
+            $accountDetails = null;
+            $deposit = (float) $member->initial_deposit;
+
+            if ($saveTwoAccounts) {
+                $generalProduct = DB::table('savings_products')->where('name', 'General Savings Account')->first(['id']);
+                $saccoAcountData = [
+                    'member_id' => $member->id,
+                    'savings_product_id' => $generalProduct?->id,
                     'account_type' => 'voluntary',
                     'is_new_account' => true,
                     'consider_min_balance' => true,
@@ -281,104 +304,174 @@ class TenantLoanUpdateOrCreateService extends GlobalHelpers
 
                 $listCharges = ['deposit' => $deposit];
 
-                if ($isExisting && ! empty($req['product_id'])) {
-                } else {
-
-                    $geTheGenericProductAcount = DB::table('savings_products')->where('name', 'General Savings Account')->first(['id']);
-                    $saccoAcountData = [
-                        ...$saccoAcountData,
-                        'savings_product_id' => $geTheGenericProductAcount->id,
-                    ];
-                    if ($deposit > 0) {
-                        $caller = new ProductChargesservice;
-                        request()->merge(['type' => 'deposit', 'amount' => $deposit, 'product_id' => $saccoAcountData['savings_product_id'] ?? null]);
-                        $getTheProductCharges = $caller->productCharges();
-                        $chargedAmount = $getTheProductCharges->cost;
-                        $deposit = $deposit - $chargedAmount;
-                        $listCharges['deposit'] = 'Initial deposit charge: '.$chargedAmount.' blc :'.$deposit;
-                        if ($createTransactionAlso && $deposit < 0) {
-                            return $this->amountError($deposit);
-                        }
+                if ($deposit > 0) {
+                    $caller = new ProductChargesservice;
+                    request()->merge(['type' => 'deposit', 'amount' => $deposit, 'product_id' => $saccoAcountData['savings_product_id']]);
+                    $getTheProductCharges = $caller->productCharges();
+                    $chargedAmount = $getTheProductCharges->cost;
+                    $deposit = $deposit - $chargedAmount;
+                    $listCharges['deposit'] = 'Initial deposit charge: '.$chargedAmount.' blc :'.$deposit;
+                    if ($createTransactionAlso && $deposit < 0) {
+                        // Thrown rather than returned so the member created above rolls back.
+                        throw ValidationException::withMessages(['opening_balance' => [$this->amountError($chargedAmount)['message']]]);
                     }
                 }
 
-                if ($guarantor) {
-                    $code = $codeSequence->codeSequence($req['code'] ?? null, 'staff');
-                    $applicationId = $req['application_id'] ?? null;
-
-                    $this->UpdateOrCreateRecord('loan_application_guarantors', [
-                        'code' => $code,
-                        'note' => $guarantor->note ?? null,
-                        'guarantee_amount' => $deposit ?? null,
-                        'loan_application_id' => $applicationId,
-                        'guarantor_id' => $guarantor->member_id,
-                        'guarantor_account_id' => $guarantor->account_id,
-                        'guarantor_type' => 'individual',
-                    ]);
-                    $notify = new NotificationService;
-
-                    $notify->runTheQue();
-                    $guarantor->type = 'individual';
-
-                    $this->determineGuarantorType('individual', $guarantor->id, $guarantor, $applicationId, $notify, false);
-                }
-                $CrudHelders = new CrudHelders;
-                $saccoAcountData['balance'] = $isExisting ? $req['opening_balance'] : $deposit;
+                $saccoAcountData['balance'] = $deposit;
                 $accountDetails = $this->UpdateOrCreateRecord('savings_accounts', $saccoAcountData);
-                if (isset($deposit)) {
-                    if (($createTransactionAlso == true || $createTransactionAlso == 1)) {
-                        foreach ($listCharges as $chargeType => $information) {
-                            $TransactionData = $CrudHelders->transactionUorCFields([
-                                'reference' => 'SAC-IDP-'.date('Ymd').'-'.mt_rand(10000, 99999),
-                                'member' => $guarantor->id,
-                                'transaction_type' => $getTheProductCharges?->charge_type ?? null,
-                                'amount' => $deposit,
-                                'charge_amount' => $chargedAmount,
-                                'payment_method' => 'cash',
-                                'deposited_by' => 'System (Initial Deposit)',
-                                'transaction_date' => now()->toDateString(),
-                                'accid' => $accountDetails->id,
-                                'transaction_type' => $chargeType,
-                                'narration' => $information,
-                            ]);
-                        }
-                        $transactionDetails[] = $this->UpdateOrCreateRecord('transactions', $TransactionData);
+
+                if ($createTransactionAlso == true || $createTransactionAlso == 1) {
+                    $CrudHelders = new CrudHelders;
+                    foreach ($listCharges as $chargeType => $information) {
+                        $TransactionData = $CrudHelders->transactionUorCFields([
+                            'reference' => 'SAC-IDP-'.date('Ymd').'-'.mt_rand(10000, 99999),
+                            'member' => $member->id,
+                            'amount' => $deposit,
+                            'charge_amount' => $chargedAmount,
+                            'payment_method' => 'cash',
+                            'deposited_by' => 'System (Initial Deposit)',
+                            'transaction_date' => now()->toDateString(),
+                            'accid' => $accountDetails->id,
+                            'transaction_type' => $chargeType,
+                            'narration' => $information,
+                        ]);
                     }
+                    $this->UpdateOrCreateRecord('transactions', $TransactionData);
                 }
             }
+
+            // The account has to exist before the pledge: the guarantor's capacity is
+            // worked out from their savings balance.
+            $pledge = $service->addGuarantor(
+                application: $application,
+                type: LoanApplicationGuarantor::TYPE_INDIVIDUAL,
+                guarantorId: (int) $member->id,
+                accountId: $accountDetails->id ?? null,
+                amount: (float) ($req['guarantee_amount'] ?? $deposit),
+                note: $req['note'] ?? null,
+                actorId: auth()->id(),
+            );
+
+            return ['pledge' => $pledge, 'member' => $member];
         });
+
+        $notify = new NotificationService;
+        $this->notifyGuarantor($result['pledge'], $notify, false);
+        $notify->runTheQue();
+
+        return $service->summary($application);
     }
 
-    public function determineGuarantorType($type, $id, $guarantor, $applicationId, $notify, $transactionInsert = true)
+    /**
+     * Saves the guarantors picked on the loan application screen. Each one goes
+     * through LoanGuarantorService, so the guarantor rules are enforced and a
+     * guarantor already on the application has their pledge updated, not duplicated.
+     * Either every guarantor in the request is saved or none is.
+     */
+    public function saveGuarantors()
     {
-        $getLoanApplication = DB::table('loan_applications')->where('loan_applications.id', $applicationId)
-            ->join('members as mb', 'loan_applications.member_id', '=', 'mb.id')
-            ->first(['application_no', 'mb.name', 'mb.code AS mCode']);
-        if ($type == 'group') {
-            $res = DB::table('savings_group_members')->whereRaw('savings_group_id=?', [$id])
-                ->join('members as mb', 'savings_group_members.savings_group_id', '=', 'mb.id');
-        } elseif ($type == 'individual') {
-            $res = DB::table('members as mb')->where('id', '=', $id);
-        }
-        $sendMessage = $res->get(['mb.name', 'mb.code', 'mb.phone', 'mb.email', 'mb.id']);
-        foreach ($sendMessage as $key => $value) {
-            $body =
-                $type == 'individual' ?
-                "Hello {$value->name}, you have been added as a guarantor for loan application {$getLoanApplication->application_no}. The applicant is {$getLoanApplication->name}." :
-                "Hello {$guarantor->name}, Members you have been added as a guarantor for loan application {$getLoanApplication->application_no}. The applicant is {$getLoanApplication->name}.";
+        $req = request()->all();
+        $application = $this->guarantorApplication($req['application_id'] ?? null);
+        $items = $req['guarantors'] ?? [];
 
-            // $notify = new NotificationService();
-            return $notify->sendNotification(
+        if (empty($items)) {
+            throw ValidationException::withMessages(['guarantors' => ['Pick at least one guarantor to save.']]);
+        }
+
+        $service = app(LoanGuarantorServiceInterface::class);
+        $actorId = auth()->id();
+
+        $newPledges = DB::connection('tenant')->transaction(function () use ($items, $application, $service, $actorId) {
+            $newPledges = [];
+
+            foreach ($items as $item) {
+                $picked = $this->isJSONToArray($item);
+                $picked = is_array($picked) ? (object) $picked : $picked;
+
+                if (! is_object($picked)) {
+                    continue;
+                }
+
+                [$type, $guarantorId, $accountId] = $this->pickedGuarantorIdentity($picked);
+
+                try {
+                    $pledge = $service->addGuarantor(
+                        application: $application,
+                        type: $type,
+                        guarantorId: $guarantorId,
+                        accountId: $accountId,
+                        amount: (float) ($picked->contribution ?? $picked->guarantee_amount ?? 0),
+                        note: $picked->note ?? null,
+                        actorId: $actorId,
+                    );
+                } catch (ValidationException $e) {
+                    // Name the guarantor, since the request may carry several.
+                    $name = $picked->name ?? 'A guarantor';
+                    throw ValidationException::withMessages(collect($e->errors())
+                        ->map(fn ($messages) => array_map(fn ($m) => str_contains($m, $name) ? $m : "{$name}: {$m}", $messages))
+                        ->all());
+                }
+
+                if ($pledge->wasRecentlyCreated) {
+                    $newPledges[] = $pledge;
+                }
+            }
+
+            return $newPledges;
+        });
+
+        $notify = new NotificationService;
+        foreach ($newPledges as $pledge) {
+            $this->notifyGuarantor($pledge, $notify);
+        }
+        $notify->runTheQue();
+
+        return $service->summary($application);
+    }
+
+    /**
+     * Tells a new guarantor they have been added. For a group guarantor every member
+     * of the group is told.
+     */
+    public function notifyGuarantor(LoanApplicationGuarantor $pledge, NotificationService $notify, $transactionInsert = true): array
+    {
+        $application = DB::table('loan_applications')->where('loan_applications.id', $pledge->loan_application_id)
+            ->join('members as mb', 'loan_applications.member_id', '=', 'mb.id')
+            ->first(['application_no', 'mb.name']);
+
+        if (! $application) {
+            return [];
+        }
+
+        $isGroup = $pledge->guarantor_type === LoanApplicationGuarantor::TYPE_GROUP;
+        $guarantorName = $pledge->guarantorName();
+
+        $recipients = $isGroup
+            ? DB::table('savings_group_members as sgm')
+                ->join('members as mb', 'sgm.member_id', '=', 'mb.id')
+                ->where('sgm.savings_group_id', $pledge->guarantor_id)
+                ->get(['mb.name', 'mb.code', 'mb.phone', 'mb.email', 'mb.id'])
+            : DB::table('members as mb')
+                ->where('mb.id', $pledge->guarantor_id)
+                ->get(['mb.name', 'mb.code', 'mb.phone', 'mb.email', 'mb.id']);
+
+        $sent = [];
+        foreach ($recipients as $recipient) {
+            $body = $isGroup
+                ? "Hello {$recipient->name}, your group {$guarantorName} has been added as a guarantor for loan application {$application->application_no}. The applicant is {$application->name}."
+                : "Hello {$recipient->name}, you have been added as a guarantor for loan application {$application->application_no}. The applicant is {$application->name}.";
+
+            $sent[] = $notify->sendNotification(
                 'saccoNotifyTheGuarantor',
                 $body,
-                $value,
+                $recipient,
                 [
-                    'type' => $type,
-                    'id' => $id,
-                    'application_id' => $applicationId,
-                    'guarantor_id' => $guarantor->id,
-                    'guarantor_name' => $guarantor->name,
-                    'guarantor_type' => $guarantor->type,
+                    'type' => $pledge->guarantor_type,
+                    'id' => $pledge->guarantor_id,
+                    'application_id' => $pledge->loan_application_id,
+                    'guarantor_id' => $pledge->guarantor_id,
+                    'guarantor_name' => $guarantorName,
+                    'guarantor_type' => $pledge->guarantor_type,
                 ],
                 'sms',
                 'guarantor-notification',
@@ -386,50 +479,43 @@ class TenantLoanUpdateOrCreateService extends GlobalHelpers
                 false
             );
         }
+
+        return $sent;
     }
 
-    public function saveGuarantors()
+    private function guarantorApplication($applicationId): LoanApplication
     {
+        $application = $applicationId ? LoanApplication::find($applicationId) : null;
 
-        return $this->transaction(function () {
-            $req = request()->all();
-            $applicationId = $req['application_id'] ?? null;
-            $notify = new NotificationService;
+        if (! $application) {
+            throw ValidationException::withMessages(['application_id' => ['That loan application does not exist.']]);
+        }
 
-            $guarantors = $req['guarantors'] ?? [];
-            if (empty($applicationId) || empty($guarantors)) {
-                return;
-            }
-            $codeSequence = new CodeSequence;
-            $workedOnG = [];
-            foreach ($guarantors as $item) {
-                $guarantor = $this->isJSONToArray($item);
-                if (! $guarantor || ! isset($guarantor->id)) {
-                    continue;
-                }
-                $type = match ($guarantor->type ?? null) {
-                    'group' => 'group',
-                    'individual' => 'individual',
-                    default => 'staff',
-                };
-                $code = $codeSequence->codeSequence($req['code'] ?? null, 'staff');
-                $workedOnG[$guarantor->id] = $guarantor->id;
-                $this->UpdateOrCreateRecord('loan_application_guarantors', [
-                    'code' => $code,
-                    'note' => $guarantor->note ?? null,
-                    'guarantee_amount' => $guarantor->contribution ?? null,
-                    'loan_application_id' => $applicationId,
-                    // 'guarantor_id' => $guarantor->id,
-                    'guarantor_id' => $guarantor->member_id,
-                        'guarantor_account_id' => $guarantor->account_id,
-                    'guarantor_type' => $type,
-                ]);
-                // / queue the message
-                $this->determineGuarantorType($type, $guarantor->id, $guarantor, $applicationId, $notify);
-            }
-            $notify->runTheQue();
-            // $subdomain = request()->header('X-Tenant-Subdomain');
-            // SendQueuedNotificationsAndMessages::dispatch($subdomain);
-        });
+        return $application;
+    }
+
+    /**
+     * The picker sends two shapes. A member row from the member/account dropdown has
+     * id = the savings account id and member_id = the member. A group row has id = the
+     * group, plus account_id when it came from the group account dropdown.
+     *
+     * @return array{0: string, 1: int, 2: ?int} type, guarantor id, account id
+     */
+    private function pickedGuarantorIdentity(object $picked): array
+    {
+        $type = $picked->type ?? null;
+        $accountId = isset($picked->account_id) ? (int) $picked->account_id : null;
+
+        if ($type === LoanApplicationGuarantor::TYPE_GROUP && ! empty($picked->id)) {
+            return [$type, (int) $picked->id, $accountId];
+        }
+
+        if ($type === LoanApplicationGuarantor::TYPE_INDIVIDUAL && ! empty($picked->member_id)) {
+            return [$type, (int) $picked->member_id, $accountId];
+        }
+
+        throw ValidationException::withMessages([
+            'guarantors' => [($picked->name ?? 'A guarantor').' could not be identified. Pick them again from the list.'],
+        ]);
     }
 }
