@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Member;
 use App\Tenant\Modules\Loans\Contracts\LoanGuarantorServiceInterface;
 use App\Tenant\Modules\Loans\Models\LoanApplicationGuarantor;
+use App\Tenant\Modules\Loans\Services\GuarantorArrearsService;
 use App\Tenant\Support\TenantMoney;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -20,6 +21,7 @@ class MemberGuaranteeController extends Controller
 {
     public function __construct(
         protected LoanGuarantorServiceInterface $service,
+        protected GuarantorArrearsService $arrears,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -48,8 +50,19 @@ class MemberGuaranteeController extends Controller
         $member = $request->user();
         $savings = $this->service->withdrawable('individual', $member->id);
 
+        // How far behind each loan the member guarantees is, so they see it before
+        // anyone texts them.
+        $overdue = $this->arrears->overdueLoans();
+
         return response()->json([
-            'data' => $guarantees->getCollection()->map(fn ($g) => $this->present($g)),
+            'data' => $guarantees->getCollection()->map(fn ($g) => [
+                ...$this->present($g),
+                'loan_arrears' => $g->loan_id && isset($overdue[$g->loan_id]) ? [
+                    'days_past_due' => $overdue[$g->loan_id]['days_past_due'],
+                    'arrears_amount' => $overdue[$g->loan_id]['arrears_amount'],
+                    'arrears_amount_formatted' => TenantMoney::format($overdue[$g->loan_id]['arrears_amount']),
+                ] : null,
+            ]),
             // What the member's guarantees are holding back from withdrawal.
             'savings' => [
                 'balance' => $savings['balance'],

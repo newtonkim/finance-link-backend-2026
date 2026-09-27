@@ -28,6 +28,10 @@ class GuarantorRules
         public readonly int $consentExpiryDays = 7,
         /** When true, binding guarantees stop guarantors withdrawing the pledged savings. */
         public readonly bool $holdSavings = true,
+        /** 0 means guarantors are not warned about arrears. */
+        public readonly int $arrearsNoticeDays = 30,
+        /** 0 means the arrears warning is not repeated. */
+        public readonly int $arrearsReminderDays = 0,
     ) {}
 
     public static function for(?LoanProduct $product = null): self
@@ -63,6 +67,8 @@ class GuarantorRules
             consentRequired: $enabled('sacco-guarantor-consent-required'),
             consentExpiryDays: max(1, (int) $value('sacco-guarantor-consent-expiry-days')),
             holdSavings: $enabled('sacco-guarantor-hold-savings'),
+            arrearsNoticeDays: max(0, (int) $value('sacco-guarantor-arrears-notice-days')),
+            arrearsReminderDays: max(0, (int) $value('sacco-guarantor-arrears-reminder-days')),
         );
     }
 
@@ -79,6 +85,8 @@ class GuarantorRules
             'consent_required' => $this->consentRequired,
             'consent_expiry_days' => $this->consentExpiryDays,
             'hold_savings' => $this->holdSavings,
+            'arrears_notice_days' => $this->arrearsNoticeDays,
+            'arrears_reminder_days' => $this->arrearsReminderDays,
         ];
     }
 }

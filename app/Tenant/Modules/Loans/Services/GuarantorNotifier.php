@@ -41,7 +41,26 @@ class GuarantorNotifier
         });
     }
 
-    private function send(LoanApplicationGuarantor $pledge, callable $body): void
+    /**
+     * The loan the guarantor stands behind is overdue.
+     *
+     * @param  array{loan_no: string, days_past_due: int, arrears_amount: float}  $arrears
+     * @param  string|null  $subdomain  the tenant, when sending from a scheduled command
+     */
+    public function arrears(LoanApplicationGuarantor $pledge, array $arrears, ?string $subdomain = null): void
+    {
+        $overdue = TenantMoney::format($arrears['arrears_amount']);
+        $held = TenantMoney::format($pledge->guarantee_amount);
+        $days = (int) $arrears['days_past_due'];
+
+        $this->send($pledge, function (object $recipient, object $application, bool $isGroup, ?string $guarantorName) use ($arrears, $overdue, $held, $days) {
+            $whose = $isGroup ? "your group {$guarantorName}'s" : 'your';
+
+            return "Hello {$recipient->name}, loan {$arrears['loan_no']} of {$application->name}, which {$whose} savings guarantee, is {$days} days overdue with {$overdue} unpaid. {$held} of {$whose} savings is held for it. Please encourage them to pay.";
+        }, $subdomain);
+    }
+
+    private function send(LoanApplicationGuarantor $pledge, callable $body, ?string $subdomain = null): void
     {
         $application = DB::table('loan_applications')->where('loan_applications.id', $pledge->loan_application_id)
             ->join('members as mb', 'loan_applications.member_id', '=', 'mb.id')
@@ -82,7 +101,7 @@ class GuarantorNotifier
             }
         }
 
-        DB::connection('tenant')->afterCommit(fn () => $notify->runTheQue());
+        DB::connection('tenant')->afterCommit(fn () => $notify->runTheQue($subdomain));
     }
 
     private function queue(NotificationService $notify, LoanApplicationGuarantor $pledge, object $recipient, string $body, ?string $guarantorName): void

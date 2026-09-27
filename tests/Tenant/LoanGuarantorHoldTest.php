@@ -4,7 +4,6 @@ use App\Models\Member;
 use App\Models\Staff;
 use App\Tenant\Modules\Groups\Models\SavingsGroup;
 use App\Tenant\Modules\Loans\Contracts\LoanGuarantorServiceInterface;
-use App\Tenant\Modules\Loans\Models\Loan;
 use App\Tenant\Modules\Loans\Models\LoanApplication;
 use App\Tenant\Modules\Loans\Models\LoanApplicationGuarantor;
 use App\Tenant\Modules\Savings\Models\SavingsAccount;
@@ -37,26 +36,6 @@ function holds(): LoanGuarantorServiceInterface
 function accountOf(Member $member): SavingsAccount
 {
     return SavingsAccount::where('member_id', $member->id)->firstOrFail();
-}
-
-/** A bare loan row for $application, enough for holds to point at. */
-function loanFor(LoanApplication $application, string $status = 'disbursed'): Loan
-{
-    $loanId = DB::table('loans')->insertGetId([
-        'loan_application_id' => $application->id,
-        'loan_no' => 'LN-'.uniqid(),
-        'member_id' => $application->member_id,
-        'principal' => 1000,
-        'interest_rate' => 10,
-        'term_months' => 12,
-        'status' => $status,
-        'created_at' => now(),
-        'updated_at' => now(),
-    ]);
-
-    $application->update(['status' => LoanApplication::STATUS_DISBURSED, 'disbursed_loan_id' => $loanId]);
-
-    return Loan::findOrFail($loanId);
 }
 
 it('stops a guarantor withdrawing below what they guarantee', function () {

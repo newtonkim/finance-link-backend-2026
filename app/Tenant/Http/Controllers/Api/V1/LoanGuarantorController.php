@@ -6,8 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\AddLoanGuarantorRequest;
 use App\Tenant\Http\Resources\LoanApplicationGuarantorResource;
 use App\Tenant\Modules\Loans\Contracts\LoanGuarantorServiceInterface;
+use App\Tenant\Modules\Loans\Data\GuarantorRules;
+use App\Tenant\Modules\Loans\Models\Loan;
 use App\Tenant\Modules\Loans\Models\LoanApplication;
 use App\Tenant\Modules\Loans\Models\LoanApplicationGuarantor;
+use App\Tenant\Modules\Loans\Services\GuarantorArrearsService;
 use App\Tenant\Support\TenantMoney;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -181,6 +184,26 @@ class LoanGuarantorController extends Controller
             'available_to_withdraw_formatted' => TenantMoney::format($withdrawable['available']),
             'guarantees' => $guarantees,
         ]]);
+    }
+
+    /** Overdue loans with guarantees standing behind them, most overdue first. */
+    public function arrearsWatchList(GuarantorArrearsService $arrears): JsonResponse
+    {
+        return response()->json([
+            'data' => $arrears->watchList(),
+            'rules' => GuarantorRules::for()->toArray(),
+        ]);
+    }
+
+    /** Warn an overdue loan's guarantors now, without waiting for the daily run. */
+    public function notifyArrears(GuarantorArrearsService $arrears, Loan $loan): JsonResponse
+    {
+        $count = $arrears->notifyLoan($loan);
+
+        return response()->json([
+            'message' => "Warned {$count} guarantor(s).",
+            'data' => ['notified' => $count],
+        ]);
     }
 
     private function actorId(): ?int

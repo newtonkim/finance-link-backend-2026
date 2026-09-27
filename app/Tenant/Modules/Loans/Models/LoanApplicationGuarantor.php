@@ -89,6 +89,8 @@ class LoanApplicationGuarantor extends Model
         'locked_at',
         'released_at',
         'release_reason',
+        'arrears_notified_at',
+        'arrears_notice_count',
     ];
 
     protected $casts = [
@@ -107,6 +109,8 @@ class LoanApplicationGuarantor extends Model
         'loan_id' => 'integer',
         'locked_at' => 'datetime',
         'released_at' => 'datetime',
+        'arrears_notified_at' => 'datetime',
+        'arrears_notice_count' => 'integer',
     ];
 
     public function loanApplication(): BelongsTo

@@ -35,6 +35,8 @@ class LoanApplicationGuarantorResource extends JsonResource
             'locked_at' => $this->locked_at,
             'released_at' => $this->released_at,
             'release_reason' => $this->release_reason,
+            'arrears_notified_at' => $this->arrears_notified_at,
+            'arrears_notice_count' => (int) $this->arrears_notice_count,
             'note' => $this->note,
             'created_at' => $this->created_at,
         ];

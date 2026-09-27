@@ -81,6 +81,18 @@ class GuarantorSettings
                 'settings_action_description' => 'Hold guarantors\' savings',
                 'settings_setting_description' => 'When enabled, a guarantor cannot withdraw, transfer to someone else, or close an account if it would take their savings below what they have guaranteed. The hold starts once the guarantee is binding (accepted, or recorded while guarantors do not have to accept) and is released when the loan is closed, or when the application is rejected or cancelled.',
             ],
+            [
+                'settings_name' => 'sacco-guarantor-arrears-notice-days',
+                'settings_action' => ['action' => 30, 'attr' => 'number'],
+                'settings_action_description' => 'Warn guarantors after (days overdue)',
+                'settings_setting_description' => 'When a loan has been overdue this many days, its guarantors are sent an SMS saying how far behind it is and how much of their savings is held for it. Sent once for each spell of arrears. 0 turns the warning off.',
+            ],
+            [
+                'settings_name' => 'sacco-guarantor-arrears-reminder-days',
+                'settings_action' => ['action' => 0, 'attr' => 'number'],
+                'settings_action_description' => 'Repeat the warning every (days)',
+                'settings_setting_description' => 'While the loan stays overdue, warn its guarantors again this many days after the last warning. 0 sends the warning only once.',
+            ],
         ];
     }
 }
