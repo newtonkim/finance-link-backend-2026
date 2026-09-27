@@ -13,6 +13,7 @@ class TenantSettingsController extends TenantSettingService
     {
         return $this->Response(['data' => self::systemAuditLogList()]);
     }
+
     public function create_capitalize()
     {
         return $this->Response(['data' => self::createCapitalize()]);
@@ -153,6 +154,11 @@ class TenantSettingsController extends TenantSettingService
         return $this->Response(['data' => self::loanSettingsList()]);
     }
 
+    public function guarantor_settings_list()
+    {
+        return $this->Response(['data' => self::guarantorSettingsList()]);
+    }
+
     public function get_branch_list()
     {
         return $this->Response(['data' => self::branchList()]);
@@ -244,7 +250,7 @@ class TenantSettingsController extends TenantSettingService
         // Handle Logo Upload
         if ($request->hasFile('logo')) {
             $path = $request->file('logo')->store('logos', 'public');
-            $settings['logo_url'] = asset('storage/' . $path);
+            $settings['logo_url'] = asset('storage/'.$path);
         }
 
         // Update other settings
