@@ -25,7 +25,7 @@ class MemberGuaranteeController extends Controller
     public function index(Request $request): JsonResponse
     {
         $request->validate([
-            'status' => ['nullable', 'string', 'in:requested,accepted,declined,expired'],
+            'status' => ['nullable', 'string', 'in:requested,accepted,declined,expired,locked,released'],
         ]);
 
         $this->service->expireOverdue();
@@ -36,14 +36,28 @@ class MemberGuaranteeController extends Controller
                 LoanApplicationGuarantor::STATUS_ACCEPTED,
                 LoanApplicationGuarantor::STATUS_DECLINED,
                 LoanApplicationGuarantor::STATUS_EXPIRED,
+                LoanApplicationGuarantor::STATUS_LOCKED,
+                LoanApplicationGuarantor::STATUS_RELEASED,
             ])
             ->when($request->input('status'), fn ($q, $status) => $q->where('status', $status))
             ->with('loanApplication.member')
-            ->latest('requested_at')
+            ->latest('id')
             ->paginate(15);
+
+        /** @var Member $member */
+        $member = $request->user();
+        $savings = $this->service->withdrawable('individual', $member->id);
 
         return response()->json([
             'data' => $guarantees->getCollection()->map(fn ($g) => $this->present($g)),
+            // What the member's guarantees are holding back from withdrawal.
+            'savings' => [
+                'balance' => $savings['balance'],
+                'held' => $savings['held'],
+                'held_formatted' => TenantMoney::format($savings['held']),
+                'available' => $savings['available'],
+                'available_formatted' => TenantMoney::format($savings['available']),
+            ],
             'meta' => [
                 'current_page' => $guarantees->currentPage(),
                 'last_page' => $guarantees->lastPage(),
@@ -109,6 +123,8 @@ class MemberGuaranteeController extends Controller
             'consent_expires_at' => $guarantee->consent_expires_at,
             'responded_at' => $guarantee->responded_at,
             'decline_reason' => $guarantee->decline_reason,
+            'locked_at' => $guarantee->locked_at,
+            'released_at' => $guarantee->released_at,
             'loan_application' => $application ? [
                 'application_no' => $application->application_no,
                 'applicant_name' => $application->member?->name,

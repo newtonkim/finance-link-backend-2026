@@ -2,9 +2,8 @@
 
 namespace App\Tenant\Services\TenantSavingsAcountServices\Concerns;
 
-use App\Tenant\Modules\Loans\Models\LoanApplicationGuarantor;
+use App\Tenant\Modules\Loans\Contracts\LoanGuarantorServiceInterface;
 use App\Tenant\Services\MemebersSettingSevices\CodeSequence;
-use App\Tenant\Services\MemebersSettingSevices\FindsettingsAction;
 use App\Tenant\Services\MemebersSettingSevices\ProductChargesservice;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -14,20 +13,11 @@ trait ProcessesGroupSavingsTransactions
 {
     private function groupWithdrawalMethod($currentBalance, $amount, $chargedAmount, $req, $getMemberGroup)
     {
-        $settings = new FindsettingsAction(['savings-group']);
-        $catWidrawalOverGuaranteedAmount = $settings->inAGroupCantWithrawBeyondGuaranteedAmount();
-
-        if ($catWidrawalOverGuaranteedAmount) {
-            $sumOfTheMoney = DB::table('loan_application_guarantors')
-                ->whereRaw('guarantor_id=?', [$currentBalance->savings_group_id])
-                ->where('guarantor_type', 'group')
-                ->whereNull('deleted_at')
-                ->whereIn('status', LoanApplicationGuarantor::ACTIVE_STATUSES)
-                ->sum('guarantee_amount');
-            if ($sumOfTheMoney > 0 && $sumOfTheMoney <= $amount) {
-                throw new \Exception('You cannot withdraw beyond the guaranteed amount. '.$sumOfTheMoney);
-            }
-        }
+        // The group's savings stay above what the group guarantees. This replaces an
+        // older check that compared the withdrawal amount itself with the guaranteed
+        // total, which blocked small withdrawals and allowed large ones.
+        app(LoanGuarantorServiceInterface::class)
+            ->assertCanDebit('group', (int) $currentBalance->savings_group_id, $amount + $chargedAmount);
 
         $newBalance = $currentBalance->balance - ($amount + $chargedAmount);
         $amountAtaHand = $amount - $chargedAmount;

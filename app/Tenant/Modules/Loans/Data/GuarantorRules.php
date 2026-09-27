@@ -26,6 +26,8 @@ class GuarantorRules
         /** When true, only guarantees the guarantor has accepted count. */
         public readonly bool $consentRequired = false,
         public readonly int $consentExpiryDays = 7,
+        /** When true, binding guarantees stop guarantors withdrawing the pledged savings. */
+        public readonly bool $holdSavings = true,
     ) {}
 
     public static function for(?LoanProduct $product = null): self
@@ -60,6 +62,7 @@ class GuarantorRules
             coveragePercentage: max(0, (float) $value('sacco-guarantor-required-coverage-percentage')),
             consentRequired: $enabled('sacco-guarantor-consent-required'),
             consentExpiryDays: max(1, (int) $value('sacco-guarantor-consent-expiry-days')),
+            holdSavings: $enabled('sacco-guarantor-hold-savings'),
         );
     }
 
@@ -75,6 +78,7 @@ class GuarantorRules
             'coverage_percentage' => $this->coveragePercentage,
             'consent_required' => $this->consentRequired,
             'consent_expiry_days' => $this->consentExpiryDays,
+            'hold_savings' => $this->holdSavings,
         ];
     }
 }

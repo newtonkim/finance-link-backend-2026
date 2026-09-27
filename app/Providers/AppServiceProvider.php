@@ -41,6 +41,7 @@ use App\Tenant\Modules\Loans\Contracts\MemberLoanSummaryServiceInterface;
 use App\Tenant\Modules\Loans\Contracts\ScheduleGeneratorServiceInterface;
 use App\Tenant\Modules\Loans\Models\Loan;
 use App\Tenant\Modules\Loans\Models\LoanTransaction;
+use App\Tenant\Modules\Loans\Observers\LoanGuaranteeObserver;
 use App\Tenant\Modules\Loans\Services\LoanActivityService;
 use App\Tenant\Modules\Loans\Services\LoanAgingReportService;
 use App\Tenant\Modules\Loans\Services\LoanApplicationService;
@@ -232,6 +233,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Loan::observe(LoanGuaranteeObserver::class);
+
         Relation::morphMap([
             'deposit' => Transaction::class,
             'deposits' => SavingsAccount::class,

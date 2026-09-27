@@ -5,6 +5,7 @@ namespace App\Tenant\Modules\Savings\Services;
 use App\Support\BranchContext;
 use App\Tenant\Modules\Accounting\Services\SavingsJournalService;
 use App\Tenant\Modules\Charges\Contracts\ChargeApplicationServiceInterface;
+use App\Tenant\Modules\Loans\Contracts\LoanGuarantorServiceInterface;
 use App\Tenant\Modules\Members\Services\MemberChargeService;
 use App\Tenant\Modules\Savings\Models\SavingsAccount;
 use App\Tenant\Modules\Transactions\Models\Transaction;
@@ -278,6 +279,12 @@ class SavingsTransactionPostingService
             throw ValidationException::withMessages([
                 'amount' => ['Withdrawal amount exceeds account balance.'],
             ]);
+        }
+
+        // Savings a member has pledged as a guarantor stay put while the guarantee binds.
+        if ($account->member_id) {
+            app(LoanGuarantorServiceInterface::class)
+                ->assertCanDebit('individual', (int) $account->member_id, $amount);
         }
     }
 

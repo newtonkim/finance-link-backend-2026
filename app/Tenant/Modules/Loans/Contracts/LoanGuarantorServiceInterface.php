@@ -3,6 +3,7 @@
 namespace App\Tenant\Modules\Loans\Contracts;
 
 use App\Tenant\Modules\Loans\Data\GuarantorRules;
+use App\Tenant\Modules\Loans\Models\Loan;
 use App\Tenant\Modules\Loans\Models\LoanApplication;
 use App\Tenant\Modules\Loans\Models\LoanApplicationGuarantor;
 use Illuminate\Validation\ValidationException;
@@ -73,6 +74,33 @@ interface LoanGuarantorServiceInterface
      * percentage, less every pledge still standing. Never negative.
      */
     public function freeCapacity(string $type, int $guarantorId, ?int $exceptPledgeId = null): float;
+
+    /**
+     * How much of a member's (or group's) savings is held by guarantees that bind
+     * them, optionally leaving out those standing behind one loan.
+     */
+    public function heldAmount(string $type, int $holderId, ?int $exceptLoanId = null): float;
+
+    /** @return array{balance: float, held: float, available: float} */
+    public function withdrawable(string $type, int $holderId): array;
+
+    /**
+     * Refuse taking $amount out of a guarantor's savings when that would leave less
+     * than their guarantees hold. $exceptLoanId lets a guarantor repay the very loan
+     * they guarantee from the savings held for it. No-op while holds are switched off.
+     *
+     * @throws ValidationException
+     */
+    public function assertCanDebit(string $type, int $holderId, float $amount, ?int $exceptLoanId = null): void;
+
+    /**
+     * At disbursement: lock the application's binding guarantees to the loan, and
+     * withdraw requests nobody answered. Returns how many were locked.
+     */
+    public function lockForLoan(LoanApplication $application, Loan $loan): int;
+
+    /** Release every guarantee locked to the loan. Returns how many were released. */
+    public function releaseForLoan(Loan $loan, string $reason = 'loan_closed'): int;
 
     /** Count, coverage and adequacy of an application's guarantees. */
     public function summary(LoanApplication $application): array;

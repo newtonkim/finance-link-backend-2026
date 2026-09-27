@@ -41,6 +41,12 @@ class LoanApplicationGuarantor extends Model
 
     const STATUS_WITHDRAWN = 'withdrawn';
 
+    /** Standing behind a disbursed loan; the guarantor's savings are held for it. */
+    const STATUS_LOCKED = 'locked';
+
+    /** The loan was closed, so the guarantee no longer holds anything. */
+    const STATUS_RELEASED = 'released';
+
     const CHANNEL_MEMBER_PORTAL = 'member_portal';
 
     const CHANNEL_OFFICER = 'officer';
@@ -50,7 +56,7 @@ class LoanApplicationGuarantor extends Model
      * counts toward the application while consent is not required. When consent is
      * required only an accepted pledge counts toward the application.
      */
-    const ACTIVE_STATUSES = [self::STATUS_PROPOSED, self::STATUS_REQUESTED, self::STATUS_ACCEPTED];
+    const ACTIVE_STATUSES = [self::STATUS_PROPOSED, self::STATUS_REQUESTED, self::STATUS_ACCEPTED, self::STATUS_LOCKED];
 
     /** Statuses a guarantor (or an officer on their behalf) can still answer from. */
     const AWAITING_RESPONSE_STATUSES = [self::STATUS_PROPOSED, self::STATUS_REQUESTED];
@@ -79,6 +85,10 @@ class LoanApplicationGuarantor extends Model
         'responded_by',
         'decline_reason',
         'consent_document_path',
+        'loan_id',
+        'locked_at',
+        'released_at',
+        'release_reason',
     ];
 
     protected $casts = [
@@ -94,11 +104,19 @@ class LoanApplicationGuarantor extends Model
         'consent_expires_at' => 'datetime',
         'responded_at' => 'datetime',
         'responded_by' => 'integer',
+        'loan_id' => 'integer',
+        'locked_at' => 'datetime',
+        'released_at' => 'datetime',
     ];
 
     public function loanApplication(): BelongsTo
     {
         return $this->belongsTo(LoanApplication::class);
+    }
+
+    public function loan(): BelongsTo
+    {
+        return $this->belongsTo(Loan::class);
     }
 
     public function member(): BelongsTo
