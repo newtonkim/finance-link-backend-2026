@@ -8,6 +8,7 @@ use App\Tenant\Modules\Accounting\Models\JournalEntry;
 use App\Tenant\Modules\Accounting\Models\JournalEntryLine;
 use App\Tenant\Modules\Accounting\Services\GlPostingEngine;
 use App\Tenant\Modules\Accounting\Services\JournalSequenceService;
+use App\Tenant\Modules\Loans\Contracts\LoanGuarantorServiceInterface;
 use App\Tenant\Modules\Loans\Contracts\LoanRepaymentServiceInterface;
 use App\Tenant\Modules\Loans\Enums\LoanStatus;
 use App\Tenant\Modules\Loans\Models\Loan;
@@ -129,6 +130,13 @@ class LoanRepaymentService implements LoanRepaymentServiceInterface
                 throw ValidationException::withMessages([
                     'amount' => ['Insufficient savings account balance.'],
                 ]);
+            }
+
+            // Savings held for other members' loans stay put; savings held for this
+            // very loan may go toward repaying it.
+            if ($savingsAccount->member_id) {
+                app(LoanGuarantorServiceInterface::class)
+                    ->assertCanDebit('individual', (int) $savingsAccount->member_id, $amount, $loan->id);
             }
 
             $product = $loan->loanProduct()->firstOrFail();

@@ -9,6 +9,7 @@ use App\Tenant\Modules\Accounting\Models\JournalEntryLine;
 use App\Tenant\Modules\Accounting\Services\GlPostingEngine;
 use App\Tenant\Modules\Accounting\Services\JournalSequenceService;
 use App\Tenant\Modules\Loans\Contracts\LoanDisbursementServiceInterface;
+use App\Tenant\Modules\Loans\Contracts\LoanGuarantorServiceInterface;
 use App\Tenant\Modules\Loans\Contracts\ScheduleGeneratorServiceInterface;
 use App\Tenant\Modules\Loans\Enums\LoanStatus;
 use App\Tenant\Modules\Loans\Models\Loan;
@@ -43,6 +44,7 @@ class LoanDisbursementService implements LoanDisbursementServiceInterface
         protected HolidayService $holidayService,
         protected JournalSequenceService $sequence,
         protected GlPostingEngine $gl,
+        protected LoanGuarantorServiceInterface $guarantors,
     ) {}
 
     // ─── Public entry point ───────────────────────────────────────────────────
@@ -139,6 +141,9 @@ class LoanDisbursementService implements LoanDisbursementServiceInterface
             $application->disbursed_at = $disbursedAt;
             $application->schedule_date = $scheduleDate;
             $application->save();
+
+            // Step 7b — The guarantees now stand behind this loan until it closes.
+            $this->guarantors->lockForLoan($application, $loan);
 
             $this->statusGuard->transition(
                 $application,

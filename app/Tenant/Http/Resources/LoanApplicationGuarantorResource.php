@@ -31,6 +31,10 @@ class LoanApplicationGuarantorResource extends JsonResource
             'consent_document_url' => $this->consent_document_path
                 ? Storage::disk('public')->url($this->consent_document_path)
                 : null,
+            'loan_id' => $this->loan_id,
+            'locked_at' => $this->locked_at,
+            'released_at' => $this->released_at,
+            'release_reason' => $this->release_reason,
             'note' => $this->note,
             'created_at' => $this->created_at,
         ];

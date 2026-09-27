@@ -2,6 +2,7 @@
 
 namespace App\Tenant\Services\TenantSavingsAcountServices\Concerns;
 
+use App\Tenant\Modules\Loans\Contracts\LoanGuarantorServiceInterface;
 use App\Tenant\Modules\Savings\Models\SavingsAccount;
 use App\Tenant\Services\MemebersSettingSevices\CodeSequence;
 use App\Tenant\Services\MemebersSettingSevices\FindsettingsAction;
@@ -11,6 +12,7 @@ use App\Tenant\Services\TenantSavingsAccountService;
 use App\Tenant\Services\TenantSavingsAcountServices\OtherHelpers;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 trait ManagesMemberSavings
 {
@@ -49,6 +51,15 @@ trait ManagesMemberSavings
 
             if ($chargedAmount >= $amountNeeded) {
                 $feedBack = 'FAILED:Withdrawal charge must be less than the withdrawal amount.';
+            }
+
+            if (! str_contains((string) $feedBack, 'FAILED') && $accountDetails->member_id) {
+                try {
+                    app(LoanGuarantorServiceInterface::class)
+                        ->assertCanDebit('individual', (int) $accountDetails->member_id, $amount);
+                } catch (ValidationException $e) {
+                    $feedBack = 'FAILED:'.collect($e->errors())->flatten()->first();
+                }
             }
 
             if ($computedBlc >= 0 && ! str_contains((string) $feedBack, 'FAILED')) {
@@ -120,7 +131,7 @@ trait ManagesMemberSavings
             ->where('balance', '>=', $amount)
             ->first(['balance', 'id']);
 
-        if ($getTransferFrom) {
+        if ($getTransferFrom && ! $this->transferBreachesGuaranteeHold($from, $to, $amount)) {
             DB::table('savings_accounts')->where('id', $from)->decrement('balance', $amount);
             DB::table('savings_accounts')->where('id', $to)->increment('balance', $amount);
 
@@ -129,6 +140,25 @@ trait ManagesMemberSavings
 
         return false;
         // throw new \Exception('Insufficient balance');
+    }
+
+    /** Only a transfer to another member can take a guarantor below what they guarantee. */
+    private function transferBreachesGuaranteeHold($from, $to, float $amount): bool
+    {
+        $owners = DB::table('savings_accounts')->whereIn('id', [$from, $to])->pluck('member_id', 'id');
+        $fromMember = $owners[$from] ?? null;
+
+        if (! $fromMember || $fromMember === ($owners[$to] ?? null)) {
+            return false;
+        }
+
+        try {
+            app(LoanGuarantorServiceInterface::class)->assertCanDebit('individual', (int) $fromMember, $amount);
+
+            return false;
+        } catch (ValidationException) {
+            return true;
+        }
     }
 
     public function groupNoneMembersCreate()
@@ -218,6 +248,13 @@ trait ManagesMemberSavings
     public function memberAccountDelete()
     {
         return $this->TryCatch(function () {
+            // Closing the account takes its whole balance out of the member's savings.
+            $account = DB::table('savings_accounts')->where('id', request('id'))->first(['member_id', 'balance']);
+            if ($account?->member_id) {
+                app(LoanGuarantorServiceInterface::class)
+                    ->assertCanDebit('individual', (int) $account->member_id, (float) $account->balance);
+            }
+
             $this->DeleteRecord('savings_accounts', request());
             $List = app(TenantSavingsAccountService::class);
 

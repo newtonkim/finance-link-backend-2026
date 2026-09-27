@@ -133,7 +133,10 @@ class LoanGuarantorController extends Controller
         return response()->json(['data' => $this->service->summary($loanApplication)]);
     }
 
-    /** How much more a member or group can pledge, for showing while picking guarantors. */
+    /**
+     * A member's or group's standing as a guarantor: how much more they can pledge,
+     * how much of their savings is held, and the guarantees that hold it.
+     */
     public function capacity(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -141,13 +144,42 @@ class LoanGuarantorController extends Controller
             'guarantor_id' => ['required', 'integer', 'min:1'],
         ]);
 
-        $free = $this->service->freeCapacity($validated['guarantor_type'], (int) $validated['guarantor_id']);
+        $type = $validated['guarantor_type'];
+        $id = (int) $validated['guarantor_id'];
+        $free = $this->service->freeCapacity($type, $id);
+        $withdrawable = $this->service->withdrawable($type, $id);
+
+        $guarantees = LoanApplicationGuarantor::query()
+            ->where('guarantor_type', $type)
+            ->where('guarantor_id', $id)
+            ->whereIn('status', LoanApplicationGuarantor::ACTIVE_STATUSES)
+            ->with(['loanApplication.member', 'loan'])
+            ->latest('id')
+            ->get()
+            ->map(fn (LoanApplicationGuarantor $g) => [
+                'id' => $g->id,
+                'status' => $g->status,
+                'guarantee_amount' => (float) $g->guarantee_amount,
+                'guarantee_amount_formatted' => TenantMoney::format($g->guarantee_amount),
+                'loan_application_id' => $g->loan_application_id,
+                'application_no' => $g->loanApplication?->application_no,
+                'borrower_name' => $g->loanApplication?->member?->name,
+                'loan_id' => $g->loan_id,
+                'loan_no' => $g->loan?->loan_no,
+                'locked_at' => $g->locked_at,
+            ]);
 
         return response()->json(['data' => [
-            'guarantor_type' => $validated['guarantor_type'],
-            'guarantor_id' => (int) $validated['guarantor_id'],
+            'guarantor_type' => $type,
+            'guarantor_id' => $id,
             'free_capacity' => $free,
             'free_capacity_formatted' => TenantMoney::format($free),
+            'savings_balance' => $withdrawable['balance'],
+            'held_amount' => $withdrawable['held'],
+            'held_amount_formatted' => TenantMoney::format($withdrawable['held']),
+            'available_to_withdraw' => $withdrawable['available'],
+            'available_to_withdraw_formatted' => TenantMoney::format($withdrawable['available']),
+            'guarantees' => $guarantees,
         ]]);
     }
 

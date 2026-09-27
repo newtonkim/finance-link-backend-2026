@@ -2,9 +2,11 @@
 
 namespace App\Tenant\Services\TenantSavingsAcountServices\Concerns;
 
+use App\Tenant\Modules\Loans\Contracts\LoanGuarantorServiceInterface;
 use App\Tenant\Services\MemebersSettingSevices\CodeSequence;
 use App\Tenant\Services\TenantSavingsAccountService;
 use App\Tenant\Services\TenantSavingsAcountServices\OtherHelpers;
+use App\Tenant\Support\TenantMoney;
 
 trait ManagesGroupSavingsAccounts
 {
@@ -103,6 +105,12 @@ trait ManagesGroupSavingsAccounts
 
         return $this->TryCatch(function () use ($req) {
             return $this->transaction(function () use ($req) {
+                // A group standing behind loans cannot be deleted out from under them.
+                $held = app(LoanGuarantorServiceInterface::class)->heldAmount('group', (int) $req->id);
+                if ($held > 0) {
+                    throw new \Exception('This group guarantees '.TenantMoney::format($held).' on loans that are not yet closed, so it cannot be deleted.');
+                }
+
                 $this->DeleteRecord('savings_groups', request());
                 $this->DeleteRecord('savings_group_members', request(), condition: ['savings_group_id' => $req->id]);
                 $List = app(TenantSavingsAccountService::class);

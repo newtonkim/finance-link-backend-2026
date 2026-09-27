@@ -5,6 +5,7 @@ namespace App\Tenant\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Support\BranchContext;
 use App\Tenant\Modules\Accounting\Services\SavingsJournalService;
+use App\Tenant\Modules\Loans\Contracts\LoanGuarantorServiceInterface;
 use App\Tenant\Modules\Savings\Models\SavingsAccount;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -13,6 +14,7 @@ class SavingsTransferController extends Controller
 {
     public function __construct(
         private readonly SavingsJournalService $journal,
+        private readonly LoanGuarantorServiceInterface $guarantors,
     ) {}
 
     /**
@@ -84,6 +86,13 @@ class SavingsTransferController extends Controller
                 'message' => 'Insufficient balance in the source account.',
                 'errors' => ['amount' => ['Transfer amount exceeds the source account balance.']],
             ], 422);
+        }
+
+        // ── Guarantee holds ───────────────────────────────────────────────────
+        // Moving money between a member's own accounts leaves their savings as they
+        // were, so only a transfer to someone else can breach what they guarantee.
+        if ($fromAccount->member_id && $fromAccount->member_id !== $toAccount->member_id) {
+            $this->guarantors->assertCanDebit('individual', (int) $fromAccount->member_id, $amount);
         }
 
         // ── Execute transfer in a DB transaction ──────────────────────────────

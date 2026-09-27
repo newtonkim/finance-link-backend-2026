@@ -6,6 +6,7 @@ use App\Models\Member;
 use App\Tenant\Modules\Groups\Models\SavingsGroup;
 use App\Tenant\Modules\Loans\Contracts\LoanGuarantorServiceInterface;
 use App\Tenant\Modules\Loans\Data\GuarantorRules;
+use App\Tenant\Modules\Loans\Models\Loan;
 use App\Tenant\Modules\Loans\Models\LoanApplication;
 use App\Tenant\Modules\Loans\Models\LoanApplicationGuarantor;
 use App\Tenant\Support\TenantMoney;
@@ -231,7 +232,9 @@ class LoanGuarantorService implements LoanGuarantorServiceInterface
         }
 
         return DB::connection('tenant')->transaction(function () use ($pledge, $application, $accept, $reason, $channel, $staffId, $documentPath) {
-            if ($accept && $pledge->status === LoanApplicationGuarantor::STATUS_EXPIRED) {
+            // Until a guarantee binds, the guarantor's savings are not held, so they
+            // may have dropped since the request went out.
+            if ($accept) {
                 $this->assertWithinCapacity($pledge);
             }
 
@@ -321,6 +324,101 @@ class LoanGuarantorService implements LoanGuarantorServiceInterface
         $committed = $this->committedAmount($type, $guarantorId, $exceptPledgeId);
 
         return round(max(0, $capacity - $committed), 2);
+    }
+
+    public function heldAmount(string $type, int $holderId, ?int $exceptLoanId = null): float
+    {
+        return (float) $this->standingPledges($type, $holderId)
+            ->whereIn('status', $this->bindingStatuses(GuarantorRules::for()))
+            ->when($exceptLoanId, function ($q) use ($exceptLoanId) {
+                $q->where(fn ($q) => $q->whereNull('loan_id')->orWhere('loan_id', '!=', $exceptLoanId));
+            })
+            ->sum('guarantee_amount');
+    }
+
+    public function withdrawable(string $type, int $holderId): array
+    {
+        $balance = $this->savingsBalance($type, $holderId);
+        $held = GuarantorRules::for()->holdSavings ? $this->heldAmount($type, $holderId) : 0.0;
+
+        return [
+            'balance' => round($balance, 2),
+            'held' => round($held, 2),
+            'available' => round(max(0, $balance - $held), 2),
+        ];
+    }
+
+    public function assertCanDebit(string $type, int $holderId, float $amount, ?int $exceptLoanId = null): void
+    {
+        if ($amount <= 0 || ! GuarantorRules::for()->holdSavings) {
+            return;
+        }
+
+        $held = $this->heldAmount($type, $holderId, $exceptLoanId);
+
+        if ($held <= 0) {
+            return;
+        }
+
+        $available = $this->savingsBalance($type, $holderId) - $held;
+
+        if (round($amount, 2) > round($available, 2)) {
+            throw ValidationException::withMessages([
+                'amount' => [sprintf(
+                    '%s of these savings is held as a guarantee for other members\' loans, so at most %s can be taken out.',
+                    TenantMoney::format($held),
+                    TenantMoney::format(max(0, $available))
+                )],
+            ]);
+        }
+    }
+
+    public function lockForLoan(LoanApplication $application, Loan $loan): int
+    {
+        $binding = $this->bindingStatuses($this->rules($application));
+        $locked = 0;
+
+        foreach ($application->guarantors()->get() as $pledge) {
+            if (in_array($pledge->status, $binding, true)) {
+                $pledge->forceFill([
+                    'status' => LoanApplicationGuarantor::STATUS_LOCKED,
+                    'status_changed_at' => now(),
+                    'loan_id' => $loan->id,
+                    'locked_at' => now(),
+                ])->save();
+                $locked++;
+            } elseif (in_array($pledge->status, LoanApplicationGuarantor::AWAITING_RESPONSE_STATUSES, true)) {
+                // The loan went ahead without this guarantor's answer, so the request
+                // should stop reserving their capacity.
+                $pledge->forceFill([
+                    'status' => LoanApplicationGuarantor::STATUS_WITHDRAWN,
+                    'status_changed_at' => now(),
+                    'released_at' => now(),
+                    'release_reason' => 'unanswered_at_disbursement',
+                ])->save();
+            }
+        }
+
+        return $locked;
+    }
+
+    public function releaseForLoan(Loan $loan, string $reason = 'loan_closed'): int
+    {
+        return LoanApplicationGuarantor::query()
+            ->where('status', LoanApplicationGuarantor::STATUS_LOCKED)
+            ->where(function ($q) use ($loan) {
+                $q->where('loan_id', $loan->id);
+                if ($loan->loan_application_id) {
+                    $q->orWhere('loan_application_id', $loan->loan_application_id);
+                }
+            })
+            ->update([
+                'status' => LoanApplicationGuarantor::STATUS_RELEASED,
+                'status_changed_at' => now(),
+                'released_at' => now(),
+                'released_date' => now()->toDateString(),
+                'release_reason' => $reason,
+            ]);
     }
 
     public function summary(LoanApplication $application): array
@@ -547,10 +645,18 @@ class LoanGuarantorService implements LoanGuarantorServiceInterface
     /** Everything this guarantor has pledged that has not yet been released. */
     private function committedAmount(string $type, int $guarantorId, ?int $exceptPledgeId): float
     {
-        return (float) LoanApplicationGuarantor::active()
+        return (float) $this->standingPledges($type, $guarantorId)
+            ->whereIn('status', LoanApplicationGuarantor::ACTIVE_STATUSES)
+            ->when($exceptPledgeId, fn ($q) => $q->whereKeyNot($exceptPledgeId))
+            ->sum('guarantee_amount');
+    }
+
+    /** A guarantor's pledges on applications that are still live or loans not yet closed. */
+    private function standingPledges(string $type, int $guarantorId)
+    {
+        return LoanApplicationGuarantor::query()
             ->where('guarantor_type', $type)
             ->where('guarantor_id', $guarantorId)
-            ->when($exceptPledgeId, fn ($q) => $q->whereKeyNot($exceptPledgeId))
             ->whereHas('loanApplication', function ($q) {
                 $q->whereNotIn('status', self::RELEASED_APPLICATION_STATUSES)
                     ->whereNotExists(function ($loans) {
@@ -559,8 +665,19 @@ class LoanGuarantorService implements LoanGuarantorServiceInterface
                             ->whereColumn('loans.loan_application_id', 'loan_applications.id')
                             ->whereIn('loans.status', self::RELEASED_LOAN_STATUSES);
                     });
-            })
-            ->sum('guarantee_amount');
+            });
+    }
+
+    /**
+     * Statuses in which a guarantee binds the guarantor, so their savings are held:
+     * accepted or locked, or also still-unanswered ones while guarantors do not have
+     * to accept (there is nothing for them to answer).
+     */
+    private function bindingStatuses(GuarantorRules $rules): array
+    {
+        return $rules->consentRequired
+            ? [LoanApplicationGuarantor::STATUS_ACCEPTED, LoanApplicationGuarantor::STATUS_LOCKED]
+            : LoanApplicationGuarantor::ACTIVE_STATUSES;
     }
 
     private function loanAmount(LoanApplication $application): float

@@ -75,6 +75,12 @@ class GuarantorSettings
                 'settings_action_description' => 'Days to respond',
                 'settings_setting_description' => 'How many days a guarantor has to accept or decline before the request expires. An expired request no longer holds the guarantor\'s savings and can be sent again.',
             ],
+            [
+                'settings_name' => 'sacco-guarantor-hold-savings',
+                'settings_action' => ['action' => 1, 'attr' => 'switch'],
+                'settings_action_description' => 'Hold guarantors\' savings',
+                'settings_setting_description' => 'When enabled, a guarantor cannot withdraw, transfer to someone else, or close an account if it would take their savings below what they have guaranteed. The hold starts once the guarantee is binding (accepted, or recorded while guarantors do not have to accept) and is released when the loan is closed, or when the application is rejected or cancelled.',
+            ],
         ];
     }
 }
