@@ -39,6 +39,11 @@ class LoanGuarantorService implements LoanGuarantorServiceInterface
     /** @var array<int, GuarantorRules> */
     private array $rulesCache = [];
 
+    public function __construct(
+        protected GuarantorNotifier $notifier,
+        protected LoanApplicationStatusGuard $statusGuard,
+    ) {}
+
     public function rules(LoanApplication $application): GuarantorRules
     {
         $productId = (int) $application->loan_product_id;
@@ -124,6 +129,9 @@ class LoanGuarantorService implements LoanGuarantorServiceInterface
                 $guarantor->restore();
             }
 
+            $previousStatus = $isStanding ? $guarantor->status : null;
+            $previousAmount = $isStanding ? (float) $guarantor->guarantee_amount : null;
+
             if (! $isStanding) {
                 $guarantor->status = LoanApplicationGuarantor::STATUS_PROPOSED;
                 $guarantor->status_changed_at = now();
@@ -140,8 +148,157 @@ class LoanGuarantorService implements LoanGuarantorServiceInterface
                 $guarantor->forceFill(['code' => sprintf('GRT%06d', $guarantor->id)])->save();
             }
 
+            if ($rules->consentRequired) {
+                // Ask again whenever what the guarantor is being asked to stand behind
+                // changes: a new pledge, a changed pending one, or a larger accepted one.
+                $mustAsk = ! $isStanding
+                    || $previousStatus === LoanApplicationGuarantor::STATUS_PROPOSED
+                    || ($previousStatus === LoanApplicationGuarantor::STATUS_REQUESTED && $amount != $previousAmount)
+                    || ($previousStatus === LoanApplicationGuarantor::STATUS_ACCEPTED && $amount > $previousAmount);
+
+                if ($mustAsk) {
+                    $this->markRequested($guarantor, $rules);
+                }
+            } elseif (! $isStanding) {
+                $this->notifier->added($guarantor);
+            }
+
+            $this->advanceIfReady($application);
+
             return $guarantor;
         });
+    }
+
+    public function requestConsent(LoanApplicationGuarantor $pledge, ?int $actorId): LoanApplicationGuarantor
+    {
+        $application = $pledge->loanApplication;
+        $this->guardApplicationEditable($application);
+
+        $askable = [
+            LoanApplicationGuarantor::STATUS_PROPOSED,
+            LoanApplicationGuarantor::STATUS_REQUESTED,
+            LoanApplicationGuarantor::STATUS_EXPIRED,
+            LoanApplicationGuarantor::STATUS_DECLINED,
+        ];
+
+        if (! in_array($pledge->status, $askable, true)) {
+            throw ValidationException::withMessages([
+                'guarantor' => ['This guarantor has already accepted.'],
+            ]);
+        }
+
+        return DB::connection('tenant')->transaction(function () use ($pledge, $application, $actorId) {
+            // An expired or declined pledge stopped holding the guarantor's capacity,
+            // which may have been pledged elsewhere since.
+            if (! in_array($pledge->status, LoanApplicationGuarantor::ACTIVE_STATUSES, true)) {
+                $this->assertWithinCapacity($pledge);
+            }
+
+            $pledge->updated_by = $actorId;
+            $this->markRequested($pledge, $this->rules($application));
+
+            return $pledge;
+        });
+    }
+
+    public function respond(
+        LoanApplicationGuarantor $pledge,
+        bool $accept,
+        ?string $reason,
+        string $channel,
+        ?int $staffId = null,
+        ?string $documentPath = null
+    ): LoanApplicationGuarantor {
+        $application = $pledge->loanApplication;
+        $this->guardApplicationEditable($application);
+        $this->expireOverdue($application->id);
+        $pledge->refresh();
+
+        $answerable = $channel === LoanApplicationGuarantor::CHANNEL_OFFICER
+            // Staff can record an answer given on paper even after the request lapsed.
+            ? [...LoanApplicationGuarantor::AWAITING_RESPONSE_STATUSES, LoanApplicationGuarantor::STATUS_EXPIRED]
+            : [LoanApplicationGuarantor::STATUS_REQUESTED];
+
+        if (! in_array($pledge->status, $answerable, true)) {
+            throw ValidationException::withMessages([
+                'guarantor' => [match ($pledge->status) {
+                    LoanApplicationGuarantor::STATUS_ACCEPTED => 'This guarantee has already been accepted.',
+                    LoanApplicationGuarantor::STATUS_DECLINED => 'This guarantee has already been declined.',
+                    LoanApplicationGuarantor::STATUS_EXPIRED => 'This request has expired. Ask the SACCO to send it again.',
+                    default => 'This guarantee is not waiting for an answer.',
+                }],
+            ]);
+        }
+
+        return DB::connection('tenant')->transaction(function () use ($pledge, $application, $accept, $reason, $channel, $staffId, $documentPath) {
+            if ($accept && $pledge->status === LoanApplicationGuarantor::STATUS_EXPIRED) {
+                $this->assertWithinCapacity($pledge);
+            }
+
+            $pledge->forceFill([
+                'status' => $accept ? LoanApplicationGuarantor::STATUS_ACCEPTED : LoanApplicationGuarantor::STATUS_DECLINED,
+                'status_changed_at' => now(),
+                'responded_at' => now(),
+                'response_channel' => $channel,
+                'responded_by' => $staffId,
+                'decline_reason' => $accept ? null : $reason,
+                'accepted_date' => $accept ? now()->toDateString() : null,
+                'consent_document_path' => $documentPath ?? $pledge->consent_document_path,
+            ])->save();
+
+            $this->advanceIfReady($application);
+
+            return $pledge;
+        });
+    }
+
+    public function expireOverdue(?int $applicationId = null): int
+    {
+        return LoanApplicationGuarantor::query()
+            ->where('status', LoanApplicationGuarantor::STATUS_REQUESTED)
+            ->where('consent_expires_at', '<', now())
+            ->when($applicationId, fn ($q) => $q->where('loan_application_id', $applicationId))
+            ->update([
+                'status' => LoanApplicationGuarantor::STATUS_EXPIRED,
+                'status_changed_at' => now(),
+            ]);
+    }
+
+    public function requestPending(LoanApplication $application): int
+    {
+        $rules = $this->rules($application);
+        $pending = $application->guarantors()
+            ->where('status', LoanApplicationGuarantor::STATUS_PROPOSED)
+            ->get();
+
+        foreach ($pending as $pledge) {
+            $this->markRequested($pledge, $rules);
+        }
+
+        return $pending->count();
+    }
+
+    public function advanceIfReady(LoanApplication $application): bool
+    {
+        $application->refresh();
+
+        if ($application->status !== LoanApplication::STATUS_AWAITING_GUARANTORS) {
+            return false;
+        }
+
+        if (! $this->summary($application)['adequate']) {
+            return false;
+        }
+
+        $this->statusGuard->transition(
+            $application,
+            LoanApplication::STATUS_SUBMITTED,
+            'Enough guarantors have accepted.'
+        );
+        $application->submitted_at = now();
+        $application->save();
+
+        return true;
     }
 
     public function removeGuarantor(LoanApplicationGuarantor $guarantor, ?int $actorId): void
@@ -168,11 +325,21 @@ class LoanGuarantorService implements LoanGuarantorServiceInterface
 
     public function summary(LoanApplication $application): array
     {
-        $rules = $this->rules($application);
-        $pledges = $application->guarantors()->active()->get(['id', 'guarantee_amount']);
+        $this->expireOverdue($application->id);
 
-        $count = $pledges->count();
-        $pledged = (float) $pledges->sum('guarantee_amount');
+        $rules = $this->rules($application);
+        $pledges = $application->guarantors()->get(['id', 'status', 'guarantee_amount']);
+        $byStatus = fn (array $statuses) => $pledges->whereIn('status', $statuses);
+
+        // With consent on, only accepted pledges count; the ones still waiting for an
+        // answer are reported separately so the screen can say what is outstanding.
+        $counted = $rules->consentRequired
+            ? $byStatus([LoanApplicationGuarantor::STATUS_ACCEPTED])
+            : $byStatus(LoanApplicationGuarantor::ACTIVE_STATUSES);
+        $pending = $rules->consentRequired
+            ? $byStatus(LoanApplicationGuarantor::AWAITING_RESPONSE_STATUSES)
+            : collect();
+
         $loanAmount = $this->loanAmount($application);
 
         // The borrower's own free savings stand behind the loan too, so they count
@@ -181,16 +348,25 @@ class LoanGuarantorService implements LoanGuarantorServiceInterface
             ? $this->freeCapacity(LoanApplicationGuarantor::TYPE_INDIVIDUAL, (int) $application->member_id)
             : 0.0;
 
-        $covered = $pledged + $borrowerDeposits;
         $requiredCoverage = round($loanAmount * $rules->coveragePercentage / 100, 2);
 
-        $countMet = ! $rules->required || $count >= $rules->minimum;
-        $coverageMet = ! $rules->required || $rules->coveragePercentage <= 0 || $covered >= $requiredCoverage;
+        $count = $counted->count();
+        $pledged = (float) $counted->sum('guarantee_amount');
+        $covered = $pledged + $borrowerDeposits;
+
+        $countMet = $this->countMet($rules, $count);
+        $coverageMet = $this->coverageMet($rules, $covered, $requiredCoverage);
+
+        $pendingAmount = (float) $pending->sum('guarantee_amount');
+        $adequateIfPendingAccept = $this->countMet($rules, $count + $pending->count())
+            && $this->coverageMet($rules, $covered + $pendingAmount, $requiredCoverage);
 
         $problems = [];
         if (! $countMet) {
             $problems[] = sprintf(
-                'This loan needs at least %d guarantor(s); %d added.',
+                $rules->consentRequired
+                    ? 'This loan needs at least %d accepted guarantor(s); %d accepted.'
+                    : 'This loan needs at least %d guarantor(s); %d added.',
                 $rules->minimum,
                 $count
             );
@@ -203,11 +379,18 @@ class LoanGuarantorService implements LoanGuarantorServiceInterface
                 rtrim(rtrim(number_format($rules->coveragePercentage, 2), '0'), '.')
             );
         }
+        if ($problems && $pending->isNotEmpty()) {
+            $problems[] = sprintf('%d guarantor(s) have not answered yet.', $pending->count());
+        }
 
         return [
             'rules' => $rules->toArray(),
             'guarantor_count' => $count,
             'remaining_guarantors' => $rules->required ? max(0, $rules->minimum - $count) : 0,
+            'pending_count' => $pending->count(),
+            'pending_amount' => round($pendingAmount, 2),
+            'declined_count' => $byStatus([LoanApplicationGuarantor::STATUS_DECLINED])->count(),
+            'expired_count' => $byStatus([LoanApplicationGuarantor::STATUS_EXPIRED])->count(),
             'loan_amount' => $loanAmount,
             'pledged_amount' => round($pledged, 2),
             'borrower_free_savings' => $borrowerDeposits,
@@ -217,6 +400,7 @@ class LoanGuarantorService implements LoanGuarantorServiceInterface
             'count_met' => $countMet,
             'coverage_met' => $coverageMet,
             'adequate' => $countMet && $coverageMet,
+            'adequate_if_pending_accept' => $adequateIfPendingAccept,
             'problems' => $problems,
         ];
     }
@@ -303,6 +487,48 @@ class LoanGuarantorService implements LoanGuarantorServiceInterface
         }
 
         return $group->name;
+    }
+
+    private function countMet(GuarantorRules $rules, int $count): bool
+    {
+        return ! $rules->required || $count >= $rules->minimum;
+    }
+
+    private function coverageMet(GuarantorRules $rules, float $covered, float $requiredCoverage): bool
+    {
+        return ! $rules->required || $rules->coveragePercentage <= 0 || $covered >= $requiredCoverage;
+    }
+
+    /** Puts the pledge in requested with a fresh deadline and asks the guarantor. */
+    private function markRequested(LoanApplicationGuarantor $pledge, GuarantorRules $rules): void
+    {
+        $pledge->forceFill([
+            'status' => LoanApplicationGuarantor::STATUS_REQUESTED,
+            'status_changed_at' => now(),
+            'requested_at' => now(),
+            'consent_expires_at' => now()->addDays($rules->consentExpiryDays),
+            'responded_at' => null,
+            'response_channel' => null,
+            'responded_by' => null,
+            'decline_reason' => null,
+        ])->save();
+
+        $this->notifier->consentRequested($pledge);
+    }
+
+    private function assertWithinCapacity(LoanApplicationGuarantor $pledge): void
+    {
+        $free = $this->freeCapacity($pledge->guarantor_type, $pledge->guarantor_id, $pledge->id);
+
+        if ((float) $pledge->guarantee_amount > $free) {
+            throw ValidationException::withMessages([
+                'guarantee_amount' => [sprintf(
+                    '%s can now pledge at most %s. Update the amount before asking again.',
+                    $pledge->guarantorName() ?? 'This guarantor',
+                    TenantMoney::format($free)
+                )],
+            ]);
+        }
     }
 
     private function savingsBalance(string $type, int $guarantorId): float

@@ -82,6 +82,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withSchedule(function (Schedule $schedule) {
         $schedule->command('licenses:check-expiry')->daily();
         $schedule->command('expense:process-recurring')->daily();
+        $schedule->command('loan:expire-guarantor-requests')->hourly();
 
         // Step 9: Automatic Expiry Update
         $schedule->call(function () {

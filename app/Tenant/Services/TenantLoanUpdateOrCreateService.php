@@ -355,10 +355,6 @@ class TenantLoanUpdateOrCreateService extends GlobalHelpers
             return ['pledge' => $pledge, 'member' => $member];
         });
 
-        $notify = new NotificationService;
-        $this->notifyGuarantor($result['pledge'], $notify, false);
-        $notify->runTheQue();
-
         return $service->summary($application);
     }
 
@@ -381,9 +377,7 @@ class TenantLoanUpdateOrCreateService extends GlobalHelpers
         $service = app(LoanGuarantorServiceInterface::class);
         $actorId = auth()->id();
 
-        $newPledges = DB::connection('tenant')->transaction(function () use ($items, $application, $service, $actorId) {
-            $newPledges = [];
-
+        DB::connection('tenant')->transaction(function () use ($items, $application, $service, $actorId) {
             foreach ($items as $item) {
                 $picked = $this->isJSONToArray($item);
                 $picked = is_array($picked) ? (object) $picked : $picked;
@@ -395,7 +389,7 @@ class TenantLoanUpdateOrCreateService extends GlobalHelpers
                 [$type, $guarantorId, $accountId] = $this->pickedGuarantorIdentity($picked);
 
                 try {
-                    $pledge = $service->addGuarantor(
+                    $service->addGuarantor(
                         application: $application,
                         type: $type,
                         guarantorId: $guarantorId,
@@ -411,76 +405,10 @@ class TenantLoanUpdateOrCreateService extends GlobalHelpers
                         ->map(fn ($messages) => array_map(fn ($m) => str_contains($m, $name) ? $m : "{$name}: {$m}", $messages))
                         ->all());
                 }
-
-                if ($pledge->wasRecentlyCreated) {
-                    $newPledges[] = $pledge;
-                }
             }
-
-            return $newPledges;
         });
 
-        $notify = new NotificationService;
-        foreach ($newPledges as $pledge) {
-            $this->notifyGuarantor($pledge, $notify);
-        }
-        $notify->runTheQue();
-
         return $service->summary($application);
-    }
-
-    /**
-     * Tells a new guarantor they have been added. For a group guarantor every member
-     * of the group is told.
-     */
-    public function notifyGuarantor(LoanApplicationGuarantor $pledge, NotificationService $notify, $transactionInsert = true): array
-    {
-        $application = DB::table('loan_applications')->where('loan_applications.id', $pledge->loan_application_id)
-            ->join('members as mb', 'loan_applications.member_id', '=', 'mb.id')
-            ->first(['application_no', 'mb.name']);
-
-        if (! $application) {
-            return [];
-        }
-
-        $isGroup = $pledge->guarantor_type === LoanApplicationGuarantor::TYPE_GROUP;
-        $guarantorName = $pledge->guarantorName();
-
-        $recipients = $isGroup
-            ? DB::table('savings_group_members as sgm')
-                ->join('members as mb', 'sgm.member_id', '=', 'mb.id')
-                ->where('sgm.savings_group_id', $pledge->guarantor_id)
-                ->get(['mb.name', 'mb.code', 'mb.phone', 'mb.email', 'mb.id'])
-            : DB::table('members as mb')
-                ->where('mb.id', $pledge->guarantor_id)
-                ->get(['mb.name', 'mb.code', 'mb.phone', 'mb.email', 'mb.id']);
-
-        $sent = [];
-        foreach ($recipients as $recipient) {
-            $body = $isGroup
-                ? "Hello {$recipient->name}, your group {$guarantorName} has been added as a guarantor for loan application {$application->application_no}. The applicant is {$application->name}."
-                : "Hello {$recipient->name}, you have been added as a guarantor for loan application {$application->application_no}. The applicant is {$application->name}.";
-
-            $sent[] = $notify->sendNotification(
-                'saccoNotifyTheGuarantor',
-                $body,
-                $recipient,
-                [
-                    'type' => $pledge->guarantor_type,
-                    'id' => $pledge->guarantor_id,
-                    'application_id' => $pledge->loan_application_id,
-                    'guarantor_id' => $pledge->guarantor_id,
-                    'guarantor_name' => $guarantorName,
-                    'guarantor_type' => $pledge->guarantor_type,
-                ],
-                'sms',
-                'guarantor-notification',
-                $transactionInsert,
-                false
-            );
-        }
-
-        return $sent;
     }
 
     private function guarantorApplication($applicationId): LoanApplication

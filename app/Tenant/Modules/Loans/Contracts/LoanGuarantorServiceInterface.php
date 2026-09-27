@@ -31,6 +31,40 @@ interface LoanGuarantorServiceInterface
         ?int $actorId
     ): LoanApplicationGuarantor;
 
+    /**
+     * Ask the guarantor to accept or decline (again), with a fresh deadline.
+     *
+     * @throws ValidationException
+     */
+    public function requestConsent(LoanApplicationGuarantor $pledge, ?int $actorId): LoanApplicationGuarantor;
+
+    /**
+     * Record the guarantor's answer, given by the guarantor themselves through the
+     * member portal or recorded by staff (optionally with the signed form). Moves
+     * an application waiting on guarantors forward once enough have accepted.
+     *
+     * @param  string  $channel  LoanApplicationGuarantor::CHANNEL_MEMBER_PORTAL or CHANNEL_OFFICER
+     *
+     * @throws ValidationException
+     */
+    public function respond(
+        LoanApplicationGuarantor $pledge,
+        bool $accept,
+        ?string $reason,
+        string $channel,
+        ?int $staffId = null,
+        ?string $documentPath = null
+    ): LoanApplicationGuarantor;
+
+    /** Expire requests past their deadline, for one application or all. Returns how many. */
+    public function expireOverdue(?int $applicationId = null): int;
+
+    /** Ask every guarantor on the application who has not been asked yet. Returns how many. */
+    public function requestPending(LoanApplication $application): int;
+
+    /** Move an application out of awaiting_guarantors once its guarantees are adequate. */
+    public function advanceIfReady(LoanApplication $application): bool;
+
     /** @throws ValidationException */
     public function removeGuarantor(LoanApplicationGuarantor $guarantor, ?int $actorId): void;
 

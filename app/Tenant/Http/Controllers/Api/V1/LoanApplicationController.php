@@ -184,9 +184,12 @@ class LoanApplicationController extends TenantLoanService
     public function submit(LoanApplication $loanApplication)
     {
         $this->service->submit($loanApplication);
+        $loanApplication->refresh();
 
         return response()->json([
-            'message' => 'Loan Application Submitted Successfully.',
+            'message' => $loanApplication->status === LoanApplication::STATUS_AWAITING_GUARANTORS
+                ? 'Loan Application is waiting for its guarantors to accept.'
+                : 'Loan Application Submitted Successfully.',
             'data' => new LoanApplicationResource($this->withRelations($loanApplication->fresh())),
         ]);
     }

@@ -15,6 +15,11 @@ class LoanApplicationStatusGuard
     private const TRANSITIONS = [
         LoanApplication::STATUS_DRAFT => [
             LoanApplication::STATUS_SUBMITTED,
+            LoanApplication::STATUS_AWAITING_GUARANTORS,     // submitted while guarantors have not all accepted
+            LoanApplication::STATUS_CANCELLED,
+        ],
+        LoanApplication::STATUS_AWAITING_GUARANTORS => [
+            LoanApplication::STATUS_SUBMITTED,               // enough guarantors accepted
             LoanApplication::STATUS_CANCELLED,
         ],
         LoanApplication::STATUS_SUBMITTED => [
@@ -47,6 +52,7 @@ class LoanApplicationStatusGuard
         // Three-tier flow: Returned for correction
         LoanApplication::STATUS_RETURNED_FOR_CORRECTION => [
             LoanApplication::STATUS_SUBMITTED,          // applicant corrects and re-submits
+            LoanApplication::STATUS_AWAITING_GUARANTORS,
             LoanApplication::STATUS_UNDER_REVIEW,
             LoanApplication::STATUS_CANCELLED,
         ],

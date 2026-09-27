@@ -26,20 +26,34 @@ class LoanApplicationGuarantor extends Model
 
     const TYPE_GROUP = 'group';
 
+    /** Recorded, but the guarantor has not been asked to accept yet. */
     const STATUS_PROPOSED = 'proposed';
+
+    /** The guarantor has been asked and has until consent_expires_at to answer. */
+    const STATUS_REQUESTED = 'requested';
 
     const STATUS_ACCEPTED = 'accepted';
 
     const STATUS_DECLINED = 'declined';
 
+    /** The guarantor did not answer in time. */
+    const STATUS_EXPIRED = 'expired';
+
     const STATUS_WITHDRAWN = 'withdrawn';
 
+    const CHANNEL_MEMBER_PORTAL = 'member_portal';
+
+    const CHANNEL_OFFICER = 'officer';
+
     /**
-     * Statuses whose pledge still counts toward the application's guarantee and
-     * against the guarantor's capacity. Until the consent step exists, a proposed
-     * pledge counts the same as an accepted one.
+     * Statuses whose pledge still stands: it holds the guarantor's capacity, and it
+     * counts toward the application while consent is not required. When consent is
+     * required only an accepted pledge counts toward the application.
      */
-    const ACTIVE_STATUSES = [self::STATUS_PROPOSED, self::STATUS_ACCEPTED];
+    const ACTIVE_STATUSES = [self::STATUS_PROPOSED, self::STATUS_REQUESTED, self::STATUS_ACCEPTED];
+
+    /** Statuses a guarantor (or an officer on their behalf) can still answer from. */
+    const AWAITING_RESPONSE_STATUSES = [self::STATUS_PROPOSED, self::STATUS_REQUESTED];
 
     protected $fillable = [
         'code',
@@ -58,6 +72,13 @@ class LoanApplicationGuarantor extends Model
         'approved_by',
         'accepted_date',
         'released_date',
+        'requested_at',
+        'consent_expires_at',
+        'responded_at',
+        'response_channel',
+        'responded_by',
+        'decline_reason',
+        'consent_document_path',
     ];
 
     protected $casts = [
@@ -69,6 +90,10 @@ class LoanApplicationGuarantor extends Model
         'status_changed_at' => 'datetime',
         'accepted_date' => 'date',
         'released_date' => 'date',
+        'requested_at' => 'datetime',
+        'consent_expires_at' => 'datetime',
+        'responded_at' => 'datetime',
+        'responded_by' => 'integer',
     ];
 
     public function loanApplication(): BelongsTo
@@ -89,6 +114,11 @@ class LoanApplicationGuarantor extends Model
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(Staff::class, 'created_by');
+    }
+
+    public function respondedBy(): BelongsTo
+    {
+        return $this->belongsTo(Staff::class, 'responded_by');
     }
 
     public function scopeActive(Builder $query): Builder

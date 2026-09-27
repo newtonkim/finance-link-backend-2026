@@ -5,6 +5,7 @@ namespace App\Tenant\Http\Resources;
 use App\Tenant\Support\TenantMoney;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Storage;
 
 class LoanApplicationGuarantorResource extends JsonResource
 {
@@ -22,6 +23,14 @@ class LoanApplicationGuarantorResource extends JsonResource
             'guarantee_amount' => (float) $this->guarantee_amount,
             'guarantee_amount_formatted' => TenantMoney::format($this->guarantee_amount),
             'status' => $this->status,
+            'requested_at' => $this->requested_at,
+            'consent_expires_at' => $this->consent_expires_at,
+            'responded_at' => $this->responded_at,
+            'response_channel' => $this->response_channel,
+            'decline_reason' => $this->decline_reason,
+            'consent_document_url' => $this->consent_document_path
+                ? Storage::disk('public')->url($this->consent_document_path)
+                : null,
             'note' => $this->note,
             'created_at' => $this->created_at,
         ];

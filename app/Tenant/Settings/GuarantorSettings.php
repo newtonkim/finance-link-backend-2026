@@ -63,6 +63,18 @@ class GuarantorSettings
                 'settings_action_description' => 'Required coverage (%)',
                 'settings_setting_description' => 'The share of the loan amount that guarantees must cover before an application can be submitted. The borrower\'s own free savings count toward it. Only applies while guarantors are required; 0 turns the coverage check off, leaving only the number of guarantors.',
             ],
+            [
+                'settings_name' => 'sacco-guarantor-consent-required',
+                'settings_action' => ['action' => 0, 'attr' => 'switch'],
+                'settings_action_description' => 'Guarantor must accept',
+                'settings_setting_description' => 'When enabled, each guarantor is asked to accept or decline, and only guarantees they have accepted count toward the minimum number and coverage. An application whose guarantors have not all answered waits in "Awaiting guarantors" and moves on by itself once enough accept. When disabled, a guarantee counts as soon as it is recorded.',
+            ],
+            [
+                'settings_name' => 'sacco-guarantor-consent-expiry-days',
+                'settings_action' => ['action' => 7, 'attr' => 'number'],
+                'settings_action_description' => 'Days to respond',
+                'settings_setting_description' => 'How many days a guarantor has to accept or decline before the request expires. An expired request no longer holds the guarantor\'s savings and can be sent again.',
+            ],
         ];
     }
 }

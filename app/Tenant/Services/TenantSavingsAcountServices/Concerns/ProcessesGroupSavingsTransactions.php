@@ -2,6 +2,7 @@
 
 namespace App\Tenant\Services\TenantSavingsAcountServices\Concerns;
 
+use App\Tenant\Modules\Loans\Models\LoanApplicationGuarantor;
 use App\Tenant\Services\MemebersSettingSevices\CodeSequence;
 use App\Tenant\Services\MemebersSettingSevices\FindsettingsAction;
 use App\Tenant\Services\MemebersSettingSevices\ProductChargesservice;
@@ -21,7 +22,7 @@ trait ProcessesGroupSavingsTransactions
                 ->whereRaw('guarantor_id=?', [$currentBalance->savings_group_id])
                 ->where('guarantor_type', 'group')
                 ->whereNull('deleted_at')
-                ->whereIn('status', ['proposed', 'accepted'])
+                ->whereIn('status', LoanApplicationGuarantor::ACTIVE_STATUSES)
                 ->sum('guarantee_amount');
             if ($sumOfTheMoney > 0 && $sumOfTheMoney <= $amount) {
                 throw new \Exception('You cannot withdraw beyond the guaranteed amount. '.$sumOfTheMoney);

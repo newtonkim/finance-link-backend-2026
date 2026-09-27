@@ -139,15 +139,33 @@ class LoanApplicationService implements LoanApplicationServiceInterface
         // Temporarily allow submission even when required submission-stage documents are missing.
         // Keep the document checks for later workflow steps when enforcement is re-enabled.
 
+        // Guarantors who have not answered yet do not block submission when their
+        // acceptance would be enough: the application waits for them instead.
+        $awaitingGuarantors = false;
         if (empty($errors['loan_product_id']) && empty($errors['member_id'])) {
             $guarantors = $this->guarantors->summary($application);
             if (! $guarantors['adequate']) {
-                $errors['guarantors'] = $guarantors['problems'];
+                if ($guarantors['rules']['consent_required'] && $guarantors['adequate_if_pending_accept']) {
+                    $awaitingGuarantors = true;
+                } else {
+                    $errors['guarantors'] = $guarantors['problems'];
+                }
             }
         }
 
         if (! empty($errors)) {
             throw ValidationException::withMessages($errors);
+        }
+
+        if ($awaitingGuarantors) {
+            $this->guarantors->requestPending($application);
+            $this->statusGuard->transition(
+                $application,
+                LoanApplication::STATUS_AWAITING_GUARANTORS,
+                'Waiting for guarantors to accept.'
+            );
+
+            return true;
         }
 
         $this->statusGuard->transition($application, LoanApplication::STATUS_SUBMITTED);
