@@ -28,6 +28,7 @@ class ChartOfAccountsResource extends JsonResource
             'is_active' => $this->is_active,
             'allow_manual' => $this->allow_manual,
             'ifrs_category' => $this->ifrs_category,
+            'income_statement_line' => $this->income_statement_line,
             'sort_order' => $this->sort_order,
         ];
     }

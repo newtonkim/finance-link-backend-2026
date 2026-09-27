@@ -4,11 +4,13 @@ namespace App\Providers;
 
 use App\Models\Member;
 use App\Tenant\Modules\Accounting\Contracts\BalanceSheetServiceInterface;
+use App\Tenant\Modules\Accounting\Contracts\IncomeStatementServiceInterface;
 use App\Tenant\Modules\Accounting\Contracts\SavingsCoaResolverInterface;
 use App\Tenant\Modules\Accounting\Contracts\TrialBalanceServiceInterface;
 use App\Tenant\Modules\Accounting\Repositories\ChartOfAccountRepository;
 use App\Tenant\Modules\Accounting\Repositories\ChartOfAccountRepositoryInterface;
 use App\Tenant\Modules\Accounting\Services\BalanceSheetService;
+use App\Tenant\Modules\Accounting\Services\IncomeStatementService;
 use App\Tenant\Modules\Accounting\Services\SavingsCoaResolver;
 use App\Tenant\Modules\Accounting\Services\TrialBalanceService;
 use App\Tenant\Modules\Charges\Contracts\ChargeApplicationServiceInterface;
@@ -200,6 +202,11 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(
             TrialBalanceServiceInterface::class,
             TrialBalanceService::class
+        );
+
+        $this->app->bind(
+            IncomeStatementServiceInterface::class,
+            IncomeStatementService::class
         );
 
         $this->app->bind(

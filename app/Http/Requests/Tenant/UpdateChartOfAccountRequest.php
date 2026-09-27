@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Tenant;
 
+use App\Tenant\Modules\Accounting\Support\IncomeStatementLines;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -41,6 +42,7 @@ class UpdateChartOfAccountRequest extends FormRequest
             'allow_manual' => 'boolean',
             'account_subtype' => 'nullable|string|max:100',
             'ifrs_category' => 'nullable|string|max:100',
+            'income_statement_line' => ['nullable', Rule::in(IncomeStatementLines::keysFor((string) $this->input('account_type')))],
             'sort_order' => 'nullable|integer',
         ];
     }

@@ -30,7 +30,7 @@ class TenantChartOfAccountsSeederTest extends TestCase
             $this->db->getConnection($name)->getSchemaBuilder()->create('chart_of_accounts', function (Blueprint $table) {
                 $table->id();
                 $table->string('gl_code')->unique();
-                foreach (['name', 'account_type', 'account_subtype', 'normal_balance', 'ifrs_category'] as $column) {
+                foreach (['name', 'account_type', 'account_subtype', 'normal_balance', 'ifrs_category', 'income_statement_line'] as $column) {
                     $table->string($column)->nullable();
                 }
                 $table->integer('level');
@@ -69,6 +69,8 @@ class TenantChartOfAccountsSeederTest extends TestCase
         $this->seed();
         $count = $this->db->getConnection('master')->table('coa_template_accounts')->count();
         self::assertGreaterThan(0, $count);
+        self::assertSame('interest_income', $this->db->getConnection('tenant')->table('chart_of_accounts')->where('gl_code', '41101')->value('income_statement_line'));
+        self::assertSame('impairment', $this->db->getConnection('tenant')->table('chart_of_accounts')->where('gl_code', '51301')->value('income_statement_line'));
         self::assertSame($count, $this->db->getConnection('tenant')->table('chart_of_accounts')->count());
         self::assertSame(0, $this->db->getConnection('other')->table('chart_of_accounts')->count());
     }

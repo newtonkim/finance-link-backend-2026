@@ -61,6 +61,10 @@ class ChartOfAccountService
             throw new \Exception("Account with ID {$id} not found.");
         }
 
+        if (! array_key_exists('income_statement_line', $data) && isset($data['account_type']) && $data['account_type'] !== $account->account_type) {
+            $data['income_statement_line'] = null;
+        }
+
         // If parent changes, update level
         if (isset($data['parent_id']) && $data['parent_id'] != $account->parent_id) {
             if ($data['parent_id']) {

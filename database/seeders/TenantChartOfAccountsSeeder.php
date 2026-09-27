@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Tenant\Modules\Accounting\Models\ChartOfAccount;
+use App\Tenant\Modules\Accounting\Support\IncomeStatementLines;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
@@ -65,6 +66,7 @@ class TenantChartOfAccountsSeeder extends Seeder
                     'is_postable' => $account->is_postable,
                     'allow_manual' => $account->allow_manual,
                     'ifrs_category' => $account->ifrs_category,
+                    'income_statement_line' => IncomeStatementLines::bootstrap($account->gl_code, $account->name, $account->account_type),
                     'is_active' => true,
                 ]
             );
