@@ -98,8 +98,11 @@ class LoanApplicationResource extends JsonResource
                 })
 
                 ->whereRaw('loan_application_id=?', [$this->id])
+                ->whereNull('loan_application_guarantors.deleted_at')
                 ->get([
                     'guarantee_amount AS contribution',
+                    'loan_application_guarantors.status',
+                    'loan_application_guarantors.guarantor_id',
                     DB::raw('IFNULL(loan_application_guarantors.id, null) as guarantors_id'),
                     DB::raw('IFNULL(m.name, sg.name) as name'),
                     DB::raw('IFNULL(m.code, sg.code) as code'),

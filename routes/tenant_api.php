@@ -30,6 +30,7 @@ use App\Tenant\Http\Controllers\Api\V1\LoanCommitteeController;
 use App\Tenant\Http\Controllers\Api\V1\LoanController;
 use App\Tenant\Http\Controllers\Api\V1\LoanDisbursementController;
 use App\Tenant\Http\Controllers\Api\V1\LoanDocumentController;
+use App\Tenant\Http\Controllers\Api\V1\LoanGuarantorController;
 use App\Tenant\Http\Controllers\Api\V1\LoanProductController;
 use App\Tenant\Http\Controllers\Api\V1\LoanRepaymentController;
 use App\Tenant\Http\Controllers\Api\V1\LoanSettingsController;
@@ -194,6 +195,13 @@ Route::middleware('feature:loans')->group(function () {
     Route::post('loan-applications/{loanApplication}/submit', [LoanApplicationController::class, 'submit']);
     Route::post('loan-applications/{loanApplication}/cancel', [LoanApplicationController::class, 'cancel']);
     Route::post('loan-applications/{loanApplication}/reopen', [LoanApplicationController::class, 'reopen']);
+
+    // Guarantors
+    Route::get('loan-guarantors/capacity', [LoanGuarantorController::class, 'capacity']);
+    Route::get('loan-applications/{loanApplication}/guarantors', [LoanGuarantorController::class, 'index']);
+    Route::get('loan-applications/{loanApplication}/guarantors/summary', [LoanGuarantorController::class, 'summary']);
+    Route::post('loan-applications/{loanApplication}/guarantors', [LoanGuarantorController::class, 'store']);
+    Route::delete('loan-applications/{loanApplication}/guarantors/{guarantor}', [LoanGuarantorController::class, 'destroy']);
     Route::get('loan-disbursements/pending', [LoanDisbursementController::class, 'pending']);
     Route::post('loan-applications/{loanApplication}/disburse', [LoanDisbursementController::class, 'disburse']);
 

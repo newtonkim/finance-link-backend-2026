@@ -7,8 +7,10 @@ use App\Http\Requests\Tenant\AddLoanGuarantorRequest;
 use App\Tenant\Http\Resources\LoanApplicationGuarantorResource;
 use App\Tenant\Modules\Loans\Contracts\LoanGuarantorServiceInterface;
 use App\Tenant\Modules\Loans\Models\LoanApplication;
-use App\Tenant\Modules\Loans\Models\LoanGuarantor;
+use App\Tenant\Modules\Loans\Models\LoanApplicationGuarantor;
+use App\Tenant\Support\TenantMoney;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class LoanGuarantorController extends Controller
 {
@@ -18,11 +20,15 @@ class LoanGuarantorController extends Controller
 
     public function index(LoanApplication $loanApplication): JsonResponse
     {
-        $guarantors = $loanApplication->guarantors()->with('member')->get();
+        $guarantors = $loanApplication->guarantors()
+            ->active()
+            ->with(['member', 'group'])
+            ->oldest('id')
+            ->get();
 
         return response()->json([
             'data' => LoanApplicationGuarantorResource::collection($guarantors),
-            'adequate' => $this->service->validateAdequacy($loanApplication),
+            'summary' => $this->service->summary($loanApplication),
         ]);
     }
 
@@ -30,43 +36,60 @@ class LoanGuarantorController extends Controller
     {
         $guarantor = $this->service->addGuarantor(
             application: $loanApplication,
-            memberId: $request->integer('member_id'),
-            guaranteeAmount: (float) $request->input('guarantee_amount'),
-            notes: $request->input('notes'),
-            actorId: auth('tenant')->id() ?? auth()->id() ?? 1,
+            type: $request->string('guarantor_type')->toString(),
+            guarantorId: $request->integer('guarantor_id'),
+            accountId: $request->filled('guarantor_account_id') ? $request->integer('guarantor_account_id') : null,
+            amount: (float) $request->input('guarantee_amount'),
+            note: $request->input('note'),
+            actorId: $this->actorId(),
         );
 
-        $guarantor->load('member');
+        $guarantor->load(['member', 'group']);
 
         return response()->json([
-            'message' => 'Guarantor added successfully.',
+            'message' => 'Guarantor saved.',
             'data' => new LoanApplicationGuarantorResource($guarantor),
+            'summary' => $this->service->summary($loanApplication),
         ], 201);
     }
 
-    public function destroy(LoanApplication $loanApplication, LoanGuarantor $guarantor): JsonResponse
+    public function destroy(LoanApplication $loanApplication, LoanApplicationGuarantor $guarantor): JsonResponse
     {
-        // Ensure guarantor belongs to this application
         abort_if($guarantor->loan_application_id !== $loanApplication->id, 404);
 
-        $this->service->removeGuarantor($guarantor);
-
-        return response()->json(['message' => 'Guarantor removed successfully.']);
-    }
-
-    public function validate(LoanApplication $loanApplication): JsonResponse
-    {
-        $adequate = $this->service->validateAdequacy($loanApplication);
-        $required = (int) ($loanApplication->loanProduct?->min_guarantors ?? 0);
-        $actual = $loanApplication->guarantors()->count();
+        $this->service->removeGuarantor($guarantor, $this->actorId());
 
         return response()->json([
-            'data' => [
-                'adequate' => $adequate,
-                'required' => $required,
-                'actual' => $actual,
-                'remaining_needed' => max(0, $required - $actual),
-            ],
+            'message' => 'Guarantor removed.',
+            'summary' => $this->service->summary($loanApplication),
         ]);
+    }
+
+    public function summary(LoanApplication $loanApplication): JsonResponse
+    {
+        return response()->json(['data' => $this->service->summary($loanApplication)]);
+    }
+
+    /** How much more a member or group can pledge, for showing while picking guarantors. */
+    public function capacity(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'guarantor_type' => ['required', 'string', 'in:individual,group'],
+            'guarantor_id' => ['required', 'integer', 'min:1'],
+        ]);
+
+        $free = $this->service->freeCapacity($validated['guarantor_type'], (int) $validated['guarantor_id']);
+
+        return response()->json(['data' => [
+            'guarantor_type' => $validated['guarantor_type'],
+            'guarantor_id' => (int) $validated['guarantor_id'],
+            'free_capacity' => $free,
+            'free_capacity_formatted' => TenantMoney::format($free),
+        ]]);
+    }
+
+    private function actorId(): ?int
+    {
+        return auth('tenant')->id() ?? auth()->id();
     }
 }

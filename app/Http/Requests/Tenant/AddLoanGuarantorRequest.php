@@ -4,6 +4,11 @@ namespace App\Http\Requests\Tenant;
 
 use Illuminate\Foundation\Http\FormRequest;
 
+/**
+ * Shape checks only. Whether this guarantor may stand for this loan (membership,
+ * self-guarantee, capacity, maximum count) is decided by LoanGuarantorService,
+ * which every path that saves a guarantor goes through.
+ */
 class AddLoanGuarantorRequest extends FormRequest
 {
     public function authorize(): bool
@@ -14,9 +19,11 @@ class AddLoanGuarantorRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'member_id' => ['required', 'integer', 'exists:tenant.members,id'],
-            'guarantee_amount' => ['required', 'numeric', 'min:0'],
-            'notes' => ['nullable', 'string', 'max:500'],
+            'guarantor_type' => ['required', 'string', 'in:individual,group'],
+            'guarantor_id' => ['required', 'integer', 'min:1'],
+            'guarantor_account_id' => ['nullable', 'integer', 'min:1'],
+            'guarantee_amount' => ['required', 'numeric', 'gt:0'],
+            'note' => ['nullable', 'string', 'max:500'],
         ];
     }
 }

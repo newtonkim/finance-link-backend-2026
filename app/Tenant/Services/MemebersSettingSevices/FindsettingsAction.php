@@ -42,6 +42,7 @@ class FindsettingsAction extends CodeSequence
     public function saccoMemberRequireApprovalBeforeMemberBecomesActive()
     {
         $proval = $this->getSettingAction('sacco-members-Require-approval-before-members-becomes-active');
+
         return $proval == '1' ? 'active' : 'Pending';
     }
 
@@ -69,6 +70,7 @@ class FindsettingsAction extends CodeSequence
     public function saccoMemberOnMemberCreationCreateShareMinimumValue()
     {
         $results = $this->getSettingAction('sacco-share-on-member-creation-create-share-minimum-value') ?? 1;
+
         return $results;
     }
 
@@ -206,14 +208,24 @@ class FindsettingsAction extends CodeSequence
         return in_array($result, ['1', 'true', 1, true], true) ? true : false;
     }
 
+    /**
+     * The raw action value of a setting, or $default when this tenant has no such row.
+     * Only settings from the modules passed to the constructor are visible.
+     */
+    public function settingValue(string $key, $default = null)
+    {
+        return $this->settingsCollection[strtolower($key)]['action'] ?? $default;
+    }
+
     public function saccoMemberSaveAndSavingAccountAtOnce()
     {
         return $this->isEnabled('sacco-members-on-member-creation-save-a-sacco-account-at-the-same-time');
-        
+
     }
+
     public function saccoSavingsAccountsConsiderMinimumBalance()
     {
         return $this->isEnabled('sacco-savings-accounts-consider-minimum-balance');
-        
+
     }
 }

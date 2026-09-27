@@ -4,6 +4,7 @@ namespace App\Tenant\Modules\Loans\Services;
 
 use App\Tenant\Modules\Loans\Contracts\LoanApplicationServiceInterface;
 use App\Tenant\Modules\Loans\Contracts\LoanDocumentServiceInterface;
+use App\Tenant\Modules\Loans\Contracts\LoanGuarantorServiceInterface;
 use App\Tenant\Modules\Loans\Models\LoanApplication;
 use App\Tenant\Services\MemebersSettingSevices\CodeSequence;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -14,6 +15,7 @@ class LoanApplicationService implements LoanApplicationServiceInterface
     public function __construct(
         protected LoanApplicationStatusGuard $statusGuard,
         protected LoanDocumentServiceInterface $documents,
+        protected LoanGuarantorServiceInterface $guarantors,
     ) {}
 
     /**
@@ -136,6 +138,13 @@ class LoanApplicationService implements LoanApplicationServiceInterface
 
         // Temporarily allow submission even when required submission-stage documents are missing.
         // Keep the document checks for later workflow steps when enforcement is re-enabled.
+
+        if (empty($errors['loan_product_id']) && empty($errors['member_id'])) {
+            $guarantors = $this->guarantors->summary($application);
+            if (! $guarantors['adequate']) {
+                $errors['guarantors'] = $guarantors['problems'];
+            }
+        }
 
         if (! empty($errors)) {
             throw ValidationException::withMessages($errors);
