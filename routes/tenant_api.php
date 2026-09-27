@@ -198,6 +198,8 @@ Route::middleware('feature:loans')->group(function () {
 
     // Guarantors
     Route::get('loan-guarantors/capacity', [LoanGuarantorController::class, 'capacity']);
+    Route::get('loan-guarantors/arrears', [LoanGuarantorController::class, 'arrearsWatchList']);
+    Route::post('loans/{loan}/guarantors/notify-arrears', [LoanGuarantorController::class, 'notifyArrears']);
     Route::get('loan-applications/{loanApplication}/guarantors', [LoanGuarantorController::class, 'index']);
     Route::get('loan-applications/{loanApplication}/guarantors/summary', [LoanGuarantorController::class, 'summary']);
     Route::post('loan-applications/{loanApplication}/guarantors', [LoanGuarantorController::class, 'store']);

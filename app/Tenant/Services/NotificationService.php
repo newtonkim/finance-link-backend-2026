@@ -86,10 +86,14 @@ class NotificationService extends GlobalHelpers
         return $dd->{$method}() ? $this->QueNotifications(...$params) : (object) [];
     }
 
-    public function runTheQue()
+    /**
+     * @param  string|null  $subdomain  the tenant to send for; needed outside an HTTP
+     *                                  request (scheduled commands), where there is no header
+     */
+    public function runTheQue(?string $subdomain = null)
     {
 
-        SendQueuedNotificationsAndMessages::dispatch(request()->header('X-Tenant-Subdomain')); // trigger job
+        SendQueuedNotificationsAndMessages::dispatch($subdomain ?? request()->header('X-Tenant-Subdomain')); // trigger job
     }
 
     public function QueNotifications(
@@ -122,7 +126,9 @@ class NotificationService extends GlobalHelpers
                     ...$other_data,
                 ],
                 'channel' => $type,
-                'sender_id' => auth()->user()->id,
+                // 0 marks a message the system sent by itself (a scheduled command),
+                // as for other system-created rows.
+                'sender_id' => auth()->id() ?? 0,
                 'receiver_id' => $receiver_id->phone ?? $receiver_id->email,
             ];
             if (isset($getCost) && $getCost->channel == 'sms') {

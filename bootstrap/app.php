@@ -83,6 +83,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('licenses:check-expiry')->daily();
         $schedule->command('expense:process-recurring')->daily();
         $schedule->command('loan:expire-guarantor-requests')->hourly();
+        // 06:00 UTC is 09:00 in East Africa, so guarantors are texted in the morning.
+        $schedule->command('loan:notify-guarantors-arrears')->dailyAt('06:00');
 
         // Step 9: Automatic Expiry Update
         $schedule->call(function () {
