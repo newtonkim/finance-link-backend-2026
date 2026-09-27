@@ -60,6 +60,7 @@ Route::prefix('v1/tenant')->middleware(['tenant.api'])->group(function () {
             Route::post('guarantee-requests/{id}/accept', [MemberGuaranteeController::class, 'accept'])->whereNumber('id');
             Route::post('guarantee-requests/{id}/decline', [MemberGuaranteeController::class, 'decline'])->whereNumber('id');
             Route::get('guarantor-recoveries', [MemberGuaranteeController::class, 'recoveries']);
+            Route::post('guarantee-requests/{id}/request-release', [MemberGuaranteeController::class, 'requestRelease'])->whereNumber('id');
         });
     });
 

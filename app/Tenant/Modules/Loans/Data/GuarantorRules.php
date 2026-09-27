@@ -35,6 +35,8 @@ class GuarantorRules
         /** 0 means recovery is allowed as soon as the loan is overdue. */
         public readonly int $recoveryAfterDays = 90,
         public readonly int $recoveryLoanTermMonths = 12,
+        /** When true, guaranteed loans are never topped up without a loan application. */
+        public readonly bool $topupNeedsGuarantors = true,
     ) {}
 
     public static function for(?LoanProduct $product = null): self
@@ -74,6 +76,7 @@ class GuarantorRules
             arrearsReminderDays: max(0, (int) $value('sacco-guarantor-arrears-reminder-days')),
             recoveryAfterDays: max(0, (int) $value('sacco-guarantor-recovery-after-days')),
             recoveryLoanTermMonths: max(1, (int) $value('sacco-guarantor-recovery-loan-term-months')),
+            topupNeedsGuarantors: $enabled('sacco-guarantor-topup-needs-guarantors'),
         );
     }
 
@@ -94,6 +97,7 @@ class GuarantorRules
             'arrears_reminder_days' => $this->arrearsReminderDays,
             'recovery_after_days' => $this->recoveryAfterDays,
             'recovery_loan_term_months' => $this->recoveryLoanTermMonths,
+            'topup_needs_guarantors' => $this->topupNeedsGuarantors,
         ];
     }
 }

@@ -95,6 +95,11 @@ class LoanApplicationGuarantor extends Model
         'release_reason',
         'arrears_notified_at',
         'arrears_notice_count',
+        'substitutes_id',
+        'substituted_by_id',
+        'release_requested_at',
+        'release_request_reason',
+        'reschedule_notified_at',
     ];
 
     protected $casts = [
@@ -116,6 +121,10 @@ class LoanApplicationGuarantor extends Model
         'released_at' => 'datetime',
         'arrears_notified_at' => 'datetime',
         'arrears_notice_count' => 'integer',
+        'substitutes_id' => 'integer',
+        'substituted_by_id' => 'integer',
+        'release_requested_at' => 'datetime',
+        'reschedule_notified_at' => 'datetime',
     ];
 
     public function loanApplication(): BelongsTo
@@ -126,6 +135,12 @@ class LoanApplicationGuarantor extends Model
     public function loan(): BelongsTo
     {
         return $this->belongsTo(Loan::class);
+    }
+
+    /** The guarantee this one is replacing, while it waits to take over. */
+    public function substitutes(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'substitutes_id');
     }
 
     public function member(): BelongsTo

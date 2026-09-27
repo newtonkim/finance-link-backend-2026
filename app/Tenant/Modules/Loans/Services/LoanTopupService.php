@@ -3,14 +3,19 @@
 namespace App\Tenant\Modules\Loans\Services;
 
 use App\Tenant\Modules\Loans\Contracts\LoanDisbursementServiceInterface;
+use App\Tenant\Modules\Loans\Contracts\LoanGuarantorServiceInterface;
 use App\Tenant\Modules\Loans\Contracts\LoanRepaymentServiceInterface;
+use App\Tenant\Modules\Loans\Data\GuarantorRules;
 use App\Tenant\Modules\Loans\Enums\LoanStatus;
 use App\Tenant\Modules\Loans\Models\Loan;
 use App\Tenant\Modules\Loans\Models\LoanApplication;
+use App\Tenant\Modules\Loans\Models\LoanApplicationGuarantor;
 use App\Tenant\Modules\Settings\Models\LoanSetting;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class LoanTopupService
 {
@@ -71,7 +76,15 @@ class LoanTopupService
             ? $referenceLoan->getTotalOutstandingAmount() + $freshCashAmount
             : $freshCashAmount;
 
-        if ($autoDisburse) {
+        // Topping up changes what the guarantors stand behind, so a guaranteed loan
+        // goes through an application, where they agree to the new amount (or are
+        // replaced), instead of being paid out straight away.
+        $hasGuarantors = LoanApplicationGuarantor::query()
+            ->where('loan_id', $referenceLoan->id)
+            ->where('status', LoanApplicationGuarantor::STATUS_LOCKED)
+            ->exists();
+
+        if ($autoDisburse && ! ($hasGuarantors && GuarantorRules::for()->topupNeedsGuarantors)) {
             return $this->executeExpressFlow(
                 $referenceLoan,
                 $newLoanTotal,
@@ -198,6 +211,12 @@ class LoanTopupService
         return DB::connection('tenant')->transaction(function () use (
             $referenceLoan, $freshCashAmount, $newLoanTotal, $requestedTerm, $topupType, $staffId
         ) {
+            // Read before the old loan closes, which releases its guarantees.
+            $guaranteesBefore = LoanApplicationGuarantor::query()
+                ->where('loan_id', $referenceLoan->id)
+                ->where('status', LoanApplicationGuarantor::STATUS_LOCKED)
+                ->get();
+
             // 1. Close old loan (consolidated only)
             if ($topupType === 'consolidated') {
                 $payoffAmount = $referenceLoan->getTotalOutstandingAmount();
@@ -232,6 +251,10 @@ class LoanTopupService
                 'created_by' => $staffId,
             ]);
 
+            // 2b. Carry the old loan's guarantors onto the new application. Each is
+            // asked (or told) afresh, since the amount they stand behind has changed.
+            $carried = $this->carryGuarantorsOver($guaranteesBefore, $application, $staffId);
+
             // 3. Create the topup application record for audit
             $applicationNumber = 'TU-'.strtoupper(Str::random(8));
             DB::connection('tenant')->table('loan_topup_applications')->insert([
@@ -255,10 +278,47 @@ class LoanTopupService
 
             return [
                 'flow' => 'standard',
-                'message' => 'Top-up application created as draft. It will follow the standard approval process.',
+                'message' => 'Top-up application created as draft. It will follow the standard approval process.'
+                    .($carried['skipped'] ? ' Some of the old loan\'s guarantors could not be carried over; add replacements on the application.' : ''),
                 'application_id' => $application->id,
                 'application_number' => $applicationNo,
+                'guarantors_carried' => $carried['carried'],
+                'guarantors_skipped' => $carried['skipped'],
             ];
         });
+    }
+
+    /**
+     * Put the old loan's guarantors on the new application for the same amounts.
+     * Each goes through the usual guarantor rules, so one who can no longer afford
+     * it, or is no longer an active member, is left off and reported.
+     *
+     * @param  Collection<int, LoanApplicationGuarantor>  $guarantees
+     * @return array{carried: list<string>, skipped: list<array{name: ?string, reason: string}>}
+     */
+    private function carryGuarantorsOver(Collection $guarantees, LoanApplication $application, int $staffId): array
+    {
+        $service = app(LoanGuarantorServiceInterface::class);
+        $carried = [];
+        $skipped = [];
+
+        foreach ($guarantees as $old) {
+            try {
+                $new = $service->addGuarantor(
+                    application: $application,
+                    type: $old->guarantor_type,
+                    guarantorId: (int) $old->guarantor_id,
+                    accountId: $old->guarantor_account_id,
+                    amount: (float) $old->guarantee_amount,
+                    note: 'Carried over from the topped-up loan',
+                    actorId: $staffId,
+                );
+                $carried[] = $new->guarantorName();
+            } catch (ValidationException $e) {
+                $skipped[] = ['name' => $old->guarantorName(), 'reason' => collect($e->errors())->flatten()->first()];
+            }
+        }
+
+        return ['carried' => $carried, 'skipped' => $skipped];
     }
 }
