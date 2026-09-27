@@ -22,6 +22,7 @@ class LoanApplicationGuarantorResource extends JsonResource
             'guarantor_code' => $this->guarantor_type === 'group' ? $this->group?->code : $this->member?->code,
             'guarantee_amount' => (float) $this->guarantee_amount,
             'guarantee_amount_formatted' => TenantMoney::format($this->guarantee_amount),
+            'recovered_amount' => (float) $this->recovered_amount,
             'status' => $this->status,
             'requested_at' => $this->requested_at,
             'consent_expires_at' => $this->consent_expires_at,

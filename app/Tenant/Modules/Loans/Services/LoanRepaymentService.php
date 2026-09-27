@@ -168,14 +168,16 @@ class LoanRepaymentService implements LoanRepaymentServiceInterface
 
             Transaction::create([
                 'reference' => $reference,
-                'member_id' => $loan->member_id,
+                // The savings belong to whoever owns the account, which is a guarantor
+                // rather than the borrower when a loan is recovered from guarantors.
+                'member_id' => $savingsAccount->member_id ?? $loan->member_id,
                 'type' => 'loan_repayment',
                 'amount' => $amount,
                 'payment_mode' => 'savings_account',
                 'transaction_date' => $paymentDate,
                 'account_id' => $savingsAccount->id,
                 'account_type' => SavingsAccount::class,
-                'narration' => "Loan repayment – {$loan->loan_no}",
+                'narration' => $data['narration'] ?? "Loan repayment – {$loan->loan_no}",
                 'created_by' => $actorId,
             ]);
 

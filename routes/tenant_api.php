@@ -17,6 +17,7 @@ use App\Tenant\Http\Controllers\Api\V1\ExpenseThresholdController;
 use App\Tenant\Http\Controllers\Api\V1\FinancialYearController;
 use App\Tenant\Http\Controllers\Api\V1\FixedDepositController;
 use App\Tenant\Http\Controllers\Api\V1\GeneralChargeController;
+use App\Tenant\Http\Controllers\Api\V1\GuarantorRecoveryController;
 use App\Tenant\Http\Controllers\Api\V1\IncomeStatementController;
 use App\Tenant\Http\Controllers\Api\V1\JournalEntryController;
 use App\Tenant\Http\Controllers\Api\V1\LicenseStatusController;
@@ -200,6 +201,15 @@ Route::middleware('feature:loans')->group(function () {
     Route::get('loan-guarantors/capacity', [LoanGuarantorController::class, 'capacity']);
     Route::get('loan-guarantors/arrears', [LoanGuarantorController::class, 'arrearsWatchList']);
     Route::post('loans/{loan}/guarantors/notify-arrears', [LoanGuarantorController::class, 'notifyArrears']);
+
+    // Recovering defaulted loans from guarantors
+    Route::get('loans/{loan}/guarantor-recovery/plan', [GuarantorRecoveryController::class, 'plan']);
+    Route::post('loans/{loan}/guarantor-recovery', [GuarantorRecoveryController::class, 'store']);
+    Route::get('guarantor-recoveries', [GuarantorRecoveryController::class, 'index']);
+    Route::get('guarantor-recoveries/{guarantorRecovery}', [GuarantorRecoveryController::class, 'show']);
+    Route::post('guarantor-recoveries/{guarantorRecovery}/approve', [GuarantorRecoveryController::class, 'approve']);
+    Route::post('guarantor-recoveries/{guarantorRecovery}/reject', [GuarantorRecoveryController::class, 'reject']);
+    Route::post('guarantor-recoveries/{guarantorRecovery}/repayments', [GuarantorRecoveryController::class, 'repay']);
     Route::get('loan-applications/{loanApplication}/guarantors', [LoanGuarantorController::class, 'index']);
     Route::get('loan-applications/{loanApplication}/guarantors/summary', [LoanGuarantorController::class, 'summary']);
     Route::post('loan-applications/{loanApplication}/guarantors', [LoanGuarantorController::class, 'store']);

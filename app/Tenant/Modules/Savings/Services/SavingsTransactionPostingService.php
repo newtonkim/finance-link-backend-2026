@@ -40,8 +40,10 @@ class SavingsTransactionPostingService
             $account->balance += $amount;
             $account->loadMissing('savingsProduct.charges');
 
+            // skip_charges: money returned to a member (such as a borrower repaying the
+            // guarantors who covered their loan) is not a new deposit to charge for.
             $depositCharges = [];
-            foreach ($this->resolveSelectedCharges($account) as $charge) {
+            foreach (empty($data['skip_charges']) ? $this->resolveSelectedCharges($account) : [] as $charge) {
                 if (($charge['type'] ?? '') !== 'deposit') {
                     continue;
                 }
