@@ -93,6 +93,18 @@ class GuarantorSettings
                 'settings_action_description' => 'Repeat the warning every (days)',
                 'settings_setting_description' => 'While the loan stays overdue, warn its guarantors again this many days after the last warning. 0 sends the warning only once.',
             ],
+            [
+                'settings_name' => 'sacco-guarantor-recovery-after-days',
+                'settings_action' => ['action' => 90, 'attr' => 'number'],
+                'settings_action_description' => 'Recover from guarantors after (days overdue)',
+                'settings_setting_description' => 'How long a loan must be overdue before staff can recover it from the borrower\'s savings and then its guarantors\' savings. A recovery is proposed by one staff member and approved by another. 0 allows it as soon as the loan is overdue.',
+            ],
+            [
+                'settings_name' => 'sacco-guarantor-recovery-loan-term-months',
+                'settings_action' => ['action' => 12, 'attr' => 'number'],
+                'settings_action_description' => 'Months for the borrower to repay guarantors',
+                'settings_setting_description' => 'What guarantors pay is turned into a recovery loan the borrower owes them, repaid in equal monthly instalments over this many months. Each repayment goes back into the guarantors\' savings.',
+            ],
         ];
     }
 }

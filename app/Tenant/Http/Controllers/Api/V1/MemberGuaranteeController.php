@@ -5,8 +5,11 @@ namespace App\Tenant\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\Member;
 use App\Tenant\Modules\Loans\Contracts\LoanGuarantorServiceInterface;
+use App\Tenant\Modules\Loans\Models\GuarantorRecovery;
+use App\Tenant\Modules\Loans\Models\GuarantorRecoveryLine;
 use App\Tenant\Modules\Loans\Models\LoanApplicationGuarantor;
 use App\Tenant\Modules\Loans\Services\GuarantorArrearsService;
+use App\Tenant\Modules\Loans\Services\GuarantorRecoveryService;
 use App\Tenant\Support\TenantMoney;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -27,7 +30,7 @@ class MemberGuaranteeController extends Controller
     public function index(Request $request): JsonResponse
     {
         $request->validate([
-            'status' => ['nullable', 'string', 'in:requested,accepted,declined,expired,locked,released'],
+            'status' => ['nullable', 'string', 'in:requested,accepted,declined,expired,locked,released,invoked'],
         ]);
 
         $this->service->expireOverdue();
@@ -40,6 +43,7 @@ class MemberGuaranteeController extends Controller
                 LoanApplicationGuarantor::STATUS_EXPIRED,
                 LoanApplicationGuarantor::STATUS_LOCKED,
                 LoanApplicationGuarantor::STATUS_RELEASED,
+                LoanApplicationGuarantor::STATUS_INVOKED,
             ])
             ->when($request->input('status'), fn ($q, $status) => $q->where('status', $status))
             ->with('loanApplication.member')
@@ -113,6 +117,52 @@ class MemberGuaranteeController extends Controller
         ]);
     }
 
+    /**
+     * Recovery loans on both sides: ones the member owes because their guarantors
+     * covered their loan, and what borrowers owe the member for loans they covered.
+     */
+    public function recoveries(Request $request, GuarantorRecoveryService $recoveries): JsonResponse
+    {
+        /** @var Member $member */
+        $member = $request->user();
+
+        $owedByMe = GuarantorRecovery::query()
+            ->where('member_id', $member->id)
+            ->whereNotNull('recovery_loan_status')
+            ->with('loan')
+            ->latest('id')
+            ->get()
+            ->map(fn (GuarantorRecovery $r) => [
+                'code' => $r->code,
+                'loan_no' => $r->loan?->loan_no,
+                'status' => $r->recovery_loan_status,
+                'amount' => (float) $r->guarantor_amount,
+                'repaid' => (float) $r->recovery_loan_repaid,
+                'outstanding' => $r->recoveryLoanOutstanding(),
+                'outstanding_formatted' => TenantMoney::format($r->recoveryLoanOutstanding()),
+                'schedule' => $recoveries->schedule($r),
+            ]);
+
+        $owedToMe = GuarantorRecoveryLine::query()
+            ->where('member_id', $member->id)
+            ->where('source', GuarantorRecoveryLine::SOURCE_GUARANTOR)
+            ->whereHas('recovery', fn ($q) => $q->where('status', GuarantorRecovery::STATUS_EXECUTED))
+            ->with('recovery.loan', 'recovery.member')
+            ->latest('id')
+            ->get()
+            ->map(fn (GuarantorRecoveryLine $line) => [
+                'code' => $line->recovery->code,
+                'loan_no' => $line->recovery->loan?->loan_no,
+                'borrower_name' => $line->recovery->member?->name,
+                'taken' => (float) $line->amount,
+                'repaid' => (float) $line->repaid_amount,
+                'owed' => $line->owed(),
+                'owed_formatted' => TenantMoney::format($line->owed()),
+            ]);
+
+        return response()->json(['data' => ['owed_by_me' => $owedByMe, 'owed_to_me' => $owedToMe]]);
+    }
+
     private function ownGuarantees(Request $request)
     {
         /** @var Member $member */
@@ -136,6 +186,7 @@ class MemberGuaranteeController extends Controller
             'consent_expires_at' => $guarantee->consent_expires_at,
             'responded_at' => $guarantee->responded_at,
             'decline_reason' => $guarantee->decline_reason,
+            'recovered_amount' => (float) $guarantee->recovered_amount,
             'locked_at' => $guarantee->locked_at,
             'released_at' => $guarantee->released_at,
             'loan_application' => $application ? [

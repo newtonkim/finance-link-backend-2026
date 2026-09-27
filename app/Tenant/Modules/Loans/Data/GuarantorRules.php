@@ -32,6 +32,9 @@ class GuarantorRules
         public readonly int $arrearsNoticeDays = 30,
         /** 0 means the arrears warning is not repeated. */
         public readonly int $arrearsReminderDays = 0,
+        /** 0 means recovery is allowed as soon as the loan is overdue. */
+        public readonly int $recoveryAfterDays = 90,
+        public readonly int $recoveryLoanTermMonths = 12,
     ) {}
 
     public static function for(?LoanProduct $product = null): self
@@ -69,6 +72,8 @@ class GuarantorRules
             holdSavings: $enabled('sacco-guarantor-hold-savings'),
             arrearsNoticeDays: max(0, (int) $value('sacco-guarantor-arrears-notice-days')),
             arrearsReminderDays: max(0, (int) $value('sacco-guarantor-arrears-reminder-days')),
+            recoveryAfterDays: max(0, (int) $value('sacco-guarantor-recovery-after-days')),
+            recoveryLoanTermMonths: max(1, (int) $value('sacco-guarantor-recovery-loan-term-months')),
         );
     }
 
@@ -87,6 +92,8 @@ class GuarantorRules
             'hold_savings' => $this->holdSavings,
             'arrears_notice_days' => $this->arrearsNoticeDays,
             'arrears_reminder_days' => $this->arrearsReminderDays,
+            'recovery_after_days' => $this->recoveryAfterDays,
+            'recovery_loan_term_months' => $this->recoveryLoanTermMonths,
         ];
     }
 }

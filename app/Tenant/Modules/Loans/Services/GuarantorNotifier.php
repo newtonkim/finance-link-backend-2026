@@ -2,6 +2,7 @@
 
 namespace App\Tenant\Modules\Loans\Services;
 
+use App\Tenant\Modules\Loans\Models\GuarantorRecovery;
 use App\Tenant\Modules\Loans\Models\LoanApplicationGuarantor;
 use App\Tenant\Services\NotificationService;
 use App\Tenant\Support\TenantMoney;
@@ -58,6 +59,49 @@ class GuarantorNotifier
 
             return "Hello {$recipient->name}, loan {$arrears['loan_no']} of {$application->name}, which {$whose} savings guarantee, is {$days} days overdue with {$overdue} unpaid. {$held} of {$whose} savings is held for it. Please encourage them to pay.";
         }, $subdomain);
+    }
+
+    /** The SACCO took $amount from the guarantor's savings to repay the loan. */
+    public function recovered(LoanApplicationGuarantor $pledge, float $amount, string $loanNo): void
+    {
+        $taken = TenantMoney::format($amount);
+
+        $this->send($pledge, function (object $recipient, object $application) use ($taken, $loanNo) {
+            return "Hello {$recipient->name}, {$taken} was taken from your savings to repay loan {$loanNo} of {$application->name}, which you guaranteed. {$application->name} now owes you this and will repay it to you through the SACCO.";
+        });
+    }
+
+    /** Tells the borrower they now owe their guarantors what the guarantors paid. */
+    public function recoveryLoanCreated(GuarantorRecovery $recovery, string $loanNo, float $instalment): void
+    {
+        $member = DB::table('members')->where('id', $recovery->member_id)->first(['name', 'code', 'phone', 'email', 'id']);
+
+        if (! $member) {
+            return;
+        }
+
+        $owed = TenantMoney::format($recovery->guarantor_amount);
+        $monthly = TenantMoney::format($instalment);
+        $body = "Hello {$member->name}, your guarantors paid {$owed} toward loan {$loanNo}. You now owe them this as recovery loan {$recovery->code}, repayable at {$monthly} a month through the SACCO.";
+
+        $notify = new NotificationService;
+
+        try {
+            $notify->sendNotification(
+                'saccoNotifyTheGuarantor',
+                $body,
+                $member,
+                ['type' => 'recovery-loan', 'id' => $recovery->id, 'loan_id' => $recovery->loan_id],
+                'sms',
+                'guarantor-notification',
+                true,
+                false
+            );
+        } catch (\Throwable $e) {
+            Log::warning('Could not queue recovery loan SMS', ['guarantor_recovery_id' => $recovery->id, 'error' => $e->getMessage()]);
+        }
+
+        DB::connection('tenant')->afterCommit(fn () => $notify->runTheQue());
     }
 
     private function send(LoanApplicationGuarantor $pledge, callable $body, ?string $subdomain = null): void

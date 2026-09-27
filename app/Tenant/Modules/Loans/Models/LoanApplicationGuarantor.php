@@ -47,6 +47,9 @@ class LoanApplicationGuarantor extends Model
     /** The loan was closed, so the guarantee no longer holds anything. */
     const STATUS_RELEASED = 'released';
 
+    /** The SACCO took money from the guarantor's savings to repay the loan. */
+    const STATUS_INVOKED = 'invoked';
+
     const CHANNEL_MEMBER_PORTAL = 'member_portal';
 
     const CHANNEL_OFFICER = 'officer';
@@ -68,6 +71,7 @@ class LoanApplicationGuarantor extends Model
         'guarantor_account_id',
         'guarantor_type',
         'guarantee_amount',
+        'recovered_amount',
         'max_guarantee_used',
         'status',
         'status_changed_at',
@@ -98,6 +102,7 @@ class LoanApplicationGuarantor extends Model
         'guarantor_id' => 'integer',
         'guarantor_account_id' => 'integer',
         'guarantee_amount' => 'decimal:2',
+        'recovered_amount' => 'decimal:2',
         'max_guarantee_used' => 'decimal:2',
         'status_changed_at' => 'datetime',
         'accepted_date' => 'date',
