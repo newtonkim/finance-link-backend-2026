@@ -3,6 +3,7 @@
 namespace App\Tenant\Services;
 
 use App\Tenant\Services\TenantSavingsAcountServices\OtherHelpers;
+use App\Tenant\Settings\GuarantorSettings;
 use Illuminate\Support\Facades\DB;
 
 class TenantSettingService extends TenantSettingUpdateOrCreateService
@@ -79,19 +80,19 @@ class TenantSettingService extends TenantSettingUpdateOrCreateService
     {
         $subdomain = request()->header('X-Tenant-Subdomain');
         $tenantId = DB::connection('master')->table('tenants')->where('subdomain', $subdomain)->first(['id'])->id;
-        $table = DB::select("
+        $table = DB::select('
         SELECT TABLE_NAME, UPDATE_TIME
         FROM information_schema.tables
         WHERE TABLE_SCHEMA = DATABASE()
         ORDER BY UPDATE_TIME DESC 
-        ");
+        ');
         $req = request();
         $collection = [];
         foreach ($table as $key => $value) {
             // // $tables[] = $value->TABLE_NAME;
             // $status = isset($req['status']) && $req['status'] !== 'all' ? [$req['status']] : null;
-            $query = DB::connection('sacco_logs')->table($value->TABLE_NAME . ' as d')
-            ->where('d.sacco_log_tenant_id', $tenantId);
+            $query = DB::connection('sacco_logs')->table($value->TABLE_NAME.' as d')
+                ->where('d.sacco_log_tenant_id', $tenantId);
 
             if ($req->has('search_keyword')) {
                 $query = $this->dynamic_search_db_query($query, $req['search_keyword'], [], filterable: ['date_of_log_action' => 'created_at']);
@@ -103,6 +104,7 @@ class TenantSettingService extends TenantSettingUpdateOrCreateService
 
         return $collection;
     }
+
     public function RolesDetails()
     {
         $req = request();
@@ -380,6 +382,11 @@ class TenantSettingService extends TenantSettingUpdateOrCreateService
         return $this->otherHelpers->SettingsListPreparation(['share']);
     }
 
+    public function guarantorSettingsList()
+    {
+        return $this->otherHelpers->SettingsListPreparation([GuarantorSettings::MODULE]);
+    }
+
     public function branchList()
     {
         $req = request();
@@ -423,7 +430,7 @@ class TenantSettingService extends TenantSettingUpdateOrCreateService
 
     public function branchesDropDownList()
     {
-        return $this->TryCatch(function () {// dont touch what you  did do 
+        return $this->TryCatch(function () {// dont touch what you  did do
             return $this->dropDownList('branches');
         });
     }

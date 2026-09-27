@@ -3,43 +3,43 @@
 namespace Database\Seeders;
 
 use App\Http\Globals\GlobalHelpers;
+use App\Tenant\Settings\GuarantorSettings;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-
-function codeCustomeGenerator($module = "members-onboarding", $settings_name = null)
+function codeCustomeGenerator($module = 'members-onboarding', $settings_name = null)
 {
-    return  [
+    return [
         'settings_name' => $settings_name,
         'settings_status' => 'active',
         'settings_module' => $module,
         'settings_action' => [
             'action' => 0,
             'attr' => 'switch',
-            "children-fields" => [
+            'children-fields' => [
                 [
                     'type' => 'multiselect',
-                    "options" => [
-                        ["id" => "{{code}}", "name" => "Code"],
-                        ["id" => "{{auto-increment}}", "name" => "Auto-Incremented number"],
-                        ["id" => "{{random}}", "name" => "Random Number"],
-                        ["id" => "{{year}}", "name" => "Year"],
-                        ["id" => "{{month}}", "name" => "Month"],
-                        ["id" => "{{day}}", "name" => "Day"],
+                    'options' => [
+                        ['id' => '{{code}}', 'name' => 'Code'],
+                        ['id' => '{{auto-increment}}', 'name' => 'Auto-Incremented number'],
+                        ['id' => '{{random}}', 'name' => 'Random Number'],
+                        ['id' => '{{year}}', 'name' => 'Year'],
+                        ['id' => '{{month}}', 'name' => 'Month'],
+                        ['id' => '{{day}}', 'name' => 'Day'],
                         // ["id" => "{{auto-generate}}", "name" => "Auto Generate number"],
-                        ["id" => "{{hour}}", "name" => "Hour"],
-                        ["id" => "{{minute}}", "name" => "Minute"],
-                        ["id" => "{{second}}", "name" => "Second"],
+                        ['id' => '{{hour}}', 'name' => 'Hour'],
+                        ['id' => '{{minute}}', 'name' => 'Minute'],
+                        ['id' => '{{second}}', 'name' => 'Second'],
                     ],
-                    "action" => "{{code}}-{{year}}/{{month}}/{{auto-increment}}",
-                    "name" => "field_for_code_generation",
-                    "placeholder" => "Select field for code generation",
-                    "label" => "custom field for code generation pattern"
-                ]
+                    'action' => '{{code}}-{{year}}/{{month}}/{{auto-increment}}',
+                    'name' => 'field_for_code_generation',
+                    'placeholder' => 'Select field for code generation',
+                    'label' => 'custom field for code generation pattern',
+                ],
 
             ],
-        ]
+        ],
     ];
 }
 
@@ -459,7 +459,6 @@ class SaccoSettingsSeeder extends Seeder
             ],
             codeCustomeGenerator('saving-products', 'sacco-saving-products-code-custom-generator'),
 
-
             [
                 'settings_name' => 'sacco-saving-products-code-str-pad',
                 'settings_status' => 'active',
@@ -827,6 +826,19 @@ class SaccoSettingsSeeder extends Seeder
 
         ];
 
+        // Guarantor rules live in their own module and are defined once in
+        // GuarantorSettings, so this list and the backfill migration cannot drift.
+        foreach (GuarantorSettings::definitions() as $definition) {
+            $settings[] = [
+                'settings_name' => $definition['settings_name'],
+                'settings_status' => 'active',
+                'settings_module' => GuarantorSettings::MODULE,
+                'settings_action' => $definition['settings_action'],
+                'settings_action_description' => $definition['settings_action_description'],
+                'settings_setting_description' => $definition['settings_setting_description'],
+            ];
+        }
+
         $settings = array_map(function ($item) {
             $pertern = '/[^A-z0-9 ]/ig';
             $item['created_at'] = now();
@@ -856,7 +868,7 @@ class SaccoSettingsSeeder extends Seeder
         ];
         $global = new GlobalHelpers;
         foreach ($tenants as $tenant) {
-            $tableName = $tenant->database_name . '.system_settings';
+            $tableName = $tenant->database_name.'.system_settings';
             $global->GeneratDBColumnsAndInsetData($tableName, $settings, $requiredColumns);
         }
     }

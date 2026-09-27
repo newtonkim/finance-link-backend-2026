@@ -932,6 +932,19 @@ Route::group(['prefix' => '', 'middleware' => []], function () {
                     ],
                 ]);
             });
+            Route::group(['prefix' => 'guarantor-settings/'], function () {
+                routeListV2([
+                    [
+                        'route' => 'settings-list',
+                        'method' => 'guarantor_settings_list',
+                    ],
+                    [
+                        'route' => 'save-changed-settings',
+                        // "permission" => "save-changed-settings",
+                        'method' => 'save_changed_settings',
+                    ],
+                ]);
+            });
             Route::group(['prefix' => 'member/'], function () {
                 Route::group(['prefix' => 'onboarding/'], function () {
                     routeListV2([
