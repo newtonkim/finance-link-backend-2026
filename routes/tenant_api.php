@@ -5,7 +5,6 @@
 use App\Http\Globals\GlobalHelpers;
 use App\Tenant\Http\Controllers\Api\V1\AccountingPeriodController;
 use App\Tenant\Http\Controllers\Api\V1\BalanceSheetController;
-use App\Tenant\Http\Controllers\Api\V1\IncomeStatementController;
 use App\Tenant\Http\Controllers\Api\V1\BranchController;
 use App\Tenant\Http\Controllers\Api\V1\ChartOfAccountController;
 use App\Tenant\Http\Controllers\Api\V1\CurrencySettingsController;
@@ -18,6 +17,7 @@ use App\Tenant\Http\Controllers\Api\V1\ExpenseThresholdController;
 use App\Tenant\Http\Controllers\Api\V1\FinancialYearController;
 use App\Tenant\Http\Controllers\Api\V1\FixedDepositController;
 use App\Tenant\Http\Controllers\Api\V1\GeneralChargeController;
+use App\Tenant\Http\Controllers\Api\V1\IncomeStatementController;
 use App\Tenant\Http\Controllers\Api\V1\JournalEntryController;
 use App\Tenant\Http\Controllers\Api\V1\LicenseStatusController;
 use App\Tenant\Http\Controllers\Api\V1\LoanApplicationController;
@@ -202,6 +202,8 @@ Route::middleware('feature:loans')->group(function () {
     Route::get('loan-applications/{loanApplication}/guarantors/summary', [LoanGuarantorController::class, 'summary']);
     Route::post('loan-applications/{loanApplication}/guarantors', [LoanGuarantorController::class, 'store']);
     Route::delete('loan-applications/{loanApplication}/guarantors/{guarantor}', [LoanGuarantorController::class, 'destroy']);
+    Route::post('loan-applications/{loanApplication}/guarantors/{guarantor}/request-consent', [LoanGuarantorController::class, 'requestConsent']);
+    Route::post('loan-applications/{loanApplication}/guarantors/{guarantor}/consent', [LoanGuarantorController::class, 'recordConsent']);
     Route::get('loan-disbursements/pending', [LoanDisbursementController::class, 'pending']);
     Route::post('loan-applications/{loanApplication}/disburse', [LoanDisbursementController::class, 'disburse']);
 

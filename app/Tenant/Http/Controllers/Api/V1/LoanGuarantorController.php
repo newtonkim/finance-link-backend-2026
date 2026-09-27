@@ -11,6 +11,7 @@ use App\Tenant\Modules\Loans\Models\LoanApplicationGuarantor;
 use App\Tenant\Support\TenantMoney;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class LoanGuarantorController extends Controller
 {
@@ -20,8 +21,9 @@ class LoanGuarantorController extends Controller
 
     public function index(LoanApplication $loanApplication): JsonResponse
     {
+        // Declined and expired guarantors stay listed so staff can see why and ask
+        // again; removed ones are soft-deleted and drop out.
         $guarantors = $loanApplication->guarantors()
-            ->active()
             ->with(['member', 'group'])
             ->oldest('id')
             ->get();
@@ -62,6 +64,67 @@ class LoanGuarantorController extends Controller
         return response()->json([
             'message' => 'Guarantor removed.',
             'summary' => $this->service->summary($loanApplication),
+        ]);
+    }
+
+    /** Send, or send again, the request asking the guarantor to accept or decline. */
+    public function requestConsent(LoanApplication $loanApplication, LoanApplicationGuarantor $guarantor): JsonResponse
+    {
+        abort_if($guarantor->loan_application_id !== $loanApplication->id, 404);
+
+        $guarantor = $this->service->requestConsent($guarantor, $this->actorId());
+        $guarantor->load(['member', 'group']);
+
+        return response()->json([
+            'message' => 'Request sent to the guarantor.',
+            'data' => new LoanApplicationGuarantorResource($guarantor),
+            'summary' => $this->service->summary($loanApplication),
+        ]);
+    }
+
+    /**
+     * Record a guarantor's answer on their behalf, typically from a signed form,
+     * which can be attached.
+     */
+    public function recordConsent(Request $request, LoanApplication $loanApplication, LoanApplicationGuarantor $guarantor): JsonResponse
+    {
+        abort_if($guarantor->loan_application_id !== $loanApplication->id, 404);
+
+        $validated = $request->validate([
+            'decision' => ['required', 'string', 'in:accepted,declined'],
+            'reason' => ['nullable', 'required_if:decision,declined', 'string', 'max:500'],
+            'document' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'],
+        ]);
+
+        $documentPath = $request->hasFile('document')
+            ? $request->file('document')->store("loan-documents/{$loanApplication->id}/guarantor-consent", 'public')
+            : null;
+
+        try {
+            $guarantor = $this->service->respond(
+                pledge: $guarantor,
+                accept: $validated['decision'] === 'accepted',
+                reason: $validated['reason'] ?? null,
+                channel: LoanApplicationGuarantor::CHANNEL_OFFICER,
+                staffId: $this->actorId(),
+                documentPath: $documentPath,
+            );
+        } catch (\Throwable $e) {
+            if ($documentPath) {
+                Storage::disk('public')->delete($documentPath);
+            }
+
+            throw $e;
+        }
+        $guarantor->load(['member', 'group']);
+
+        return response()->json([
+            'message' => $guarantor->status === LoanApplicationGuarantor::STATUS_ACCEPTED
+                ? 'Guarantee recorded as accepted.'
+                : 'Guarantee recorded as declined.',
+            'data' => new LoanApplicationGuarantorResource($guarantor),
+            'summary' => $this->service->summary($loanApplication),
+            'application_status' => $loanApplication->fresh()->status,
         ]);
     }
 

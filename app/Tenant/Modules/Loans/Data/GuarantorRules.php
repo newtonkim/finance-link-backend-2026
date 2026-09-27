@@ -23,6 +23,9 @@ class GuarantorRules
         public readonly float $exposurePercentage,
         /** 0 means coverage is not checked. */
         public readonly float $coveragePercentage,
+        /** When true, only guarantees the guarantor has accepted count. */
+        public readonly bool $consentRequired = false,
+        public readonly int $consentExpiryDays = 7,
     ) {}
 
     public static function for(?LoanProduct $product = null): self
@@ -55,6 +58,8 @@ class GuarantorRules
             allowSelfGuarantee: $enabled('sacco-guarantor-allow-self-guarantee'),
             exposurePercentage: min(100, max(0, (float) $value('sacco-guarantor-maximum-exposure-percentage'))),
             coveragePercentage: max(0, (float) $value('sacco-guarantor-required-coverage-percentage')),
+            consentRequired: $enabled('sacco-guarantor-consent-required'),
+            consentExpiryDays: max(1, (int) $value('sacco-guarantor-consent-expiry-days')),
         );
     }
 
@@ -68,6 +73,8 @@ class GuarantorRules
             'allow_self_guarantee' => $this->allowSelfGuarantee,
             'exposure_percentage' => $this->exposurePercentage,
             'coverage_percentage' => $this->coveragePercentage,
+            'consent_required' => $this->consentRequired,
+            'consent_expiry_days' => $this->consentExpiryDays,
         ];
     }
 }

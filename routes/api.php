@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Globals\GlobalHelpers;
 use App\Tenant\Http\Controllers\Api\V1\MemberAuthController;
+use App\Tenant\Http\Controllers\Api\V1\MemberGuaranteeController;
 use App\Tenant\Http\Controllers\Api\V1\MemberPortalController;
 use App\Tenant\Http\Controllers\Api\V1\MemberTransactionRequestController;
 use App\Tenant\Http\Controllers\Api\V1\PublicBrandingController;
@@ -55,6 +56,9 @@ Route::prefix('v1/tenant')->middleware(['tenant.api'])->group(function () {
             Route::post('deposit-requests', [MemberTransactionRequestController::class, 'storeDeposit']);
             Route::post('withdrawal-requests', [MemberTransactionRequestController::class, 'storeWithdrawal']);
             Route::get('transaction-requests', [MemberTransactionRequestController::class, 'index']);
+            Route::get('guarantee-requests', [MemberGuaranteeController::class, 'index']);
+            Route::post('guarantee-requests/{id}/accept', [MemberGuaranteeController::class, 'accept'])->whereNumber('id');
+            Route::post('guarantee-requests/{id}/decline', [MemberGuaranteeController::class, 'decline'])->whereNumber('id');
         });
     });
 
