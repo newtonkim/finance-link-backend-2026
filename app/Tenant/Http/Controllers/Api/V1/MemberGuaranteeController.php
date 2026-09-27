@@ -163,6 +163,22 @@ class MemberGuaranteeController extends Controller
         return response()->json(['data' => ['owed_by_me' => $owedByMe, 'owed_to_me' => $owedToMe]]);
     }
 
+    /** Ask the SACCO to be replaced as guarantor of a running loan. */
+    public function requestRelease(Request $request, int $id): JsonResponse
+    {
+        $validated = $request->validate(['reason' => ['nullable', 'string', 'max:500']]);
+
+        $guarantee = $this->service->requestRelease(
+            $this->ownGuarantees($request)->findOrFail($id),
+            $validated['reason'] ?? null,
+        );
+
+        return response()->json([
+            'message' => 'Your request has been sent. The SACCO will let you know once someone has replaced you.',
+            'data' => $this->present($guarantee->load('loanApplication.member')),
+        ]);
+    }
+
     private function ownGuarantees(Request $request)
     {
         /** @var Member $member */
@@ -187,6 +203,7 @@ class MemberGuaranteeController extends Controller
             'responded_at' => $guarantee->responded_at,
             'decline_reason' => $guarantee->decline_reason,
             'recovered_amount' => (float) $guarantee->recovered_amount,
+            'release_requested_at' => $guarantee->release_requested_at,
             'locked_at' => $guarantee->locked_at,
             'released_at' => $guarantee->released_at,
             'loan_application' => $application ? [

@@ -200,6 +200,8 @@ Route::middleware('feature:loans')->group(function () {
     // Guarantors
     Route::get('loan-guarantors/capacity', [LoanGuarantorController::class, 'capacity']);
     Route::get('loan-guarantors/arrears', [LoanGuarantorController::class, 'arrearsWatchList']);
+    Route::get('loan-guarantors/report', [LoanGuarantorController::class, 'report']);
+    Route::post('loan-guarantors/{guarantor}/substitute', [LoanGuarantorController::class, 'substitute']);
     Route::post('loans/{loan}/guarantors/notify-arrears', [LoanGuarantorController::class, 'notifyArrears']);
 
     // Recovering defaulted loans from guarantors

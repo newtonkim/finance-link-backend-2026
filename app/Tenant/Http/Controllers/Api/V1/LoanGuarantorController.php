@@ -11,6 +11,7 @@ use App\Tenant\Modules\Loans\Models\Loan;
 use App\Tenant\Modules\Loans\Models\LoanApplication;
 use App\Tenant\Modules\Loans\Models\LoanApplicationGuarantor;
 use App\Tenant\Modules\Loans\Services\GuarantorArrearsService;
+use App\Tenant\Modules\Loans\Services\GuarantorReportService;
 use App\Tenant\Support\TenantMoney;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -204,6 +205,53 @@ class LoanGuarantorController extends Controller
             'message' => "Warned {$count} guarantor(s).",
             'data' => ['notified' => $count],
         ]);
+    }
+
+    /**
+     * Replace a guarantor on a running loan. With consent required the replacement
+     * is asked first, and the old guarantor stays until they accept.
+     */
+    public function substitute(Request $request, LoanApplicationGuarantor $guarantor): JsonResponse
+    {
+        $validated = $request->validate([
+            'guarantor_type' => ['required', 'string', 'in:individual,group'],
+            'guarantor_id' => ['required', 'integer', 'min:1'],
+            'guarantor_account_id' => ['nullable', 'integer', 'min:1'],
+            'guarantee_amount' => ['nullable', 'numeric', 'gt:0'],
+            'note' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $replacement = $this->service->substitute(
+            old: $guarantor,
+            type: $validated['guarantor_type'],
+            guarantorId: (int) $validated['guarantor_id'],
+            accountId: isset($validated['guarantor_account_id']) ? (int) $validated['guarantor_account_id'] : null,
+            amount: isset($validated['guarantee_amount']) ? (float) $validated['guarantee_amount'] : null,
+            note: $validated['note'] ?? null,
+            actorId: $this->actorId(),
+        );
+        $replacement->load(['member', 'group']);
+
+        return response()->json([
+            'message' => $replacement->status === LoanApplicationGuarantor::STATUS_LOCKED
+                ? 'Guarantor replaced.'
+                : 'The replacement has been asked to accept. The current guarantor stays until they do.',
+            'data' => new LoanApplicationGuarantorResource($replacement),
+        ], 201);
+    }
+
+    /** Guarantor reports: exposure, pending_consents or release_requests. */
+    public function report(Request $request, GuarantorReportService $reports): JsonResponse
+    {
+        $validated = $request->validate([
+            'view' => ['required', 'string', 'in:exposure,pending_consents,release_requests'],
+        ]);
+
+        return response()->json(['data' => match ($validated['view']) {
+            'exposure' => $reports->exposure(),
+            'pending_consents' => $reports->pendingConsents(),
+            'release_requests' => $reports->releaseRequests(),
+        }]);
     }
 
     private function actorId(): ?int

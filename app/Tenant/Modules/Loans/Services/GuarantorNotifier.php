@@ -6,6 +6,7 @@ use App\Tenant\Modules\Loans\Models\GuarantorRecovery;
 use App\Tenant\Modules\Loans\Models\LoanApplicationGuarantor;
 use App\Tenant\Services\NotificationService;
 use App\Tenant\Support\TenantMoney;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -59,6 +60,31 @@ class GuarantorNotifier
 
             return "Hello {$recipient->name}, loan {$arrears['loan_no']} of {$application->name}, which {$whose} savings guarantee, is {$days} days overdue with {$overdue} unpaid. {$held} of {$whose} savings is held for it. Please encourage them to pay.";
         }, $subdomain);
+    }
+
+    /** Another guarantor has taken over, so this one's savings are no longer held. */
+    public function replaced(LoanApplicationGuarantor $pledge, ?string $replacementName): void
+    {
+        $loanNo = $pledge->loan?->loan_no;
+
+        $this->send($pledge, function (object $recipient, object $application, bool $isGroup) use ($loanNo, $replacementName) {
+            $whose = $isGroup ? 'your group\'s' : 'your';
+            $by = $replacementName ? " by {$replacementName}" : '';
+
+            return "Hello {$recipient->name}, you have been replaced{$by} as guarantor of loan {$loanNo} of {$application->name}. ".ucfirst($whose).' savings are no longer held for it.';
+        });
+    }
+
+    /** The loan was rescheduled, so the guarantor stands behind it for longer. */
+    public function rescheduled(LoanApplicationGuarantor $pledge, string $loanNo, int $termMonths, ?string $maturityDate): void
+    {
+        $until = $maturityDate ? Carbon::parse($maturityDate)->format('j M Y') : null;
+
+        $this->send($pledge, function (object $recipient, object $application) use ($loanNo, $termMonths, $until) {
+            $ends = $until ? " and now runs until {$until}" : '';
+
+            return "Hello {$recipient->name}, loan {$loanNo} of {$application->name}, which you guarantee, has been rescheduled to {$termMonths} months{$ends}. Your guarantee continues. If you do not want to go on guaranteeing it, ask the SACCO to replace you.";
+        });
     }
 
     /** The SACCO took $amount from the guarantor's savings to repay the loan. */

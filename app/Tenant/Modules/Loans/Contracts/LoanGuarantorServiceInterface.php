@@ -102,6 +102,30 @@ interface LoanGuarantorServiceInterface
     /** Release every guarantee locked to the loan. Returns how many were released. */
     public function releaseForLoan(Loan $loan, string $reason = 'loan_closed'): int;
 
+    /**
+     * Replace a guarantor partway through a loan. The replacement must guarantee at
+     * least what is still at stake. With consent required it is asked to accept and
+     * the old guarantee stays locked until it does; otherwise it takes over at once.
+     *
+     * @throws ValidationException
+     */
+    public function substitute(
+        LoanApplicationGuarantor $old,
+        string $type,
+        int $guarantorId,
+        ?int $accountId,
+        ?float $amount,
+        ?string $note,
+        ?int $actorId
+    ): LoanApplicationGuarantor;
+
+    /**
+     * A guarantor asks to be let go early. Recorded for staff to find a replacement.
+     *
+     * @throws ValidationException
+     */
+    public function requestRelease(LoanApplicationGuarantor $pledge, ?string $reason): LoanApplicationGuarantor;
+
     /** Count, coverage and adequacy of an application's guarantees. */
     public function summary(LoanApplication $application): array;
 

@@ -8,6 +8,7 @@ use App\Tenant\Modules\Accounting\Services\LoanAccountingService;
 use App\Tenant\Modules\Loans\Contracts\ScheduleGeneratorServiceInterface;
 use App\Tenant\Modules\Loans\Enums\LoanStatus;
 use App\Tenant\Modules\Loans\Models\Loan;
+use App\Tenant\Modules\Loans\Models\LoanApplicationGuarantor;
 use App\Tenant\Modules\Loans\Models\LoanProduct;
 use App\Tenant\Modules\Loans\Models\LoanReschedule;
 use App\Tenant\Modules\Loans\Models\LoanSchedule;
@@ -209,8 +210,30 @@ class LoanRescheduleService
                 actorId: $actorId,
             );
 
+            // The guarantors now stand behind the loan for longer, so tell them.
+            $this->notifyGuarantors($loan->fresh(), $rescheduleEvent->fresh());
+
             return $rescheduleEvent;
         });
+    }
+
+    private function notifyGuarantors(Loan $loan, LoanReschedule $reschedule): void
+    {
+        $notifier = app(GuarantorNotifier::class);
+
+        LoanApplicationGuarantor::query()
+            ->where('loan_id', $loan->id)
+            ->where('status', LoanApplicationGuarantor::STATUS_LOCKED)
+            ->get()
+            ->each(function (LoanApplicationGuarantor $pledge) use ($loan, $reschedule, $notifier) {
+                $pledge->forceFill(['reschedule_notified_at' => now()])->save();
+                $notifier->rescheduled(
+                    $pledge,
+                    (string) $loan->loan_no,
+                    (int) $loan->term_months,
+                    $reschedule->new_maturity_date ? (string) $reschedule->new_maturity_date : null
+                );
+            });
     }
 
     // ─── Eligibility validation ───────────────────────────────────────────────

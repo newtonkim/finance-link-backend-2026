@@ -6,6 +6,7 @@ use App\Models\Member;
 use App\Tenant\Modules\Groups\Models\SavingsGroup;
 use App\Tenant\Modules\Loans\Contracts\LoanGuarantorServiceInterface;
 use App\Tenant\Modules\Loans\Data\GuarantorRules;
+use App\Tenant\Modules\Loans\Enums\LoanStatus;
 use App\Tenant\Modules\Loans\Models\Loan;
 use App\Tenant\Modules\Loans\Models\LoanApplication;
 use App\Tenant\Modules\Loans\Models\LoanApplicationGuarantor;
@@ -173,7 +174,7 @@ class LoanGuarantorService implements LoanGuarantorServiceInterface
     public function requestConsent(LoanApplicationGuarantor $pledge, ?int $actorId): LoanApplicationGuarantor
     {
         $application = $pledge->loanApplication;
-        $this->guardApplicationEditable($application);
+        $this->guardPledgeChangeable($pledge);
 
         $askable = [
             LoanApplicationGuarantor::STATUS_PROPOSED,
@@ -211,7 +212,7 @@ class LoanGuarantorService implements LoanGuarantorServiceInterface
         ?string $documentPath = null
     ): LoanApplicationGuarantor {
         $application = $pledge->loanApplication;
-        $this->guardApplicationEditable($application);
+        $this->guardPledgeChangeable($pledge);
         $this->expireOverdue($application->id);
         $pledge->refresh();
 
@@ -238,18 +239,29 @@ class LoanGuarantorService implements LoanGuarantorServiceInterface
                 $this->assertWithinCapacity($pledge);
             }
 
+            // A replacement on a running loan binds straight away: it takes over the
+            // lock from the guarantee it replaces.
+            $replacing = $accept && $pledge->substitutes_id;
+
             $pledge->forceFill([
-                'status' => $accept ? LoanApplicationGuarantor::STATUS_ACCEPTED : LoanApplicationGuarantor::STATUS_DECLINED,
+                'status' => $replacing
+                    ? LoanApplicationGuarantor::STATUS_LOCKED
+                    : ($accept ? LoanApplicationGuarantor::STATUS_ACCEPTED : LoanApplicationGuarantor::STATUS_DECLINED),
                 'status_changed_at' => now(),
                 'responded_at' => now(),
                 'response_channel' => $channel,
                 'responded_by' => $staffId,
                 'decline_reason' => $accept ? null : $reason,
                 'accepted_date' => $accept ? now()->toDateString() : null,
+                'locked_at' => $replacing ? now() : $pledge->locked_at,
                 'consent_document_path' => $documentPath ?? $pledge->consent_document_path,
             ])->save();
 
-            $this->advanceIfReady($application);
+            if ($replacing) {
+                $this->completeSubstitution($pledge->substitutes, $pledge);
+            } else {
+                $this->advanceIfReady($application);
+            }
 
             return $pledge;
         });
@@ -421,6 +433,133 @@ class LoanGuarantorService implements LoanGuarantorServiceInterface
             ]);
     }
 
+    public function substitute(
+        LoanApplicationGuarantor $old,
+        string $type,
+        int $guarantorId,
+        ?int $accountId,
+        ?float $amount,
+        ?string $note,
+        ?int $actorId
+    ): LoanApplicationGuarantor {
+        $loan = $old->loan;
+
+        if ($old->status !== LoanApplicationGuarantor::STATUS_LOCKED || ! $loan) {
+            throw ValidationException::withMessages([
+                'guarantor' => ['Only a guarantee standing behind a disbursed loan can be replaced.'],
+            ]);
+        }
+        $this->assertLoanOpen($loan);
+
+        $waiting = LoanApplicationGuarantor::query()
+            ->where('substitutes_id', $old->id)
+            ->whereIn('status', LoanApplicationGuarantor::AWAITING_RESPONSE_STATUSES)
+            ->exists();
+        if ($waiting) {
+            throw ValidationException::withMessages([
+                'guarantor' => ['A replacement for this guarantor is already waiting for an answer.'],
+            ]);
+        }
+
+        if (! in_array($type, [LoanApplicationGuarantor::TYPE_INDIVIDUAL, LoanApplicationGuarantor::TYPE_GROUP], true)) {
+            throw ValidationException::withMessages(['guarantor_type' => ['A guarantor must be an individual member or a group.']]);
+        }
+
+        $application = $old->loanApplication;
+        $rules = $this->rules($application);
+        $name = $type === LoanApplicationGuarantor::TYPE_GROUP
+            ? $this->assertGroupMayGuarantee($guarantorId, $accountId)
+            : $this->assertMemberMayGuarantee($application, $rules, $guarantorId, $accountId);
+
+        // The replacement must stand behind at least what is still at stake.
+        $stillGuaranteed = (float) $old->guarantee_amount - (float) $old->recovered_amount;
+        $minimum = round(min($stillGuaranteed, (float) $loan->outstanding_balance), 2);
+        $amount = round($amount ?? $stillGuaranteed, 2);
+
+        if ($amount < $minimum) {
+            throw ValidationException::withMessages([
+                'guarantee_amount' => ['The replacement must guarantee at least '.TenantMoney::format($minimum).'.'],
+            ]);
+        }
+
+        return DB::connection('tenant')->transaction(function () use ($old, $loan, $application, $rules, $type, $guarantorId, $accountId, $amount, $note, $actorId, $name) {
+            $existing = LoanApplicationGuarantor::withTrashed()
+                ->where('loan_application_id', $application->id)
+                ->where('guarantor_type', $type)
+                ->where('guarantor_id', $guarantorId)
+                ->lockForUpdate()
+                ->first();
+
+            if ($existing && ! $existing->trashed() && in_array($existing->status, LoanApplicationGuarantor::ACTIVE_STATUSES, true)) {
+                throw ValidationException::withMessages([
+                    'guarantor_id' => ["{$name} already guarantees this loan."],
+                ]);
+            }
+
+            $free = $this->freeCapacity($type, $guarantorId, $existing?->id);
+            if ($amount > $free) {
+                throw ValidationException::withMessages([
+                    'guarantee_amount' => [sprintf('%s can pledge at most %s more.', $name, TenantMoney::format($free))],
+                ]);
+            }
+
+            $pledge = $existing ?? new LoanApplicationGuarantor([
+                'loan_application_id' => $application->id,
+                'guarantor_type' => $type,
+                'guarantor_id' => $guarantorId,
+            ]);
+            if ($pledge->trashed()) {
+                $pledge->restore();
+            }
+
+            $pledge->forceFill([
+                'guarantor_account_id' => $accountId,
+                'guarantee_amount' => $amount,
+                'recovered_amount' => 0,
+                'note' => $note,
+                'loan_id' => $loan->id,
+                'substitutes_id' => $old->id,
+                'status' => LoanApplicationGuarantor::STATUS_PROPOSED,
+                'status_changed_at' => now(),
+                'released_at' => null,
+                'release_reason' => null,
+                'created_by' => $pledge->created_by ?? $actorId,
+                'updated_by' => $actorId,
+            ])->save();
+
+            if (! $pledge->code) {
+                $pledge->forceFill(['code' => sprintf('GRT%06d', $pledge->id)])->save();
+            }
+
+            if ($rules->consentRequired) {
+                // The old guarantee stays locked until the replacement accepts.
+                $this->markRequested($pledge, $rules);
+            } else {
+                $pledge->forceFill(['status' => LoanApplicationGuarantor::STATUS_LOCKED, 'locked_at' => now()])->save();
+                $this->notifier->added($pledge);
+                $this->completeSubstitution($old, $pledge);
+            }
+
+            return $pledge;
+        });
+    }
+
+    public function requestRelease(LoanApplicationGuarantor $pledge, ?string $reason): LoanApplicationGuarantor
+    {
+        if ($pledge->status !== LoanApplicationGuarantor::STATUS_LOCKED) {
+            throw ValidationException::withMessages([
+                'guarantor' => ['Only a guarantee standing behind a running loan can be released early.'],
+            ]);
+        }
+
+        $pledge->forceFill([
+            'release_requested_at' => now(),
+            'release_request_reason' => $reason,
+        ])->save();
+
+        return $pledge;
+    }
+
     public function summary(LoanApplication $application): array
     {
         $this->expireOverdue($application->id);
@@ -513,6 +652,47 @@ class LoanGuarantorService implements LoanGuarantorServiceInterface
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * A guarantee can change while its application is still being put together or,
+     * for a replacement on a running loan, while that loan is still open.
+     */
+    private function guardPledgeChangeable(LoanApplicationGuarantor $pledge): void
+    {
+        if ($pledge->substitutes_id && $pledge->loan) {
+            $this->assertLoanOpen($pledge->loan);
+
+            return;
+        }
+
+        $this->guardApplicationEditable($pledge->loanApplication);
+    }
+
+    private function assertLoanOpen(Loan $loan): void
+    {
+        $status = $loan->status instanceof LoanStatus ? $loan->status : LoanStatus::tryFrom((string) $loan->status);
+
+        if (! in_array($status, [LoanStatus::Disbursed, LoanStatus::Active, LoanStatus::Arrears, LoanStatus::Rescheduled], true)) {
+            throw ValidationException::withMessages([
+                'loan' => ['This loan is no longer running, so its guarantors cannot be changed.'],
+            ]);
+        }
+    }
+
+    /** The replacement has bound, so the guarantor it replaces is let go. */
+    private function completeSubstitution(LoanApplicationGuarantor $old, LoanApplicationGuarantor $new): void
+    {
+        $old->forceFill([
+            'status' => LoanApplicationGuarantor::STATUS_RELEASED,
+            'status_changed_at' => now(),
+            'released_at' => now(),
+            'released_date' => now()->toDateString(),
+            'release_reason' => 'substituted',
+            'substituted_by_id' => $new->id,
+        ])->save();
+
+        $this->notifier->replaced($old, $new->guarantorName());
+    }
 
     private function guardApplicationEditable(LoanApplication $application): void
     {

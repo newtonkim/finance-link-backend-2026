@@ -105,6 +105,12 @@ class GuarantorSettings
                 'settings_action_description' => 'Months for the borrower to repay guarantors',
                 'settings_setting_description' => 'What guarantors pay is turned into a recovery loan the borrower owes them, repaid in equal monthly instalments over this many months. Each repayment goes back into the guarantors\' savings.',
             ],
+            [
+                'settings_name' => 'sacco-guarantor-topup-needs-guarantors',
+                'settings_action' => ['action' => 1, 'attr' => 'switch'],
+                'settings_action_description' => 'Guarantors must agree to top-ups',
+                'settings_setting_description' => 'When enabled, topping up a loan that has guarantors always goes through a loan application instead of being paid out straight away, and the old loan\'s guarantors are carried onto it so they can agree to the new amount (or be replaced). When disabled, a product set to pay top-ups out straight away does so, and the new loan has no guarantors.',
+            ],
         ];
     }
 }
