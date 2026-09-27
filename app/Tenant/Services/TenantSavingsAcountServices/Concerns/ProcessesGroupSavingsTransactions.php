@@ -2,6 +2,7 @@
 
 namespace App\Tenant\Services\TenantSavingsAcountServices\Concerns;
 
+use App\Tenant\Modules\Accounting\Services\GroupSavingsJournalService;
 use App\Tenant\Modules\Loans\Contracts\LoanGuarantorServiceInterface;
 use App\Tenant\Services\MemebersSettingSevices\CodeSequence;
 use App\Tenant\Services\MemebersSettingSevices\ProductChargesservice;
@@ -172,6 +173,19 @@ trait ProcessesGroupSavingsTransactions
                         $this->UpdateOrCreateRecord('transactions', $TransactionData);
                     }
                 }
+
+                $journal = app(GroupSavingsJournalService::class);
+                $journalArgs = [
+                    (int) $currentBalance->id,
+                    $amount,
+                    (float) $chargedAmount,
+                    isset($req['payment_mode_id']) ? (int) $req['payment_mode_id'] : null,
+                    null,
+                    $req['narration'] ?? ($req['type'] === 'deposit' ? 'Group savings deposit' : 'Group savings withdrawal'),
+                    $code ?? null,
+                    $req['transaction_date'] ?? $req['transact_date'] ?? null,
+                ];
+                $req['type'] === 'deposit' ? $journal->postDeposit(...$journalArgs) : $journal->postWithdrawal(...$journalArgs);
             });
         });
     }

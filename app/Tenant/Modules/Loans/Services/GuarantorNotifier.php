@@ -91,9 +91,12 @@ class GuarantorNotifier
     public function recovered(LoanApplicationGuarantor $pledge, float $amount, string $loanNo): void
     {
         $taken = TenantMoney::format($amount);
+        $group = $pledge->guarantor_type === LoanApplicationGuarantor::TYPE_GROUP ? $pledge->guarantorName() : null;
 
-        $this->send($pledge, function (object $recipient, object $application) use ($taken, $loanNo) {
-            return "Hello {$recipient->name}, {$taken} was taken from your savings to repay loan {$loanNo} of {$application->name}, which you guaranteed. {$application->name} now owes you this and will repay it to you through the SACCO.";
+        $this->send($pledge, function (object $recipient, object $application) use ($taken, $loanNo, $group) {
+            return $group
+                ? "Hello {$recipient->name}, {$taken} was taken from {$group}'s group savings to repay loan {$loanNo} of {$application->name}, which the group guaranteed. {$application->name} now owes the group this and will repay it into the group's savings through the SACCO."
+                : "Hello {$recipient->name}, {$taken} was taken from your savings to repay loan {$loanNo} of {$application->name}, which you guaranteed. {$application->name} now owes you this and will repay it to you through the SACCO.";
         });
     }
 

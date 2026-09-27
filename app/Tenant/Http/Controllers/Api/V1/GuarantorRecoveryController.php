@@ -10,6 +10,7 @@ use App\Tenant\Modules\Loans\Services\GuarantorRecoveryService;
 use App\Tenant\Support\TenantMoney;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Recovering defaulted loans from the borrower's and guarantors' savings, and the
@@ -60,7 +61,7 @@ class GuarantorRecoveryController extends Controller
         ]);
 
         $recoveries = GuarantorRecovery::query()
-            ->with(['loan', 'member', 'lines.member', 'lines.savingsAccount', 'initiatedBy', 'approvedBy'])
+            ->with(['loan', 'member', 'lines.member', 'lines.savingsAccount', 'lines.guarantee.group', 'initiatedBy', 'approvedBy'])
             ->when($validated['status'] ?? null, fn ($q, $s) => $q->where('status', $s))
             ->when($validated['recovery_loan_status'] ?? null, fn ($q, $s) => $q->where('recovery_loan_status', $s))
             ->when($validated['loan_id'] ?? null, fn ($q, $id) => $q->where('loan_id', $id))
@@ -124,8 +125,11 @@ class GuarantorRecoveryController extends Controller
 
     private function present(GuarantorRecovery $recovery, bool $detailed = false): array
     {
-        $recovery->loadMissing(['loan', 'member', 'lines.member', 'lines.savingsAccount', 'initiatedBy', 'approvedBy']);
+        $recovery->loadMissing(['loan', 'member', 'lines.member', 'lines.savingsAccount', 'lines.guarantee.group', 'initiatedBy', 'approvedBy']);
         $schedule = $this->service->schedule($recovery);
+        $groupAccountNos = DB::connection('tenant')->table('group_savings_accounts')
+            ->whereIn('id', $recovery->lines->pluck('group_savings_account_id')->filter())
+            ->pluck('code', 'id');
         $today = now()->toDateString();
         $overdue = collect($schedule)
             ->filter(fn ($row) => $row['due_date'] < $today)
@@ -167,9 +171,11 @@ class GuarantorRecoveryController extends Controller
                 'id' => $line->id,
                 'source' => $line->source,
                 'member_id' => $line->member_id,
-                'name' => $line->member?->name,
+                'name' => $line->isGroup() ? $line->guarantee?->group?->name : $line->member?->name,
+                'is_group' => $line->isGroup(),
                 'savings_account_id' => $line->savings_account_id,
-                'account_no' => $line->savingsAccount?->account_no,
+                'group_savings_account_id' => $line->group_savings_account_id,
+                'account_no' => $line->isGroup() ? ($groupAccountNos[$line->group_savings_account_id] ?? null) : $line->savingsAccount?->account_no,
                 'amount' => (float) $line->amount,
                 'repaid_amount' => (float) $line->repaid_amount,
                 'owed' => $line->source === GuarantorRecoveryLine::SOURCE_GUARANTOR ? $line->owed() : 0.0,
