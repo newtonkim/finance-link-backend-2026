@@ -2,11 +2,13 @@
 
 namespace App\Tenant\Services\TenantSavingsAcountServices\Concerns;
 
+use App\Tenant\Modules\Accounting\Services\GroupSavingsJournalService;
 use App\Tenant\Modules\Loans\Contracts\LoanGuarantorServiceInterface;
 use App\Tenant\Services\MemebersSettingSevices\CodeSequence;
 use App\Tenant\Services\TenantSavingsAccountService;
 use App\Tenant\Services\TenantSavingsAcountServices\OtherHelpers;
 use App\Tenant\Support\TenantMoney;
+use Illuminate\Support\Facades\Log;
 
 trait ManagesGroupSavingsAccounts
 {
@@ -34,7 +36,7 @@ trait ManagesGroupSavingsAccounts
                 $chargedAmount = 0;
                 $deposit = 0;
                 if ($new_account) {
-                    $deposit = $fields['initial_deposit'];
+                    $deposit = $fields['initial_deposit'] ?? 0;
                     $fields['balance'] = $deposit;
                 } else {
                     $deposit = $fields['opening_balance'] ?? 0;
@@ -52,15 +54,38 @@ trait ManagesGroupSavingsAccounts
                     'amount' => $deposit,
                     'payment_method' => $req['payment_method'] ?? 'cash',
                     'deposited_by' => $req['withdrawal_by'] ?? null,
-                    'transaction_type' => 'withdrawal',
+                    // Money coming into the account, whether paid in now or brought over.
+                    'transaction_type' => 'deposit',
                     'charge_amount' => $chargedAmount,
                     'transaction_date' => now(),
-                    'type' => 'withdrawal',
-                    'narration' => $req['narration'] ?? null,
+                    'type' => 'deposit',
+                    'narration' => $req['narration'] ?? ($new_account ? 'Initial deposit' : 'Opening balance'),
                 ]);
                 $this->UpdateOrCreateRecord('transactions', $TransactionData);
+
+                // A new account starts on the general ledger. Its initial deposit is cash
+                // paid in; an existing account's opening balance is brought over from the
+                // old books, against Opening Balance Control.
+                if (! isset($req['id'])) {
+                    $this->putGroupAccountOnLedger((int) $details->id, $new_account, (float) $deposit, $fields['payment_mod_account_id'] ?? null);
+                }
             });
         });
+    }
+
+    private function putGroupAccountOnLedger(int $groupAccountId, bool $newAccount, float $deposit, $paymentAccountId): void
+    {
+        $journal = app(GroupSavingsJournalService::class);
+
+        try {
+            $newAccount
+                ? $journal->openWithDeposit($groupAccountId, $deposit, $paymentAccountId ? (int) $paymentAccountId : null)
+                : $journal->openLedger($groupAccountId);
+        } catch (\Throwable $e) {
+            // No chart of accounts yet: the account stays off the ledger until
+            // group-savings:open-ledger brings it on, rather than failing to open.
+            Log::warning('Group savings account opened off the ledger — '.$e->getMessage(), ['group_savings_account_id' => $groupAccountId]);
+        }
     }
 
     public function groupAccountCreate()

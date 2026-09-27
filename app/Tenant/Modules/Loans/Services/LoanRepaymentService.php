@@ -7,6 +7,7 @@ use App\Tenant\Modules\Accounting\Models\ChartOfAccount;
 use App\Tenant\Modules\Accounting\Models\JournalEntry;
 use App\Tenant\Modules\Accounting\Models\JournalEntryLine;
 use App\Tenant\Modules\Accounting\Services\GlPostingEngine;
+use App\Tenant\Modules\Accounting\Services\GroupSavingsJournalService;
 use App\Tenant\Modules\Accounting\Services\JournalSequenceService;
 use App\Tenant\Modules\Loans\Contracts\LoanGuarantorServiceInterface;
 use App\Tenant\Modules\Loans\Contracts\LoanRepaymentServiceInterface;
@@ -17,6 +18,7 @@ use App\Tenant\Modules\Loans\Models\LoanReschedule;
 use App\Tenant\Modules\Loans\Models\LoanSchedule;
 use App\Tenant\Modules\Loans\Models\LoanTransaction;
 use App\Tenant\Modules\Savings\Models\SavingsAccount;
+use App\Tenant\Modules\Savings\Services\GroupSavingsBalanceService;
 use App\Tenant\Modules\Settings\Models\LoanSetting;
 use App\Tenant\Modules\Transactions\Models\Transaction;
 use Carbon\Carbon;
@@ -139,24 +141,8 @@ class LoanRepaymentService implements LoanRepaymentServiceInterface
                     ->assertCanDebit('individual', (int) $savingsAccount->member_id, $amount, $loan->id);
             }
 
-            $product = $loan->loanProduct()->firstOrFail();
-            $schedules = $this->pendingSchedules($loan);
-            $allocation = $this->allocate($loan, $amount, $schedules);
-
-            // Step 1 — Apply amounts to schedule rows
-            $this->applyToSchedules($allocation['schedules']);
-
-            // Step 2 — Recompute outstanding balance and detect closure
-            $newBalance = $this->recalculateBalance($loan);
-            $isClosed = $newBalance <= 0 && $schedules->where('status', '!=', 'paid')->isEmpty();
-
-            // Step 3 — Update loan record
-            $loan->outstanding_balance = max(0, $newBalance);
-            $loan->save();
-
-            if ($isClosed) {
-                $this->statusGuard->transition($loan, LoanStatus::Closed, 'Loan fully repaid via savings.');
-            }
+            // Steps 1–3 — apply to the schedule, recompute the balance, close if repaid
+            [$product, $allocation] = $this->applySavingsRepayment($loan, $amount);
 
             // Step 4 — Debit savings account balance
             $savingsAccount->balance = round((float) $savingsAccount->balance - $amount, 2);
@@ -182,32 +168,115 @@ class LoanRepaymentService implements LoanRepaymentServiceInterface
             ]);
 
             // Step 6 — Record the LoanTransaction
-            $rescheduleId = $loan->is_rescheduled
-                ? LoanReschedule::where('original_loan_id', $loan->id)->orderByDesc('reschedule_date')->value('id')
-                : null;
-
-            $txn = LoanTransaction::create([
-                'payment_id' => 'PMT-'.strtoupper(Str::random(8)),
-                'loan_id' => $loan->id,
-                'reschedule_id' => $rescheduleId,
-                'member_id' => $loan->member_id,
-                'amount_paid' => $amount,
-                'principal_portion' => $allocation['principal'],
-                'interest_portion' => $allocation['interest'],
-                'penalty_portion' => $allocation['penalty'],
-                'charges_portion' => $allocation['charges'],
-                'payment_date' => $paymentDate,
-                'payment_method' => 'savings_account',
-                'receipt_no' => null,
-                'collected_by' => $actorId,
-                'transaction_ref' => $data['notes'] ?? null,
-            ]);
+            $txn = $this->recordSavingsLoanTransaction($loan, $amount, $allocation, $paymentDate, $data['notes'] ?? null, $actorId);
 
             // Step 7 — Post accounting journal entry
-            $this->postSavingsRepaymentEntry($loan, $product, $savingsAccount, $allocation, $paymentDate, $actorId);
+            $this->postSavingsRepaymentEntry($loan, $product, $this->savingsLiabilityAccount($savingsAccount), $savingsAccount->id, SavingsAccount::class, $allocation, $paymentDate, $actorId);
 
             return $txn;
         });
+    }
+
+    public function repayFromGroupSavings(Loan $loan, array $data, int $actorId): LoanTransaction
+    {
+        return DB::connection('tenant')->transaction(function () use ($loan, $data, $actorId) {
+            $amount = round((float) $data['amount'], 2);
+            $this->assertRepayable($loan, $amount);
+
+            $groupAccountId = (int) $data['group_savings_account_id'];
+            $account = DB::connection('tenant')->table('group_savings_accounts')
+                ->where('id', $groupAccountId)
+                ->whereNull('deleted_at')
+                ->lockForUpdate()
+                ->first(['id', 'balance', 'savings_group_id']);
+
+            if (! $account) {
+                throw ValidationException::withMessages(['group_savings_account_id' => ['Group savings account not found.']]);
+            }
+            if ((float) $account->balance + 0.001 < $amount) {
+                throw ValidationException::withMessages(['amount' => ['Insufficient group savings account balance.']]);
+            }
+
+            // The group's savings held for other loans stay put.
+            app(LoanGuarantorServiceInterface::class)
+                ->assertCanDebit('group', (int) $account->savings_group_id, $amount, $loan->id);
+
+            // The debit is booked against Group Savings Deposits, so the account's
+            // balance must be on the ledger first. Does nothing if it already is.
+            $groupJournal = app(GroupSavingsJournalService::class);
+            $groupJournal->openLedger($groupAccountId, $actorId);
+
+            [$product, $allocation] = $this->applySavingsRepayment($loan, $amount);
+
+            $paymentDate = Carbon::parse($data['payment_date'] ?? now());
+            $balances = app(GroupSavingsBalanceService::class);
+            $balances->debit(
+                $groupAccountId,
+                $amount,
+                $data['member_split'] ?? $balances->memberSplit((int) $account->savings_group_id, $amount),
+                'loan_repayment',
+                $data['narration'] ?? "Loan repayment – {$loan->loan_no}",
+                $paymentDate->toDateString(),
+                $actorId
+            );
+
+            $txn = $this->recordSavingsLoanTransaction($loan, $amount, $allocation, $paymentDate, $data['notes'] ?? null, $actorId);
+
+            $this->postSavingsRepaymentEntry($loan, $product, $groupJournal->liabilityAccount(), $groupAccountId, GroupSavingsJournalService::ENTITY, $allocation, $paymentDate, $actorId);
+
+            return $txn;
+        });
+    }
+
+    /**
+     * Apply a repayment from savings to the loan's schedule, recompute its balance,
+     * and close it if it is now repaid.
+     *
+     * @return array{0: LoanProduct, 1: array}
+     */
+    private function applySavingsRepayment(Loan $loan, float $amount): array
+    {
+        $product = $loan->loanProduct()->firstOrFail();
+        $schedules = $this->pendingSchedules($loan);
+        $allocation = $this->allocate($loan, $amount, $schedules);
+
+        $this->applyToSchedules($allocation['schedules']);
+
+        $newBalance = $this->recalculateBalance($loan);
+        $isClosed = $newBalance <= 0 && $schedules->where('status', '!=', 'paid')->isEmpty();
+
+        $loan->outstanding_balance = max(0, $newBalance);
+        $loan->save();
+
+        if ($isClosed) {
+            $this->statusGuard->transition($loan, LoanStatus::Closed, 'Loan fully repaid via savings.');
+        }
+
+        return [$product, $allocation];
+    }
+
+    private function recordSavingsLoanTransaction(Loan $loan, float $amount, array $allocation, Carbon $paymentDate, ?string $notes, int $actorId): LoanTransaction
+    {
+        $rescheduleId = $loan->is_rescheduled
+            ? LoanReschedule::where('original_loan_id', $loan->id)->orderByDesc('reschedule_date')->value('id')
+            : null;
+
+        return LoanTransaction::create([
+            'payment_id' => 'PMT-'.strtoupper(Str::random(8)),
+            'loan_id' => $loan->id,
+            'reschedule_id' => $rescheduleId,
+            'member_id' => $loan->member_id,
+            'amount_paid' => $amount,
+            'principal_portion' => $allocation['principal'],
+            'interest_portion' => $allocation['interest'],
+            'penalty_portion' => $allocation['penalty'],
+            'charges_portion' => $allocation['charges'],
+            'payment_date' => $paymentDate,
+            'payment_method' => 'savings_account',
+            'receipt_no' => null,
+            'collected_by' => $actorId,
+            'transaction_ref' => $notes,
+        ]);
     }
 
     public function preview(Loan $loan, float $amount): array
@@ -529,10 +598,38 @@ class LoanRepaymentService implements LoanRepaymentServiceInterface
      *   CR  Penalty Receivable                         = penalty         → SubLedger: loan
      *   CR  Charges Receivable                         = charges         → SubLedger: loan
      */
+    /** The member savings liability account a savings account sits in (mirrors SavingsJournalService). */
+    private function savingsLiabilityAccount(SavingsAccount $savingsAccount): ChartOfAccount
+    {
+        $productType = strtolower($savingsAccount->savingsProduct?->type ?? '');
+        $glCode = match (true) {
+            str_contains($productType, 'mandatory') => GlCodes::SAVINGS_MANDATORY,
+            str_contains($productType, 'fixed') => GlCodes::SAVINGS_FIXED_DEPOSIT,
+            default => GlCodes::SAVINGS_VOLUNTARY,
+        };
+
+        $account = ChartOfAccount::on('tenant')
+            ->where('gl_code', $glCode)
+            ->where('is_active', true)
+            ->first();
+
+        if (! $account) {
+            throw new \RuntimeException("COA entry missing for GL code {$glCode}. Run the Chart of Accounts seeder.");
+        }
+
+        return $account;
+    }
+
+    /**
+     * DR the savings liability the money came from (sub-ledger: the account it came
+     * out of), CR the loan's accounts (sub-ledger: the loan).
+     */
     private function postSavingsRepaymentEntry(
         Loan $loan,
         LoanProduct $product,
-        SavingsAccount $savingsAccount,
+        ChartOfAccount $savingsLiabilityAccount,
+        int $sourceEntityId,
+        string $sourceEntityType,
         array $allocation,
         Carbon $paymentDate,
         int $actorId,
@@ -544,23 +641,6 @@ class LoanRepaymentService implements LoanRepaymentServiceInterface
 
         $narration = "Loan repayment via savings – {$loan->loan_no}";
         $isFlat = $product->interest_method === 'flat';
-
-        // Resolve the savings liability GL account (mirrors SavingsJournalService logic)
-        $productType = strtolower($savingsAccount->savingsProduct?->type ?? '');
-        $glCode = match (true) {
-            str_contains($productType, 'mandatory') => GlCodes::SAVINGS_MANDATORY,
-            str_contains($productType, 'fixed') => GlCodes::SAVINGS_FIXED_DEPOSIT,
-            default => GlCodes::SAVINGS_VOLUNTARY,
-        };
-
-        $savingsLiabilityAccount = ChartOfAccount::on('tenant')
-            ->where('gl_code', $glCode)
-            ->where('is_active', true)
-            ->first();
-
-        if (! $savingsLiabilityAccount) {
-            throw new \RuntimeException("COA entry missing for GL code {$glCode}. Run the Chart of Accounts seeder.");
-        }
 
         $je = JournalEntry::create([
             'entry_no' => $this->sequence->nextEntryNo('SAVINGS_REPAY'),
@@ -580,7 +660,7 @@ class LoanRepaymentService implements LoanRepaymentServiceInterface
 
         $lineNo = 1;
 
-        // DR — savings liability (SubLedger entity = savings_account)
+        // DR — savings liability (SubLedger entity = the account the money came from)
         JournalEntryLine::create([
             'journal_entry_id' => $je->id,
             'account_id' => $savingsLiabilityAccount->id,
@@ -594,7 +674,7 @@ class LoanRepaymentService implements LoanRepaymentServiceInterface
         ]);
         $savingsNormalBalance = $savingsLiabilityAccount->normal_balance ?? 'CR';
         $this->gl->postToGeneralLedger($je->id, $savingsLiabilityAccount->id, $totalPaid, 0.0, $paymentDate, $narration, $savingsNormalBalance);
-        $this->gl->postToSubLedger($je->id, $savingsLiabilityAccount->id, $savingsAccount->id, SavingsAccount::class, $totalPaid, 0.0, $paymentDate, $narration, $savingsNormalBalance);
+        $this->gl->postToSubLedger($je->id, $savingsLiabilityAccount->id, $sourceEntityId, $sourceEntityType, $totalPaid, 0.0, $paymentDate, $narration, $savingsNormalBalance);
 
         // CR lines — loan accounts (SubLedger entity = loan)
         $crLines = [];

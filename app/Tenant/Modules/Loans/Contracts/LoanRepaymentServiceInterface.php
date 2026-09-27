@@ -35,6 +35,20 @@ interface LoanRepaymentServiceInterface
     public function repayFromSavings(Loan $loan, array $data, int $actorId): LoanTransaction;
 
     /**
+     * Post a repayment by debiting a group savings account, as repayFromSavings()
+     * does for a member's own savings. Used when a group's guarantee is drawn on.
+     *
+     * The group account is brought onto the general ledger first if it is not on
+     * it yet. The debit is taken from the group's members in proportion to what
+     * each has in the group, unless member_split says otherwise.
+     *
+     * @param  array{group_savings_account_id:int, amount:float, payment_date?:string, narration?:string, notes?:string, member_split?:array<int, float>}  $data
+     *
+     * @throws ValidationException If the account's balance, or what the group has free, is insufficient.
+     */
+    public function repayFromGroupSavings(Loan $loan, array $data, int $actorId): LoanTransaction;
+
+    /**
      * Preview allocation without persisting anything.
      *
      * @return array{total: float, schedules: array, penalty: float, charges: float, interest: float, principal: float, overpayment: float}

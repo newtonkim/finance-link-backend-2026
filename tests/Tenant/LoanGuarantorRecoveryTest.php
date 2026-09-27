@@ -46,6 +46,8 @@ beforeEach(function () {
     $coa('21103', 'Fixed Deposits', 'LIABILITY', 'CR');
     $this->portfolio = $coa('11310', 'Loan Portfolio', 'ASSET', 'DR');
     $this->interestIncome = $coa('41100', 'Interest Income', 'INCOME', 'CR');
+    $this->groupSavingsGl = $coa('21104', 'Group Savings Deposits', 'LIABILITY', 'CR');
+    $coa('33900', 'Opening Balance Control', 'EQUITY', 'CR');
 });
 
 function recoveries(): GuarantorRecoveryService
@@ -146,21 +148,114 @@ it('caps a guarantor at their free savings and passes the rest to the others', f
         ->and($plan['shortfall'])->toBe(60.0);
 });
 
-it('leaves out group guarantors, explaining why', function () {
+/** A group with one savings account holding $balance, split between two members 3:1. */
+function groupWithSavings(float $balance): array
+{
+    $group = SavingsGroup::factory()->create();
+    $accountId = DB::table('group_savings_accounts')->insertGetId([
+        'savings_group_id' => $group->id, 'savings_product_id' => SavingsAccount::first()->savings_product_id,
+        'balance' => $balance, 'code' => 'GSA-'.uniqid(), 'created_at' => now(), 'updated_at' => now(),
+    ]);
+    $members = [];
+    foreach ([0.75, 0.25] as $part) {
+        $members[] = DB::table('savings_group_members')->insertGetId([
+            'savings_group_id' => $group->id, 'member_id' => Member::factory()->create()->id,
+            'balance' => $balance * $part, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+    }
+
+    return [$group, $accountId, $members];
+}
+
+function groupMemberBalance(int $groupMemberId): float
+{
+    return (float) DB::table('savings_group_members')->where('id', $groupMemberId)->value('balance');
+}
+
+it('shares the recovery between individual and group guarantors', function () {
     $borrower = memberWithSavings(0);
     $member = memberWithSavings(5000);
-    $group = SavingsGroup::factory()->create();
-    DB::table('group_savings_accounts')->insert([
-        'savings_group_id' => $group->id, 'savings_product_id' => SavingsAccount::first()->savings_product_id,
-        'balance' => 5000, 'created_at' => now(), 'updated_at' => now(),
-    ]);
-    [$loan] = defaultedLoan($borrower, [[$member, 500], [$group, 500]]);
+    [$group, $accountId] = groupWithSavings(5000);
+    [$loan] = defaultedLoan($borrower, [[$member, 600], [$group, 400]]);
 
     $plan = recoveries()->plan($loan);
 
-    expect($plan['guarantor_amount'])->toBe(500.0)
-        ->and($plan['unsupported_guarantors'])->toHaveCount(1)
-        ->and($plan['unsupported_guarantors'][0]['reason'])->toContain('not in the general ledger');
+    $groupLine = collect($plan['lines'])->firstWhere('group_savings_account_id', $accountId);
+    expect($plan['eligible'])->toBeTrue()
+        ->and($plan['guarantor_amount'])->toBe(1000.0)
+        ->and($groupLine['amount'])->toBe(400.0)
+        ->and($groupLine['member_id'])->toBeNull()
+        ->and($groupLine['name'])->toBe($group->name)
+        ->and(collect($plan['lines'])->firstWhere('member_id', $member->id)['amount'])->toBe(600.0);
+});
+
+it('caps a group at the savings it has free', function () {
+    $borrower = memberWithSavings(0);
+    $member = memberWithSavings(5000);
+    setGuarantorSetting('sacco-guarantor-hold-savings', 0);
+    [$group, $accountId] = groupWithSavings(5000);
+    [$loan] = defaultedLoan($borrower, [[$member, 500], [$group, 500]]);
+    DB::table('group_savings_accounts')->where('id', $accountId)->update(['balance' => 100]);
+    setGuarantorSetting('sacco-guarantor-hold-savings', 1);
+
+    $plan = recoveries()->plan($loan);
+
+    expect(collect($plan['lines'])->firstWhere('group_savings_account_id', $accountId)['amount'])->toBe(100.0)
+        ->and(collect($plan['lines'])->firstWhere('member_id', $member->id)['amount'])->toBe(500.0)
+        ->and($plan['shortfall'])->toBe(400.0);
+});
+
+it('recovers a group\'s share from its savings, on the ledger', function () {
+    $borrower = memberWithSavings(0);
+    $member = memberWithSavings(5000);
+    [$group, $accountId, [$big, $small]] = groupWithSavings(4000);
+    [$loan, [, $groupPledge]] = defaultedLoan($borrower, [[$member, 600], [$group, 400]]);
+    $journalsBefore = (int) JournalEntry::max('id');
+
+    $recovery = recoveries()->propose($loan, null, null, $this->maker->id);
+    recoveries()->approve($recovery, $this->checker->id);
+
+    // The group account, and its members 3:1, give up 400.
+    expect((float) DB::table('group_savings_accounts')->where('id', $accountId)->value('balance'))->toBe(3600.0)
+        ->and(groupMemberBalance($big))->toBe(2700.0)
+        ->and(groupMemberBalance($small))->toBe(900.0)
+        ->and($loan->fresh()->status->value)->toBe('closed')
+        ->and($groupPledge->fresh()->status)->toBe('invoked')
+        ->and((float) $groupPledge->fresh()->recovered_amount)->toBe(400.0);
+
+    $line = $recovery->fresh()->lines->firstWhere('group_savings_account_id', $accountId);
+    expect($line->group_member_split)->toEqual([$big => 300, $small => 100]);
+
+    // The account was brought onto the ledger at its 4000 balance, then debited 400.
+    $journals = JournalEntry::where('id', '>', $journalsBefore)->with('lines')->get();
+    foreach ($journals as $je) {
+        expect(round($je->lines->sum('debit'), 2))->toBe(round($je->lines->sum('credit'), 2));
+    }
+    $groupLines = $journals->flatMap->lines->where('account_id', $this->groupSavingsGl->id);
+    expect($groupLines->sum('credit'))->toEqual(4000)
+        ->and($groupLines->sum('debit'))->toEqual(400)
+        ->and(DB::table('group_savings_accounts')->where('id', $accountId)->value('gl_opened_at'))->not->toBeNull()
+        ->and(DB::table('sub_ledger')->where('entity_type', 'group_savings_account')->where('entity_id', $accountId)->sum('debit'))->toEqual(400);
+});
+
+it('pays the borrower\'s repayments back to the group\'s members it was taken from', function () {
+    $borrower = memberWithSavings(0);
+    [$group, $accountId, [$big, $small]] = groupWithSavings(4000);
+    [$loan] = defaultedLoan($borrower, [[$group, 1000]]);
+    $recovery = recoveries()->propose($loan, null, null, $this->maker->id);
+    recoveries()->approve($recovery, $this->checker->id);
+    $journalsBefore = (int) JournalEntry::max('id');
+
+    recoveries()->repay($recovery->fresh(), 400, ['payment_mode' => 'cash'], $this->maker->id);
+
+    expect((float) DB::table('group_savings_accounts')->where('id', $accountId)->value('balance'))->toBe(3400.0)
+        ->and(groupMemberBalance($big))->toBe(2550.0)  // 3000 − 750 + 300
+        ->and(groupMemberBalance($small))->toBe(850.0) // 1000 − 250 + 100
+        ->and((float) $recovery->fresh()->recovery_loan_repaid)->toBe(400.0);
+
+    $lines = JournalEntry::where('id', '>', $journalsBefore)->with('lines')->get()->flatMap->lines;
+    expect($lines->where('account_id', $this->cash->id)->sum('debit'))->toEqual(400)
+        ->and($lines->where('account_id', $this->groupSavingsGl->id)->sum('credit'))->toEqual(400);
 });
 
 it('does not allow recovery before the loan is overdue long enough', function () {

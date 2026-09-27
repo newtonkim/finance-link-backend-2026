@@ -22,6 +22,9 @@ final class GlCodes
 
     const SAVINGS_FIXED_DEPOSIT = '21103';
 
+    // Savings owed to groups (group savings accounts), not to individual members
+    const SAVINGS_GROUP = '21104';
+
     // Equity
     const SHARE_CAPITAL_ORDINARY = '31100';
 
