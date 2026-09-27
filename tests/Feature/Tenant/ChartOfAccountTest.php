@@ -23,6 +23,7 @@ class ChartOfAccountTest extends TenantTestCase
             'password' => Hash::make('password'),
             'role' => 'Admin',
             'is_tenant_admin' => true,
+            'status' => 'active',
         ]);
     }
 

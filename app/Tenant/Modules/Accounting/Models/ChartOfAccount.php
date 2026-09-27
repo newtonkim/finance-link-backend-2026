@@ -28,6 +28,7 @@ class ChartOfAccount extends Model
         'is_active',
         'allow_manual',
         'ifrs_category',
+        'income_statement_line',
         'sort_order',
     ];
 
