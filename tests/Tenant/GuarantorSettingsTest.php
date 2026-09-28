@@ -88,3 +88,37 @@ it('persists a change to a guarantor setting', function () {
 
     expect($stored['action'])->toBe(2);
 });
+
+it('restores every guarantor setting when the page loads for a tenant that has none', function () {
+    DB::table('system_settings')->where('settings_module', GuarantorSettings::MODULE)->delete();
+
+    $this->withHeaders(['Host' => 'test.mfukopro.test'])
+        ->postJson('/api/v1/tenant/settings/guarantor-settings/settings-list')
+        ->assertOk();
+
+    expect(DB::table('system_settings')->where('settings_module', GuarantorSettings::MODULE)->count())
+        ->toBe(count(GuarantorSettings::definitions()));
+});
+
+it('adds only the missing settings and keeps values already chosen', function () {
+    DB::table('system_settings')->where('settings_name', 'sacco-guarantor-recovery-after-days')->delete();
+    DB::table('system_settings')->where('settings_name', 'sacco-guarantor-minimum-number')
+        ->update(['settings_action' => json_encode(['action' => 3, 'attr' => 'number'])]);
+
+    $list = app(TenantSettingService::class)->guarantorSettingsList();
+
+    expect($list)->toHaveKey('sacco-guarantor-recovery-after-days')
+        ->and($list['sacco-guarantor-minimum-number']['settings_action']['action'])->toBe(3)
+        ->and(DB::table('system_settings')->where('settings_name', 'sacco-guarantor-minimum-number')->count())->toBe(1)
+        ->and(GuarantorSettings::restoreMissing())->toBe(0);
+});
+
+it('moves a guarantor setting filed under another module back into this one', function () {
+    DB::table('system_settings')->where('settings_name', 'sacco-guarantor-hold-savings')
+        ->update(['settings_module' => 'loan-settings']);
+
+    $list = app(TenantSettingService::class)->guarantorSettingsList();
+
+    expect($list)->toHaveKey('sacco-guarantor-hold-savings')
+        ->and(DB::table('system_settings')->where('settings_name', 'sacco-guarantor-hold-savings')->count())->toBe(1);
+});

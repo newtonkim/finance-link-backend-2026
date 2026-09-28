@@ -384,6 +384,10 @@ class TenantSettingService extends TenantSettingUpdateOrCreateService
 
     public function guarantorSettingsList()
     {
+        // A tenant whose settings migration has not run (or ran before a setting was
+        // added) would otherwise see an empty page; give it the defaults instead.
+        GuarantorSettings::restoreMissing();
+
         return $this->otherHelpers->SettingsListPreparation([GuarantorSettings::MODULE]);
     }
 
