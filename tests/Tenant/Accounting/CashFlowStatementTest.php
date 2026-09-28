@@ -237,3 +237,18 @@ it('only reports the branches the staff member may see', function () {
         ->and($report['summary']['opening_cash'])->toBe('0.00')
         ->and($report['summary']['closing_cash'])->toBe('500.00');
 });
+
+it('lists only the cash entries behind a line when drilling into an account', function () {
+    cfQuarter($this);
+
+    $ledger = app(CashFlowStatementServiceInterface::class)->ledger($this->loans->id, Carbon::parse('2026-01-01'), Carbon::parse('2026-03-31'));
+
+    // The disbursement and the cash repayment; not the repayment from savings.
+    expect($ledger['total'])->toBe(2)
+        ->and($ledger['data'][0]['cash_out'])->toBe('400.00')
+        ->and($ledger['data'][1]['cash_in'])->toBe('300.00');
+
+    $this->getJson('/api/v1/tenant/reports/cash-flow/ledger?account_id='.$this->loans->id.'&from=2026-01-01&to=2026-03-31')
+        ->assertOk()
+        ->assertJsonPath('total', 2);
+});

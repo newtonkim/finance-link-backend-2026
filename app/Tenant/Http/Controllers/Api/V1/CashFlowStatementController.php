@@ -42,4 +42,23 @@ class CashFlowStatementController extends Controller
 
         return response()->json($result);
     }
+
+    public function ledger(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'account_id' => ['required', 'integer', 'min:1'],
+            'from' => ['required', 'date_format:Y-m-d'],
+            'to' => ['required', 'date_format:Y-m-d', 'after_or_equal:from'],
+            'page' => ['sometimes', 'integer', 'min:1'],
+            'branch_id' => ['nullable', 'integer', 'min:1'],
+        ]);
+
+        return response()->json($this->service->ledger(
+            (int) $validated['account_id'],
+            Carbon::parse($validated['from']),
+            Carbon::parse($validated['to']),
+            (int) ($validated['page'] ?? 1),
+            isset($validated['branch_id']) ? (int) $validated['branch_id'] : null,
+        ));
+    }
 }

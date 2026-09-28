@@ -37,7 +37,7 @@ class CashFlowStatementService implements CashFlowStatementServiceInterface
         $accounts = ChartOfAccount::withTrashed()->orderBy('gl_code')->get()->keyBy('id');
         $cashIds = $this->cashAccountIds($accounts);
 
-        $this->assertCurrency($this->ledger($scope)->whereIn('gl.account_id', $cashIds ?: [0])
+        $this->assertCurrency($this->postedLines($scope)->whereIn('gl.account_id', $cashIds ?: [0])
             ->whereBetween('gl.date', [min($from, $compareFrom)->toDateString(), max($to, $compareTo)->toDateString()]));
 
         $current = $this->flows($from, $to, $cashIds, $scope);
@@ -92,6 +92,47 @@ class CashFlowStatementService implements CashFlowStatementServiceInterface
         ];
     }
 
+    public function ledger(int $accountId, Carbon $from, Carbon $to, int $page = 1, ?int $branchId = null): array
+    {
+        $scope = $this->scope($branchId);
+        $account = ChartOfAccount::withTrashed()->findOrFail($accountId);
+        $cashIds = $this->cashAccountIds(ChartOfAccount::withTrashed()->get()->keyBy('id'));
+
+        $cashEntries = $this->postedLines($scope)
+            ->whereIn('gl.account_id', $cashIds ?: [0])
+            ->whereBetween('gl.date', [$from->toDateString(), $to->toDateString()])
+            ->select('gl.journal_entry_id');
+
+        $query = DB::connection('tenant')->table('general_ledger as gl')
+            ->join('journal_entries as je', 'je.id', '=', 'gl.journal_entry_id')
+            ->whereIn('gl.journal_entry_id', $cashEntries)
+            ->where('gl.account_id', $account->id);
+
+        $total = (clone $query)->count();
+        $rows = $query->select('gl.id', 'gl.date', 'gl.debit', 'gl.credit', 'gl.narration', 'je.entry_no', 'je.narration as entry_narration')
+            ->orderBy('gl.date')->orderBy('gl.id')
+            ->forPage($page, 50)
+            ->get();
+
+        return [
+            'account' => ['id' => $account->id, 'gl_code' => $account->gl_code, 'name' => $account->name],
+            'data' => $rows->map(function ($row) {
+                $net = bcsub((string) $row->credit, (string) $row->debit, 2);
+
+                return [
+                    'id' => $row->id, 'date' => $row->date, 'entry_no' => $row->entry_no,
+                    'description' => $row->narration ?: $row->entry_narration,
+                    'cash_in' => bccomp($net, '0', 2) > 0 ? $net : '0.00',
+                    'cash_out' => bccomp($net, '0', 2) < 0 ? bcsub('0', $net, 2) : '0.00',
+                ];
+            })->all(),
+            'current_page' => $page,
+            'last_page' => max(1, (int) ceil($total / 50)),
+            'total' => $total,
+            'per_page' => 50,
+        ];
+    }
+
     // ─── Cash accounts ────────────────────────────────────────────────────────
 
     /** @return list<int> */
@@ -119,7 +160,7 @@ class CashFlowStatementService implements CashFlowStatementServiceInterface
     /** Opening and closing cash, in total and per cash account. */
     private function cashPosition(Collection $accounts, array $cashIds, Carbon $from, Carbon $to, array $scope): array
     {
-        $balances = fn (string $operator, Carbon $date) => $this->ledger($scope)
+        $balances = fn (string $operator, Carbon $date) => $this->postedLines($scope)
             ->whereIn('gl.account_id', $cashIds ?: [0])
             ->where('gl.date', $operator, $date->toDateString())
             ->groupBy('gl.account_id')
@@ -162,7 +203,7 @@ class CashFlowStatementService implements CashFlowStatementServiceInterface
             return ['by_account' => [], 'by_month' => [], 'cash_in' => '0.00', 'cash_out' => '0.00'];
         }
 
-        $cashEntries = $this->ledger($scope)
+        $cashEntries = $this->postedLines($scope)
             ->whereIn('gl.account_id', $cashIds)
             ->whereBetween('gl.date', [$from->toDateString(), $to->toDateString()])
             ->select('gl.journal_entry_id');
@@ -338,7 +379,7 @@ class CashFlowStatementService implements CashFlowStatementServiceInterface
     // ─────────────────────────────────────────────────────────────────────────
 
     /** Posted ledger lines the signed-in staff member may see. */
-    private function ledger(array $scope): Builder
+    private function postedLines(array $scope): Builder
     {
         $query = DB::connection('tenant')->table('general_ledger as gl')
             ->join('journal_entries as je', 'je.id', '=', 'gl.journal_entry_id')

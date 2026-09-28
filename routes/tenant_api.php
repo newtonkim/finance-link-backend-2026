@@ -136,6 +136,7 @@ Route::middleware('feature:reports')->group(function () {
 
     // ── Statement of Cash Flows (direct method) ─────────────────────────────────
     Route::get('reports/cash-flow', [CashFlowStatementController::class, 'index']);
+    Route::get('reports/cash-flow/ledger', [CashFlowStatementController::class, 'ledger']);
 });
 
 // Members
