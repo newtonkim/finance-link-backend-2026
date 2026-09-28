@@ -4,12 +4,14 @@ namespace App\Providers;
 
 use App\Models\Member;
 use App\Tenant\Modules\Accounting\Contracts\BalanceSheetServiceInterface;
+use App\Tenant\Modules\Accounting\Contracts\CashFlowStatementServiceInterface;
 use App\Tenant\Modules\Accounting\Contracts\IncomeStatementServiceInterface;
 use App\Tenant\Modules\Accounting\Contracts\SavingsCoaResolverInterface;
 use App\Tenant\Modules\Accounting\Contracts\TrialBalanceServiceInterface;
 use App\Tenant\Modules\Accounting\Repositories\ChartOfAccountRepository;
 use App\Tenant\Modules\Accounting\Repositories\ChartOfAccountRepositoryInterface;
 use App\Tenant\Modules\Accounting\Services\BalanceSheetService;
+use App\Tenant\Modules\Accounting\Services\CashFlowStatementService;
 use App\Tenant\Modules\Accounting\Services\IncomeStatementService;
 use App\Tenant\Modules\Accounting\Services\SavingsCoaResolver;
 use App\Tenant\Modules\Accounting\Services\TrialBalanceService;
@@ -220,6 +222,11 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(
             BalanceSheetServiceInterface::class,
             BalanceSheetService::class
+        );
+
+        $this->app->bind(
+            CashFlowStatementServiceInterface::class,
+            CashFlowStatementService::class
         );
 
         $this->app->bind(

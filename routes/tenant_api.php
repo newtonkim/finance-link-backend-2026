@@ -6,6 +6,7 @@ use App\Http\Globals\GlobalHelpers;
 use App\Tenant\Http\Controllers\Api\V1\AccountingPeriodController;
 use App\Tenant\Http\Controllers\Api\V1\BalanceSheetController;
 use App\Tenant\Http\Controllers\Api\V1\BranchController;
+use App\Tenant\Http\Controllers\Api\V1\CashFlowStatementController;
 use App\Tenant\Http\Controllers\Api\V1\ChartOfAccountController;
 use App\Tenant\Http\Controllers\Api\V1\CurrencySettingsController;
 use App\Tenant\Http\Controllers\Api\V1\DashboardController;
@@ -132,6 +133,10 @@ Route::middleware('feature:reports')->group(function () {
     Route::get('reports/income-statement/ledger', [IncomeStatementController::class, 'ledger']);
 
     Route::get('reports/balance-sheet', [BalanceSheetController::class, 'index']);
+
+    // ── Statement of Cash Flows (direct method) ─────────────────────────────────
+    Route::get('reports/cash-flow', [CashFlowStatementController::class, 'index']);
+    Route::get('reports/cash-flow/ledger', [CashFlowStatementController::class, 'ledger']);
 });
 
 // Members
