@@ -2,13 +2,16 @@
 
 namespace App\Tenant\Settings;
 
+use Illuminate\Support\Facades\DB;
+
 /**
  * The guarantor settings module.
  *
- * Defined in one place because two things need the same list: the seeder, which
- * gives newly provisioned tenants their settings, and the migration that backfills
- * tenants provisioned before this module existed. Keeping a second copy in either
- * would let the two drift apart silently.
+ * Defined in one place because several things need the same list: the seeder, which
+ * gives newly provisioned tenants their settings, the migration that backfills
+ * tenants provisioned before this module existed, and the settings page, which
+ * restores any that are still missing. Keeping a second copy anywhere would let
+ * them drift apart silently.
  */
 class GuarantorSettings
 {
@@ -112,5 +115,57 @@ class GuarantorSettings
                 'settings_setting_description' => 'When enabled, topping up a loan that has guarantors always goes through a loan application instead of being paid out straight away, and the old loan\'s guarantors are carried onto it so they can agree to the new amount (or be replaced). When disabled, a product set to pay top-ups out straight away does so, and the new loan has no guarantors.',
             ],
         ];
+    }
+
+    /**
+     * Give the tenant any guarantor setting it does not have yet, at its default.
+     * Settings already there keep their values. A row under the right name but in
+     * another module is moved into this one, so it shows on the settings page.
+     *
+     * system_settings has no unique index on settings_name, so each row is checked
+     * by name rather than relying on insertOrIgnore.
+     *
+     * @return int how many settings were added or moved
+     */
+    public static function restoreMissing(): int
+    {
+        $existing = DB::table('system_settings')
+            ->whereIn('settings_name', array_column(self::definitions(), 'settings_name'))
+            ->pluck('settings_module', 'settings_name');
+
+        $restored = 0;
+
+        foreach (self::definitions() as $definition) {
+            $name = $definition['settings_name'];
+
+            if ($existing->has($name)) {
+                if ($existing[$name] !== self::MODULE) {
+                    DB::table('system_settings')->where('settings_name', $name)->update(['settings_module' => self::MODULE]);
+                    $restored++;
+                }
+
+                continue;
+            }
+
+            DB::table('system_settings')->insert([
+                'settings_name' => $name,
+                'settings_module' => self::MODULE,
+                'settings_status' => 'active',
+                'settings_action' => json_encode($definition['settings_action']),
+                'settings_action_description' => $definition['settings_action_description'],
+                'settings_setting_description' => $definition['settings_setting_description'],
+                'system_type' => 'system',
+                // created_by and updated_by are NOT NULL with no default. Existing
+                // system-seeded rows carry 0, so these match rather than inventing a
+                // staff id for rows nobody created.
+                'created_by' => 0,
+                'updated_by' => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            $restored++;
+        }
+
+        return $restored;
     }
 }
