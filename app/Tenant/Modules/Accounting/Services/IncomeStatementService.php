@@ -2,18 +2,18 @@
 
 namespace App\Tenant\Modules\Accounting\Services;
 
-use App\Support\BranchContext;
+use App\Tenant\Modules\Accounting\Concerns\ScopesLedgerReports;
 use App\Tenant\Modules\Accounting\Contracts\IncomeStatementServiceInterface;
 use App\Tenant\Modules\Accounting\Models\ChartOfAccount;
 use App\Tenant\Modules\Accounting\Support\IncomeStatementLines;
-use App\Tenant\Modules\Settings\Models\CurrencySetting;
 use Carbon\Carbon;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 
 class IncomeStatementService implements IncomeStatementServiceInterface
 {
+    use ScopesLedgerReports;
+
     /** Every amount is a signed contribution to surplus: credit minus debit. */
     public function generate(Carbon $from, Carbon $to, ?Carbon $compareFrom = null, ?Carbon $compareTo = null, bool $hideZero = true, ?int $branchId = null): array
     {
@@ -170,21 +170,6 @@ class IncomeStatementService implements IncomeStatementServiceInterface
         return ['data' => $data, 'current_page' => $page, 'last_page' => max(1, (int) ceil($total / 50)), 'total' => $total, 'per_page' => 50];
     }
 
-    private function scope(?int $branchId): array
-    {
-        $staff = BranchContext::getStaff();
-        abort_unless($staff, 403, 'Staff access is required.');
-        $all = BranchContext::scopeFor($staff) === BranchContext::SCOPE_ALL;
-        $allowed = BranchContext::allowedBranchIds();
-        if ($branchId !== null) {
-            abort_unless(BranchContext::branchExists($branchId) && ($all || in_array($branchId, $allowed, true)), 403, 'You cannot access this branch.');
-
-            return ['all_branches' => false, 'branch_ids' => [$branchId], 'selected_branch_id' => $branchId];
-        }
-
-        return ['all_branches' => $all, 'branch_ids' => $all ? [] : $allowed, 'selected_branch_id' => null];
-    }
-
     private function movements(Carbon $from, Carbon $to, bool $closing = false, ?int $branchId = null): Builder
     {
         $scope = $this->scope($branchId);
@@ -200,16 +185,6 @@ class IncomeStatementService implements IncomeStatementServiceInterface
         }
 
         return $query;
-    }
-
-    private function assertCurrency(Builder $query): void
-    {
-        $currency = CurrencySetting::query()->value('default_currency') ?? 'UGX';
-        if ($currency !== 'UGX' || (clone $query)->where(function ($q) {
-            $q->whereNull('je.currency_code')->orWhere('je.currency_code', '!=', 'UGX');
-        })->exists()) {
-            throw ValidationException::withMessages(['currency' => 'This report requires UGX ledger amounts. Foreign-currency conversion has not been established; correct the currency configuration or postings first.']);
-        }
     }
 
     private function aggregate(Builder $query): array
