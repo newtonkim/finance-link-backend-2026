@@ -13,6 +13,7 @@ use App\Tenant\Http\Resources\LoanApplicationResource;
 use App\Tenant\Modules\Loans\Contracts\LoanApplicationServiceInterface;
 use App\Tenant\Modules\Loans\Contracts\LoanEligibilityServiceInterface;
 use App\Tenant\Modules\Loans\Contracts\LoanTimelineServiceInterface;
+use App\Tenant\Modules\Loans\Data\GuarantorRules;
 use App\Tenant\Modules\Loans\Models\LoanApplication;
 use App\Tenant\Modules\Loans\Models\LoanProduct;
 use App\Tenant\Modules\Loans\Services\LoanPermissionsService;
@@ -91,7 +92,23 @@ class LoanApplicationController extends TenantLoanService
             (int) $request->input('requested_term'),
         );
 
-        return response()->json(['data' => $result->toArray()]);
+        $data = $result->toArray();
+
+        // Guarantors can only be added once the application is saved, so a missing
+        // guarantor is a heads-up here rather than a failure — submission enforces it.
+        $guarantorRules = GuarantorRules::for($product);
+        if ($guarantorRules->required && $guarantorRules->minimum > 0) {
+            $data['warnings'][] = [
+                'key' => 'guarantors',
+                'label' => 'Guarantors required',
+                'message' => sprintf(
+                    'This loan needs at least %d guarantor(s). Save the application, then add them before submitting.',
+                    $guarantorRules->minimum
+                ),
+            ];
+        }
+
+        return response()->json(['data' => $data]);
     }
 
     public function memberSearch(Request $request): JsonResponse
