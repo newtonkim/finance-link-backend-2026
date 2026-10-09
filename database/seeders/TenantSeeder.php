@@ -23,6 +23,7 @@ class TenantSeeder extends Seeder
             PublicHolidaySeeder::class,
             SaccoRolesSeeder::class,
             ExpenseCategorySeeder::class,
+            DocumentTypeSeeder::class,
             LoanProductSeeder::class,
         ]);
 
